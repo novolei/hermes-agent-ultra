@@ -494,6 +494,12 @@ pub enum CliCommand {
         name: Option<String>,
     },
 
+    /// Resume an interactive session from saved session state.
+    Resume {
+        /// Session ID/file stem to resume, or `latest` (default).
+        session_id: Option<String>,
+    },
+
     /// Usage analytics and insights.
     Insights {
         /// Number of days to analyze.
@@ -893,6 +899,28 @@ mod tests {
     fn cli_parse_status() {
         let cli = Cli::try_parse_from(vec!["hermes", "status"]).unwrap();
         assert!(matches!(cli.command, Some(CliCommand::Status)));
+    }
+
+    #[test]
+    fn cli_parse_resume_latest_default() {
+        let cli = Cli::try_parse_from(vec!["hermes", "resume"]).unwrap();
+        match cli.command {
+            Some(CliCommand::Resume { session_id }) => {
+                assert!(session_id.is_none());
+            }
+            _ => panic!("Expected Resume command"),
+        }
+    }
+
+    #[test]
+    fn cli_parse_resume_specific_session() {
+        let cli = Cli::try_parse_from(vec!["hermes", "resume", "abc123"]).unwrap();
+        match cli.command {
+            Some(CliCommand::Resume { session_id }) => {
+                assert_eq!(session_id.as_deref(), Some("abc123"));
+            }
+            _ => panic!("Expected Resume command"),
+        }
     }
 
     #[test]

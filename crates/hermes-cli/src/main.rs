@@ -109,7 +109,13 @@ async fn main() {
     let global_allow_tools_override = cli.allow_tools;
 
     // Initialize tracing
-    init_tracing(cli.verbose, matches!(effective_command, CliCommand::Hermes));
+    init_tracing(
+        cli.verbose,
+        matches!(
+            effective_command,
+            CliCommand::Hermes | CliCommand::Resume { .. }
+        ),
+    );
     if let Err(err) = hydrate_provider_env_from_vault_for_cli(&cli).await {
         tracing::warn!("Secret-vault hydration skipped: {}", err);
     }
@@ -322,6 +328,7 @@ async fn main() {
         CliCommand::Sessions { action, id, name } => {
             hermes_cli::commands::handle_cli_sessions(action, id, name).await
         }
+        CliCommand::Resume { session_id } => run_resume(cli, session_id).await,
         CliCommand::Insights { days, source } => {
             hermes_cli::commands::handle_cli_insights(days, source).await
         }
@@ -468,6 +475,273 @@ fn init_tracing(verbose: bool, interactive_tui: bool) {
 async fn run_interactive(cli: Cli) -> Result<(), AgentError> {
     let app = App::new(cli).await?;
     hermes_cli::tui::run(app).await
+}
+
+#[derive(Debug, Clone)]
+struct ResumeSessionPayload {
+    resolved_id: String,
+    source_path: PathBuf,
+    session_id: String,
+    model: Option<String>,
+    personality: Option<String>,
+    messages: Vec<hermes_core::Message>,
+}
+
+async fn run_resume(cli: Cli, requested_session_id: Option<String>) -> Result<(), AgentError> {
+    let payload = load_resume_payload(&cli, requested_session_id.as_deref())?;
+    let mut app = App::new(cli).await?;
+
+    if let Some(model) = payload.model.clone().filter(|m| !m.trim().is_empty()) {
+        if model != app.current_model {
+            app.switch_model(&model);
+        } else {
+            app.current_model = model;
+        }
+    }
+
+    app.current_personality = payload
+        .personality
+        .clone()
+        .filter(|name| !name.trim().is_empty());
+    app.session_id = payload.session_id.clone();
+    app.messages = payload.messages;
+    app.ui_messages.clear();
+    app.input_history.clear();
+    app.history_index = 0;
+    app.session_objective = extract_session_objective(&app.messages);
+    app.push_ui_assistant(format!(
+        "Resumed session `{}` from {} ({} messages).",
+        payload.resolved_id,
+        payload.source_path.display(),
+        app.messages.len()
+    ));
+
+    hermes_cli::tui::run(app).await
+}
+
+fn load_resume_payload(
+    cli: &Cli,
+    requested: Option<&str>,
+) -> Result<ResumeSessionPayload, AgentError> {
+    let sessions_dir = hermes_state_root(cli).join("sessions");
+    if !sessions_dir.exists() {
+        return Err(AgentError::Config(format!(
+            "No sessions directory found at {}. Save a session first with `/save`.",
+            sessions_dir.display()
+        )));
+    }
+
+    let (resolved_id, source_path) = resolve_resume_session_file(&sessions_dir, requested)?;
+    let raw = std::fs::read_to_string(&source_path).map_err(|e| {
+        AgentError::Io(format!(
+            "Failed to read session file {}: {}",
+            source_path.display(),
+            e
+        ))
+    })?;
+    let doc: serde_json::Value = serde_json::from_str(&raw).map_err(|e| {
+        AgentError::Config(format!(
+            "Failed to parse session file {}: {}",
+            source_path.display(),
+            e
+        ))
+    })?;
+
+    let info = doc.get("session_info");
+    let session_id = info
+        .and_then(|v| v.get("session_id"))
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.trim().is_empty())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| resolved_id.clone());
+    let model = info
+        .and_then(|v| v.get("model"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .or_else(|| {
+            doc.get("model")
+                .and_then(|v| v.as_str())
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+        });
+    let personality = info
+        .and_then(|v| v.get("personality"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .or_else(|| {
+            doc.get("personality")
+                .and_then(|v| v.as_str())
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+        });
+
+    let messages_value = doc
+        .get("messages")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| {
+            AgentError::Config(format!(
+                "Session file {} does not contain a valid `messages` array.",
+                source_path.display()
+            ))
+        })?;
+
+    let messages = parse_resume_messages(messages_value);
+    if messages.is_empty() {
+        return Err(AgentError::Config(format!(
+            "Session `{}` has no restorable messages.",
+            resolved_id
+        )));
+    }
+
+    Ok(ResumeSessionPayload {
+        resolved_id,
+        source_path,
+        session_id,
+        model,
+        personality,
+        messages,
+    })
+}
+
+fn resolve_resume_session_file(
+    sessions_dir: &Path,
+    requested: Option<&str>,
+) -> Result<(String, PathBuf), AgentError> {
+    let req = requested.unwrap_or("latest").trim();
+    if req.is_empty() || req.eq_ignore_ascii_case("latest") {
+        let mut candidates: Vec<(PathBuf, std::time::SystemTime)> = Vec::new();
+        let rd = std::fs::read_dir(sessions_dir).map_err(|e| {
+            AgentError::Io(format!(
+                "Failed to read sessions directory {}: {}",
+                sessions_dir.display(),
+                e
+            ))
+        })?;
+        for entry in rd.filter_map(|entry| entry.ok()) {
+            let path = entry.path();
+            if !path.extension().map(|ext| ext == "json").unwrap_or(false) {
+                continue;
+            }
+            let modified = std::fs::metadata(&path)
+                .and_then(|m| m.modified())
+                .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+            candidates.push((path, modified));
+        }
+        candidates.sort_by(|a, b| b.1.cmp(&a.1));
+        let Some((path, _)) = candidates.into_iter().next() else {
+            return Err(AgentError::Config(format!(
+                "No saved sessions found in {}.",
+                sessions_dir.display()
+            )));
+        };
+        let resolved_id = path
+            .file_stem()
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "latest".to_string());
+        return Ok((resolved_id, path));
+    }
+
+    if req.contains('/') || req.contains('\\') {
+        return Err(AgentError::Config(
+            "Session ID should be a file stem, not a path.".into(),
+        ));
+    }
+
+    let mut path = sessions_dir.join(req);
+    if path.extension().is_none() {
+        path.set_extension("json");
+    }
+    if !path.exists() {
+        return Err(AgentError::Config(format!(
+            "Session '{}' not found at {}.",
+            req,
+            path.display()
+        )));
+    }
+
+    let resolved_id = path
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| req.to_string());
+    Ok((resolved_id, path))
+}
+
+fn parse_resume_messages(items: &[serde_json::Value]) -> Vec<hermes_core::Message> {
+    let mut messages = Vec::new();
+    for item in items {
+        let role = item
+            .get("role")
+            .and_then(|v| v.as_str())
+            .unwrap_or("user")
+            .trim()
+            .to_ascii_lowercase();
+        let content = item
+            .get("content")
+            .or_else(|| item.get("text"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        match role.as_str() {
+            "system" => {
+                if !content.is_empty() {
+                    messages.push(hermes_core::Message::system(content));
+                }
+            }
+            "assistant" => {
+                if let Some(tool_calls_val) = item.get("tool_calls") {
+                    if let Ok(tool_calls) =
+                        serde_json::from_value::<Vec<hermes_core::ToolCall>>(tool_calls_val.clone())
+                    {
+                        messages.push(hermes_core::Message::assistant_with_tool_calls(
+                            if content.is_empty() {
+                                None
+                            } else {
+                                Some(content.clone())
+                            },
+                            tool_calls,
+                        ));
+                        continue;
+                    }
+                }
+                if !content.is_empty() {
+                    messages.push(hermes_core::Message::assistant(content));
+                }
+            }
+            "tool" => {
+                let tool_call_id = item
+                    .get("tool_call_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("tool_call");
+                if !content.is_empty() {
+                    messages.push(hermes_core::Message::tool_result(tool_call_id, content));
+                }
+            }
+            _ => {
+                if !content.is_empty() {
+                    messages.push(hermes_core::Message::user(content));
+                }
+            }
+        }
+    }
+    messages
+}
+
+fn extract_session_objective(messages: &[hermes_core::Message]) -> Option<String> {
+    const SESSION_OBJECTIVE_PREFIX: &str = "[SESSION_OBJECTIVE] ";
+    messages.iter().find_map(|message| {
+        if message.role != MessageRole::System {
+            return None;
+        }
+        let content = message.content.as_deref()?.trim();
+        content
+            .strip_prefix(SESSION_OBJECTIVE_PREFIX)
+            .map(str::trim)
+            .filter(|v| !v.is_empty())
+            .map(ToOwned::to_owned)
+    })
 }
 
 /// Handle `hermes model [provider:model]`.
@@ -12245,6 +12519,15 @@ mod tests {
             .expect("env lock poisoned")
     }
 
+    fn cli_for_temp_state_root(temp_root: &std::path::Path) -> Cli {
+        use clap::Parser;
+        Cli::parse_from([
+            "hermes-agent-ultra",
+            "--config-dir",
+            temp_root.to_str().expect("utf8 path"),
+        ])
+    }
+
     fn make_platform(enabled: bool, token: Option<&str>) -> PlatformConfig {
         let mut cfg = PlatformConfig {
             enabled,
@@ -13278,6 +13561,71 @@ mod tests {
         assert!(payload.get("route_health").is_some());
         assert!(payload.get("tool_policy").is_some());
         assert!(payload.get("elite_gate").is_some());
+    }
+
+    #[test]
+    fn resolve_resume_session_file_prefers_latest_modified_file() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let cli = cli_for_temp_state_root(tmp.path());
+        let sessions_dir = hermes_state_root(&cli).join("sessions");
+        std::fs::create_dir_all(&sessions_dir).expect("create sessions dir");
+
+        let old = sessions_dir.join("old-session.json");
+        let new = sessions_dir.join("new-session.json");
+        std::fs::write(&old, r#"{"messages":[{"role":"user","content":"old"}]}"#)
+            .expect("write old session");
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        std::fs::write(&new, r#"{"messages":[{"role":"user","content":"new"}]}"#)
+            .expect("write new session");
+
+        let (resolved, path) =
+            resolve_resume_session_file(&sessions_dir, None).expect("resolve latest");
+        assert_eq!(resolved, "new-session");
+        assert_eq!(path, new);
+    }
+
+    #[test]
+    fn load_resume_payload_restores_metadata_and_messages() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let cli = cli_for_temp_state_root(tmp.path());
+        let sessions_dir = hermes_state_root(&cli).join("sessions");
+        std::fs::create_dir_all(&sessions_dir).expect("create sessions dir");
+        let session_path = sessions_dir.join("abc123.json");
+        std::fs::write(
+            &session_path,
+            r#"{
+  "session_info": {
+    "session_id": "session-xyz",
+    "model": "nous:openai/gpt-5.5-pro",
+    "personality": "technical"
+  },
+  "messages": [
+    {"role":"System","content":"[SESSION_OBJECTIVE] Keep context fresh"},
+    {"role":"User","content":"hello"},
+    {"role":"Assistant","content":"world"}
+  ]
+}"#,
+        )
+        .expect("write session");
+
+        let payload = load_resume_payload(&cli, Some("abc123")).expect("load payload");
+        assert_eq!(payload.resolved_id, "abc123");
+        assert_eq!(payload.session_id, "session-xyz");
+        assert_eq!(payload.model.as_deref(), Some("nous:openai/gpt-5.5-pro"));
+        assert_eq!(payload.personality.as_deref(), Some("technical"));
+        assert_eq!(payload.messages.len(), 3);
+        assert!(matches!(
+            payload.messages[0].role,
+            hermes_core::MessageRole::System
+        ));
+        assert!(matches!(
+            payload.messages[1].role,
+            hermes_core::MessageRole::User
+        ));
+        assert!(matches!(
+            payload.messages[2].role,
+            hermes_core::MessageRole::Assistant
+        ));
     }
 
     #[test]
