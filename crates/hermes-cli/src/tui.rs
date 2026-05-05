@@ -395,6 +395,8 @@ pub struct TuiState {
     pub completion_index: Option<usize>,
     /// Scroll offset from newest transcript content (0 = newest).
     pub scroll_offset: u16,
+    /// Keep transcript pinned to newest content unless user scrolls away.
+    auto_follow_transcript: bool,
     /// Whether the agent is currently processing.
     pub processing: bool,
     /// Buffer for streaming agent output.
@@ -508,6 +510,7 @@ impl Default for TuiState {
             completions: Vec::new(),
             completion_index: None,
             scroll_offset: 0,
+            auto_follow_transcript: true,
             processing: false,
             stream_buffer: String::new(),
             stream_muted: false,
@@ -543,6 +546,23 @@ impl Default for TuiState {
 }
 
 impl TuiState {
+    fn scroll_history_up(&mut self, lines: u16) {
+        self.scroll_offset = self.scroll_offset.saturating_add(lines.max(1));
+        self.auto_follow_transcript = false;
+    }
+
+    fn scroll_history_down(&mut self, lines: u16) {
+        self.scroll_offset = self.scroll_offset.saturating_sub(lines.max(1));
+        if self.scroll_offset == 0 {
+            self.auto_follow_transcript = true;
+        }
+    }
+
+    fn jump_to_latest(&mut self) {
+        self.scroll_offset = 0;
+        self.auto_follow_transcript = true;
+    }
+
     fn push_activity(&mut self, text: impl Into<String>) {
         let trimmed = text.into().trim().to_string();
         if trimmed.is_empty() {
@@ -792,13 +812,13 @@ impl TuiState {
         use crossterm::event::KeyCode;
         match key.code {
             KeyCode::PageUp => {
-                self.scroll_offset = self.scroll_offset.saturating_add(8);
+                self.scroll_history_up(8);
             }
             KeyCode::PageDown => {
-                self.scroll_offset = self.scroll_offset.saturating_sub(8);
+                self.scroll_history_down(8);
             }
             KeyCode::End => {
-                self.scroll_offset = 0;
+                self.jump_to_latest();
             }
             KeyCode::Char('i') => {
                 self.mode = InputMode::Insert;
@@ -909,38 +929,45 @@ impl TuiState {
         match key.code {
             // Scroll transcript without leaving insert mode.
             KeyCode::PageUp => {
-                self.scroll_offset = self.scroll_offset.saturating_add(8);
+                self.scroll_history_up(8);
                 false
             }
             KeyCode::PageDown => {
-                self.scroll_offset = self.scroll_offset.saturating_sub(8);
+                self.scroll_history_down(8);
                 false
             }
             // Fine-grained transcript scroll.
             KeyCode::Up if mods.contains(KeyModifiers::CONTROL) => {
-                self.scroll_offset = self.scroll_offset.saturating_add(1);
+                self.scroll_history_up(1);
                 false
             }
             KeyCode::Down if mods.contains(KeyModifiers::CONTROL) => {
-                self.scroll_offset = self.scroll_offset.saturating_sub(1);
+                self.scroll_history_down(1);
                 false
             }
             // Fallback fine-grained scroll chords when terminals reserve Ctrl+Up/Down.
             KeyCode::Up
                 if mods.contains(KeyModifiers::ALT) || mods.contains(KeyModifiers::SHIFT) =>
             {
-                self.scroll_offset = self.scroll_offset.saturating_add(1);
+                self.scroll_history_up(1);
                 false
             }
             KeyCode::Down
                 if mods.contains(KeyModifiers::ALT) || mods.contains(KeyModifiers::SHIFT) =>
             {
-                self.scroll_offset = self.scroll_offset.saturating_sub(1);
+                self.scroll_history_down(1);
                 false
             }
             // Jump back to newest transcript content.
             KeyCode::End if mods.contains(KeyModifiers::CONTROL) => {
-                self.scroll_offset = 0;
+                self.jump_to_latest();
+                false
+            }
+            // Force refresh + pin to newest transcript content.
+            KeyCode::Char('g') if mods.contains(KeyModifiers::CONTROL) => {
+                self.jump_to_latest();
+                self.transcript_cache = TranscriptCache::default();
+                self.status_message = "Jumped to latest transcript (forced refresh)".to_string();
                 false
             }
             // Explicit multiline shortcuts.
@@ -1025,7 +1052,7 @@ impl TuiState {
                 self.completions.clear();
                 self.completion_index = None;
                 if self.scroll_offset > 0 {
-                    self.scroll_offset = 0;
+                    self.jump_to_latest();
                 }
                 // Keep insert mode so Esc never appears to "freeze" typing.
                 self.mode = InputMode::Insert;
@@ -1373,7 +1400,7 @@ fn should_render_completions_popup(state: &TuiState) -> bool {
 fn render_header(frame: &mut Frame, app: &App, area: Rect, colors: &crate::theme::RatatuiColors) {
     let session_short = &app.session_id[..8.min(app.session_id.len())];
     let title = format!(
-        " HERMES AGENT ULTRA  •  session {}  •  Enter send  •  Shift+Enter/Ctrl+J newline  •  / commands  •  Ctrl+L lane  •  Ctrl+D density  •  Ctrl+T timestamps",
+        " HERMES AGENT ULTRA  •  session {}  •  Enter send  •  Shift+Enter/Ctrl+J newline  •  / commands  •  Ctrl+L lane  •  Ctrl+D density  •  Ctrl+T timestamps  •  Ctrl+G refresh-tail",
         session_short
     );
     let text = Text::from(vec![Line::from(vec![Span::styled(
@@ -2546,6 +2573,9 @@ fn render_messages(
     }
     let lines = &state.transcript_cache.lines;
     let text = Text::from(lines.clone());
+    if state.auto_follow_transcript {
+        state.scroll_offset = 0;
+    }
     let total_visual_rows = approximate_visual_rows(lines, wrap_width);
     let max_hidden_from_bottom = total_visual_rows.saturating_sub(viewport_rows);
     let hidden_from_bottom = usize::from(state.scroll_offset).min(max_hidden_from_bottom);
@@ -3869,7 +3899,7 @@ pub async fn run(mut app: App) -> Result<(), AgentError> {
                             state.cursor_position = 0;
                             state.completions.clear();
                             state.completion_index = None;
-                            state.scroll_offset = 0;
+                            state.jump_to_latest();
 
                             if !input.is_empty() {
                                 let mut handled_by_tui = false;
@@ -4010,10 +4040,10 @@ pub async fn run(mut app: App) -> Result<(), AgentError> {
                         use crossterm::event::MouseEventKind;
                         match mouse.kind {
                             MouseEventKind::ScrollUp => {
-                                state.scroll_offset = state.scroll_offset.saturating_add(3);
+                                state.scroll_history_up(3);
                             }
                             MouseEventKind::ScrollDown => {
-                                state.scroll_offset = state.scroll_offset.saturating_sub(3);
+                                state.scroll_history_down(3);
                             }
                             _ => {}
                         }
