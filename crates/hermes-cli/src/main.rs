@@ -8720,7 +8720,7 @@ async fn run_setup(cli: Cli) -> Result<(), AgentError> {
     if overwrite_config {
         disk.model = Some(model.clone());
         disk.personality = Some(personality.to_string());
-        disk.max_turns = 50;
+        disk.max_turns = 250;
 
         let _ = upsert_env_key(
             &env_path,
