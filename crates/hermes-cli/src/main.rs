@@ -535,14 +535,8 @@ fn load_resume_payload(
     requested: Option<&str>,
 ) -> Result<ResumeSessionPayload, AgentError> {
     let sessions_dir = hermes_state_root(cli).join("sessions");
-    if !sessions_dir.exists() {
-        return Err(AgentError::Config(format!(
-            "No sessions directory found at {}. Save a session first with `/save`.",
-            sessions_dir.display()
-        )));
-    }
-
-    let (resolved_id, source_path) = resolve_resume_session_file(&sessions_dir, requested)?;
+    let (resolved_id, source_path) =
+        resolve_resume_session_file_with_legacy_fallback(&sessions_dir, requested)?;
     let raw = std::fs::read_to_string(&source_path).map_err(|e| {
         AgentError::Io(format!(
             "Failed to read session file {}: {}",
@@ -614,6 +608,31 @@ fn load_resume_payload(
         personality,
         messages,
     })
+}
+
+fn legacy_sessions_dir() -> Option<PathBuf> {
+    std::env::var("HOME")
+        .ok()
+        .map(PathBuf::from)
+        .map(|home| home.join(".hermes").join("sessions"))
+}
+
+fn resolve_resume_session_file_with_legacy_fallback(
+    sessions_dir: &Path,
+    requested: Option<&str>,
+) -> Result<(String, PathBuf), AgentError> {
+    match resolve_resume_session_file(sessions_dir, requested) {
+        Ok(found) => Ok(found),
+        Err(primary_err) => {
+            let Some(legacy_dir) = legacy_sessions_dir() else {
+                return Err(primary_err);
+            };
+            if legacy_dir == sessions_dir || !legacy_dir.exists() {
+                return Err(primary_err);
+            }
+            resolve_resume_session_file(&legacy_dir, requested).map_err(|_| primary_err)
+        }
+    }
 }
 
 fn should_resume_fallback_to_fresh(requested: Option<&str>, err: &AgentError) -> bool {
@@ -13688,6 +13707,44 @@ mod tests {
             payload.messages[2].role,
             hermes_core::MessageRole::Assistant
         ));
+    }
+
+    #[test]
+    fn load_resume_payload_falls_back_to_legacy_sessions_dir() {
+        let _guard = env_lock();
+        let prev_home = std::env::var("HOME").ok();
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let fake_home = tmp.path().join("fake-home");
+        let legacy_sessions = fake_home.join(".hermes").join("sessions");
+        std::fs::create_dir_all(&legacy_sessions).expect("create legacy sessions dir");
+        let legacy_path = legacy_sessions.join("legacy-abc.json");
+        std::fs::write(
+            &legacy_path,
+            r#"{
+  "session_info": {
+    "session_id": "legacy-session",
+    "model": "nous:nousresearch/hermes-4-70b"
+  },
+  "messages": [
+    {"role":"User","content":"from-legacy"}
+  ]
+}"#,
+        )
+        .expect("write legacy session");
+
+        std::env::set_var("HOME", &fake_home);
+        let state_root = tmp.path().join("ultra-state");
+        let cli = cli_for_temp_state_root(&state_root);
+        let payload = load_resume_payload(&cli, Some("legacy-abc")).expect("load payload");
+        assert_eq!(payload.resolved_id, "legacy-abc");
+        assert_eq!(payload.session_id, "legacy-session");
+        assert_eq!(payload.messages.len(), 1);
+        assert!(payload.source_path.starts_with(&legacy_sessions));
+
+        match prev_home {
+            Some(home) => std::env::set_var("HOME", home),
+            None => std::env::remove_var("HOME"),
+        }
     }
 
     #[test]
