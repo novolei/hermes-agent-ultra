@@ -38,6 +38,149 @@ fn next_call_id() -> String {
     format!("call_{}", guard)
 }
 
+fn tool_calls_from_json_value(value: &serde_json::Value) -> Vec<ToolCall> {
+    fn parse_one(obj: &serde_json::Map<String, serde_json::Value>) -> Option<ToolCall> {
+        let name = obj.get("name")?.as_str()?.trim();
+        if name.is_empty() {
+            return None;
+        }
+        let arguments = obj
+            .get("arguments")
+            .cloned()
+            .unwrap_or_else(|| serde_json::Value::Object(serde_json::Map::new()))
+            .to_string();
+        Some(ToolCall {
+            id: next_call_id(),
+            function: FunctionCall {
+                name: name.to_string(),
+                arguments,
+            },
+            extra_content: None,
+        })
+    }
+
+    match value {
+        serde_json::Value::Object(map) => parse_one(map).into_iter().collect(),
+        serde_json::Value::Array(items) => items
+            .iter()
+            .filter_map(|item| item.as_object().and_then(parse_one))
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+fn extract_json_string_value_from_key(raw: &str, key_idx: usize) -> Option<String> {
+    let after_key = raw.get(key_idx..)?;
+    let colon_rel = after_key.find(':')?;
+    let mut i = key_idx + colon_rel + 1;
+    let bytes = raw.as_bytes();
+    while i < raw.len() && bytes[i].is_ascii_whitespace() {
+        i += 1;
+    }
+    if i >= raw.len() || bytes[i] != b'"' {
+        return None;
+    }
+    i += 1;
+    let start = i;
+    let mut escaped = false;
+    while i < raw.len() {
+        let b = bytes[i];
+        if escaped {
+            escaped = false;
+        } else if b == b'\\' {
+            escaped = true;
+        } else if b == b'"' {
+            return Some(raw[start..i].to_string());
+        }
+        i += 1;
+    }
+    None
+}
+
+fn find_balanced_json_object_bounds(raw: &str, open_idx: usize) -> Option<(usize, usize)> {
+    let bytes = raw.as_bytes();
+    if open_idx >= raw.len() || bytes[open_idx] != b'{' {
+        return None;
+    }
+    let mut depth = 0usize;
+    let mut in_string = false;
+    let mut escaped = false;
+    for (idx, ch) in raw[open_idx..].char_indices() {
+        let abs = open_idx + idx;
+        if in_string {
+            if escaped {
+                escaped = false;
+                continue;
+            }
+            match ch {
+                '\\' => escaped = true,
+                '"' => in_string = false,
+                _ => {}
+            }
+            continue;
+        }
+        match ch {
+            '"' => in_string = true,
+            '{' => depth = depth.saturating_add(1),
+            '}' => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    return Some((open_idx, abs + ch.len_utf8()));
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn parse_loose_json_tool_calls(raw: &str) -> Vec<ToolCall> {
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(raw) {
+        let strict = tool_calls_from_json_value(&value);
+        if !strict.is_empty() {
+            return strict;
+        }
+    }
+
+    let mut calls = Vec::new();
+    let mut cursor = 0usize;
+    while cursor < raw.len() {
+        let Some(name_rel) = raw[cursor..].find("\"name\"") else {
+            break;
+        };
+        let name_key_idx = cursor + name_rel;
+        let Some(name) = extract_json_string_value_from_key(raw, name_key_idx) else {
+            cursor = name_key_idx + 6;
+            continue;
+        };
+        let Some(args_key_rel) = raw[name_key_idx..].find("\"arguments\"") else {
+            cursor = name_key_idx + 6;
+            continue;
+        };
+        let args_key_idx = name_key_idx + args_key_rel;
+        let Some(open_rel) = raw[args_key_idx..].find('{') else {
+            cursor = args_key_idx + 11;
+            continue;
+        };
+        let open_idx = args_key_idx + open_rel;
+        let Some((_, end_idx)) = find_balanced_json_object_bounds(raw, open_idx) else {
+            cursor = open_idx + 1;
+            continue;
+        };
+        let args_slice = &raw[open_idx..end_idx];
+        let arguments = serde_json::from_str::<serde_json::Value>(args_slice)
+            .unwrap_or_else(|_| serde_json::Value::Object(serde_json::Map::new()))
+            .to_string();
+        calls.push(ToolCall {
+            id: next_call_id(),
+            function: FunctionCall { name, arguments },
+            extra_content: None,
+        });
+        cursor = end_idx;
+    }
+    calls
+}
+
 impl ToolCallParser for HermesToolCallParser {
     fn parse(&self, content: &str) -> Result<Vec<ToolCall>, AgentError> {
         let mut calls = Vec::new();
@@ -99,6 +242,14 @@ impl ToolCallParser for HermesToolCallParser {
             }
         }
 
+        if calls.is_empty() {
+            let bare_tool_call_re = Regex::new(r"(?s)<tool_call>\s*(.*?)\s*</tool_call>").unwrap();
+            for call_caps in bare_tool_call_re.captures_iter(content) {
+                let payload = call_caps.get(1).unwrap().as_str().trim();
+                calls.extend(parse_loose_json_tool_calls(payload));
+            }
+        }
+
         // Also try ```tool_call blocks if no XML calls were found
         if calls.is_empty() {
             let tool_call_re = Regex::new(r"(?s)```tool_call\s*\n(.*?)\n```").unwrap();
@@ -107,28 +258,13 @@ impl ToolCallParser for HermesToolCallParser {
                 let parsed: serde_json::Value = serde_json::from_str(raw).map_err(|e| {
                     AgentError::InvalidToolCall(format!("Invalid JSON in tool_call block: {}", e))
                 })?;
-
-                let name = parsed
-                    .get("name")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| {
-                        AgentError::InvalidToolCall(
-                            "Missing 'name' field in tool_call block".to_string(),
-                        )
-                    })?
-                    .to_string();
-
-                let arguments = parsed
-                    .get("arguments")
-                    .cloned()
-                    .unwrap_or(serde_json::Value::Object(serde_json::Map::new()))
-                    .to_string();
-
-                calls.push(ToolCall {
-                    id: next_call_id(),
-                    function: FunctionCall { name, arguments },
-                    extra_content: None,
-                });
+                let mut parsed_calls = tool_calls_from_json_value(&parsed);
+                if parsed_calls.is_empty() {
+                    return Err(AgentError::InvalidToolCall(
+                        "Missing 'name' field in tool_call block".to_string(),
+                    ));
+                }
+                calls.append(&mut parsed_calls);
             }
         }
 
@@ -169,6 +305,10 @@ pub fn separate_text_and_calls(content: &str) -> (String, Vec<ToolCall>) {
     let alt_tool_call_re =
         Regex::new(r#"(?s)<tool_call\s+name=['"][^'"]+['"]\s*>.*?</tool_call>"#).unwrap();
     result = alt_tool_call_re.replace_all(&result, "").to_string();
+
+    // Remove bare <tool_call>...</tool_call> blocks
+    let bare_tool_call_re = Regex::new(r"(?s)<tool_call>\s*.*?\s*</tool_call>").unwrap();
+    result = bare_tool_call_re.replace_all(&result, "").to_string();
 
     // Trim excessive whitespace left behind
     let result = result.trim().to_string();
@@ -334,6 +474,34 @@ Hello! Let me search for that.
     }
 
     #[test]
+    fn test_parse_bare_tool_call_json_payload() {
+        let content = r#"
+Proceeding.
+<tool_call>
+{"name":"terminal","arguments":{"command":"pwd"}}
+</tool_call>
+"#;
+        let calls = parse_tool_calls(content).unwrap();
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].function.name, "terminal");
+        let args: serde_json::Value = serde_json::from_str(&calls[0].function.arguments).unwrap();
+        assert_eq!(args["command"], "pwd");
+    }
+
+    #[test]
+    fn test_parse_tool_call_code_fence_json_array_payload() {
+        let content = r#"
+```tool_call
+[{"name":"terminal","arguments":{"command":"pwd"}},{"name":"skill_view","arguments":{"skill":"solana"}}]
+```
+"#;
+        let calls = parse_tool_calls(content).unwrap();
+        assert_eq!(calls.len(), 2);
+        assert_eq!(calls[0].function.name, "terminal");
+        assert_eq!(calls[1].function.name, "skill_view");
+    }
+
+    #[test]
     fn test_separate_text_and_calls_removes_tool_call_xml_variant() {
         let content = r#"
 Proceeding with discovery now.
@@ -345,6 +513,19 @@ Proceeding with discovery now.
         assert_eq!(calls.len(), 1);
         assert!(!text.contains("<tool_call"));
         assert!(text.contains("Proceeding with discovery now."));
+    }
+
+    #[test]
+    fn test_separate_text_and_calls_removes_bare_tool_call_block() {
+        let content = r#"
+Ready.
+<tool_call>
+{"name":"terminal","arguments":{"command":"pwd"}}
+</tool_call>
+"#;
+        let (text, calls) = separate_text_and_calls(content);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(text.trim(), "Ready.");
     }
 
     #[test]

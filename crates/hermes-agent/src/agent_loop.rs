@@ -247,7 +247,7 @@ already exists, update it. Otherwise, create a new one if the approach is reusab
 Only act if there's something genuinely worth saving. \
 If nothing stands out, just say 'Nothing to save.' and stop.";
 
-const TOOL_USE_ENFORCEMENT_GUIDANCE: &str = "# Tool-use enforcement\nYou MUST use your tools to take action. Do not describe what you would do without actually doing it. When you say you will perform an action, make the corresponding tool call in the same response. Every response should either (a) contain tool calls that make progress, or (b) deliver a final result.";
+const TOOL_USE_ENFORCEMENT_GUIDANCE: &str = "# Tool-use enforcement\nUse tools whenever they are necessary to verify facts, inspect code/files, or execute requested actions. Do not describe an action without making the corresponding tool call in the same response. Do not call tools only to satisfy policy or to emit no-op commands. If the request is fully answerable without tools, return a direct final answer. Avoid repetitive tool loops: if additional tool calls will not add new evidence, stop and provide the best grounded final result.";
 const CONTEXTLATTICE_OPERATIONAL_GUIDANCE: &str = "# ContextLattice operational guidance\nWhen a user asks to confirm, connect, verify, or harden ContextLattice integration, do not answer from assumptions. First check local integration instructions when present (env `HERMES_CONTEXTLATTICE_INSTRUCTIONS_PATH`, or local `scripts/agent_orchestration.py` in the workspace, typically `/Users/sheawinkler/Documents/Projects/scripts/agent_orchestration.py`). Then attempt ContextLattice tool calls: use `contextlattice_search` for a direct probe and `contextlattice_context_pack` when broader grounding is needed. If a call fails, report the concrete error and provide the exact remediation steps. Never run shell command `contextlattice` for this workflow; use the ContextLattice tools directly. Do not claim lack of access before attempting at least one ContextLattice tool call in the current turn.";
 
 const OPENAI_MODEL_EXECUTION_GUIDANCE: &str = "# Execution discipline (OpenAI)\nUse tools whenever they improve correctness, completeness, or grounding. Do not stop early when another tool call would materially improve the result. Verify outcomes before declaring completion.";
@@ -846,6 +846,22 @@ fn is_tool_payload_validation_error(err: &str) -> bool {
         || lower.contains("tools") && lower.contains("invalid")
 }
 
+fn preferred_tool_payload_fallback_model(provider_hint: &str, model_name: &str) -> Option<String> {
+    let provider = provider_hint.trim().to_ascii_lowercase();
+    let model = model_name.trim().to_ascii_lowercase();
+    let nous_openai_route = provider == "nous" && model.starts_with("openai/");
+    if !nous_openai_route {
+        return None;
+    }
+    if let Ok(override_model) = std::env::var("HERMES_TOOL_PAYLOAD_FALLBACK_MODEL") {
+        let trimmed = override_model.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_string());
+        }
+    }
+    Some("nousresearch/hermes-4-70b".to_string())
+}
+
 fn is_transient_stream_error(err: &AgentError) -> bool {
     fn has_transient_phrase(msg: &str) -> bool {
         let lower = msg.to_lowercase();
@@ -1232,6 +1248,36 @@ fn should_trip_tool_loop_guard(
         return false;
     }
     consecutive_error_turns >= governor_tool_loop_guard_max_consecutive_error_turns()
+}
+
+fn looks_like_tool_error_output(output: &str) -> bool {
+    let trimmed = output.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    if let Ok(value) = serde_json::from_str::<Value>(trimmed) {
+        if let Some(obj) = value.as_object() {
+            if let Some(err) = obj.get("error") {
+                if !err.is_null() {
+                    return true;
+                }
+            }
+            if let Some(success) = obj.get("success").and_then(|v| v.as_bool()) {
+                if !success {
+                    return true;
+                }
+            }
+            if let Some(status) = obj.get("status").and_then(|v| v.as_str()) {
+                if status.eq_ignore_ascii_case("error") || status.eq_ignore_ascii_case("failed") {
+                    return true;
+                }
+            }
+        }
+    }
+    let lower = trimmed.to_ascii_lowercase();
+    lower.starts_with("error:")
+        || lower.contains("invalid tool parameters")
+        || lower.contains("missing '")
 }
 
 fn smart_routing_learning_enabled() -> bool {
@@ -3112,6 +3158,24 @@ impl AgentLoop {
             .filter(|s| !s.is_empty())
             .map(str::to_string);
         let active_provider = route_provider_hint.unwrap_or(inferred_provider);
+        let forced_tool_model = if tool_schemas.is_empty() {
+            None
+        } else {
+            preferred_tool_payload_fallback_model(active_provider.as_str(), model_name)
+                .filter(|candidate| !candidate.eq_ignore_ascii_case(model_name))
+        };
+        if let Some(ref fallback_model) = forced_tool_model {
+            self.emit_status(
+                "lifecycle",
+                &format!(
+                    "Routing tool-enabled turn via {}:{} (requested model '{}' does not accept current tool schema).",
+                    active_provider, fallback_model, model_name
+                ),
+            );
+        }
+        let effective_model_name = forced_tool_model
+            .clone()
+            .unwrap_or_else(|| model_name.to_string());
         if let Some(rt) = route {
             if let Some(ref label) = rt.route_label {
                 tracing::debug!(%label, model = %rt.model, ?rt.signature, "smart model route");
@@ -3130,13 +3194,13 @@ impl AgentLoop {
         for attempt in 0..=effective_max_retries {
             self.interrupt.check_interrupt()?;
             let result = if let Some(rt) = route {
-                let (provider_name, model_name) = self.extract_provider_and_model(model);
+                let (provider_name, _) = self.extract_provider_and_model(model);
                 let mode = rt.api_mode.as_ref().unwrap_or(&self.config.api_mode);
                 let extra_body_for_call = self.extra_body_for_api_mode(mode);
                 let pool = self.credential_pool_for_route(rt);
                 let routed_provider = self.build_runtime_provider(
                     rt.provider.as_deref().unwrap_or(provider_name.as_str()),
-                    model_name,
+                    &effective_model_name,
                     rt.base_url.as_deref(),
                     rt.api_key_env.as_deref(),
                     None,
@@ -3151,7 +3215,7 @@ impl AgentLoop {
                                 tool_schemas,
                                 effective_max_tokens,
                                 self.config.temperature,
-                                Some(model_name),
+                                Some(&effective_model_name),
                                 extra_body_for_call.as_ref(),
                             )
                             .await
@@ -3168,10 +3232,7 @@ impl AgentLoop {
                                 tool_schemas,
                                 effective_max_tokens,
                                 self.config.temperature,
-                                Some(
-                                    self.extract_provider_and_model(self.config.model.as_str())
-                                        .1,
-                                ),
+                                Some(&effective_model_name),
                                 default_extra_body.as_ref(),
                             )
                             .await
@@ -3184,7 +3245,7 @@ impl AgentLoop {
                         tool_schemas,
                         effective_max_tokens,
                         self.config.temperature,
-                        Some(model_name),
+                        Some(&effective_model_name),
                         default_extra_body.as_ref(),
                     )
                     .await
@@ -3218,12 +3279,104 @@ impl AgentLoop {
                             if !tool_schemas.is_empty()
                                 && is_tool_payload_validation_error(&err_str)
                             {
+                                let (provider_name, model_name) =
+                                    self.extract_provider_and_model(model);
+                                if let Some(fallback_model_name) =
+                                    preferred_tool_payload_fallback_model(
+                                        active_provider.as_str(),
+                                        model_name,
+                                    )
+                                {
+                                    if !fallback_model_name.eq_ignore_ascii_case(model_name) {
+                                        tracing::warn!(
+                                            "LLM rejected tool payload on {}:{}; retrying with fallback tool-capable model {}",
+                                            provider_name,
+                                            model_name,
+                                            fallback_model_name
+                                        );
+                                        let fallback_with_tools = if let Some(rt) = route {
+                                            let mode = rt
+                                                .api_mode
+                                                .as_ref()
+                                                .unwrap_or(&self.config.api_mode);
+                                            let extra_body_for_call =
+                                                self.extra_body_for_api_mode(mode);
+                                            let pool = self.credential_pool_for_route(rt);
+                                            match self.build_runtime_provider(
+                                                rt.provider
+                                                    .as_deref()
+                                                    .unwrap_or(provider_name.as_str()),
+                                                &fallback_model_name,
+                                                rt.base_url.as_deref(),
+                                                rt.api_key_env.as_deref(),
+                                                None,
+                                                Some(mode),
+                                                pool,
+                                            ) {
+                                                Ok(provider) => {
+                                                    provider
+                                                        .chat_completion(
+                                                            &api_messages,
+                                                            tool_schemas,
+                                                            effective_max_tokens,
+                                                            self.config.temperature,
+                                                            Some(&fallback_model_name),
+                                                            extra_body_for_call.as_ref(),
+                                                        )
+                                                        .await
+                                                }
+                                                Err(build_err) => Err(build_err),
+                                            }
+                                        } else {
+                                            match self.build_runtime_provider(
+                                                provider_name.as_str(),
+                                                &fallback_model_name,
+                                                None,
+                                                None,
+                                                None,
+                                                None,
+                                                self.primary_credential_pool.as_ref(),
+                                            ) {
+                                                Ok(provider) => {
+                                                    provider
+                                                        .chat_completion(
+                                                            &api_messages,
+                                                            tool_schemas,
+                                                            effective_max_tokens,
+                                                            self.config.temperature,
+                                                            Some(&fallback_model_name),
+                                                            default_extra_body.as_ref(),
+                                                        )
+                                                        .await
+                                                }
+                                                Err(build_err) => Err(build_err),
+                                            }
+                                        };
+                                        match fallback_with_tools {
+                                            Ok(resp) => {
+                                                self.emit_status(
+                                                    "lifecycle",
+                                                    &format!(
+                                                        "Model/tool-schema mismatch on {}:{}; auto-routed to {} for this turn",
+                                                        provider_name, model_name, fallback_model_name
+                                                    ),
+                                                );
+                                                return Ok(resp);
+                                            }
+                                            Err(fallback_err) => {
+                                                tracing::warn!(
+                                                    "Fallback tool-capable retry failed: {}",
+                                                    fallback_err
+                                                );
+                                            }
+                                        }
+                                    }
+                                }
+
                                 tracing::warn!(
                                     "LLM rejected tool payload; retrying once without tools"
                                 );
                                 let no_tools_result = if let Some(rt) = route {
-                                    let (provider_name, model_name) =
-                                        self.extract_provider_and_model(model);
                                     let mode =
                                         rt.api_mode.as_ref().unwrap_or(&self.config.api_mode);
                                     let extra_body_for_call = self.extra_body_for_api_mode(mode);
@@ -6200,7 +6353,13 @@ impl AgentLoop {
 
                         // Execute the handler
                         match (entry.handler)(params) {
-                            Ok(output) => ToolResult::ok(&tool_call_id, output),
+                            Ok(output) => {
+                                if looks_like_tool_error_output(&output) {
+                                    ToolResult::err(&tool_call_id, output)
+                                } else {
+                                    ToolResult::ok(&tool_call_id, output)
+                                }
+                            }
                             Err(e) => ToolResult::err(&tool_call_id, e.to_string()),
                         }
                     }
@@ -6727,6 +6886,27 @@ mod tests {
         assert!(!is_tool_payload_validation_error(
             "API error 400 Bad Request: max_tokens must be positive"
         ));
+    }
+
+    #[test]
+    fn preferred_tool_payload_fallback_model_defaults_and_override() {
+        assert_eq!(
+            preferred_tool_payload_fallback_model("nous", "openai/gpt-5.5"),
+            Some("nousresearch/hermes-4-70b".to_string())
+        );
+        assert_eq!(
+            preferred_tool_payload_fallback_model("openrouter", "openai/gpt-5.5"),
+            None
+        );
+        std::env::set_var(
+            "HERMES_TOOL_PAYLOAD_FALLBACK_MODEL",
+            "nousresearch/hermes-4-405b",
+        );
+        assert_eq!(
+            preferred_tool_payload_fallback_model("nous", "openai/gpt-5.5"),
+            Some("nousresearch/hermes-4-405b".to_string())
+        );
+        std::env::remove_var("HERMES_TOOL_PAYLOAD_FALLBACK_MODEL");
     }
 
     #[test]
@@ -10045,6 +10225,28 @@ mod tests {
         std::env::remove_var("HERMES_TOOL_LOOP_GUARD_ENABLED");
         std::env::remove_var("HERMES_TOOL_LOOP_GUARD_MAX_CONSEC_ERROR_TURNS");
         std::env::remove_var("HERMES_TOOL_LOOP_GUARD_MIN_FAILED_CALLS");
+    }
+
+    #[test]
+    fn test_looks_like_tool_error_output_detects_json_error_envelope() {
+        assert!(looks_like_tool_error_output(
+            r#"{"error":"Invalid tool parameters: Missing 'platform' parameter"}"#
+        ));
+        assert!(looks_like_tool_error_output(
+            r#"{"success":false,"message":"failed"}"#
+        ));
+        assert!(!looks_like_tool_error_output(
+            r#"{"success":true,"result":"ok"}"#
+        ));
+    }
+
+    #[test]
+    fn test_looks_like_tool_error_output_detects_text_error_signatures() {
+        assert!(looks_like_tool_error_output("error: invalid request"));
+        assert!(looks_like_tool_error_output(
+            "Invalid tool parameters: Missing 'platform' parameter"
+        ));
+        assert!(!looks_like_tool_error_output("all good"));
     }
 
     #[test]
