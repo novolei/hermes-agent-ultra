@@ -841,6 +841,9 @@ impl App {
                 Ok(result) => {
                     self.messages = result.messages;
                     self.prune_ui_after_current_messages();
+                    if let Err(err) = self.persist_session_snapshot(None) {
+                        tracing::warn!("session autosave skipped: {}", err);
+                    }
                     Self::emit_lifecycle_event(
                         &self.stream_handle_shared,
                         format!(
@@ -1019,6 +1022,52 @@ impl App {
             message_count: self.messages.len(),
             created_at: chrono::Utc::now().to_rfc3339(),
         }
+    }
+
+    /// Persist a JSON session snapshot to `~/.hermes-agent-ultra/sessions`.
+    ///
+    /// When `name_override` is provided, that value is used as the file stem.
+    /// Otherwise the active `session_id` is used.
+    pub fn persist_session_snapshot(
+        &self,
+        name_override: Option<&str>,
+    ) -> Result<PathBuf, AgentError> {
+        let sessions_dir = hermes_home_dir().join("sessions");
+        std::fs::create_dir_all(&sessions_dir).map_err(|e| {
+            AgentError::Io(format!(
+                "Failed to create sessions dir {}: {}",
+                sessions_dir.display(),
+                e
+            ))
+        })?;
+        let stem = name_override
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+            .unwrap_or(self.session_id.as_str());
+        let path = sessions_dir.join(format!("{stem}.json"));
+        let payload = serde_json::json!({
+            "session_info": self.session_info(),
+            "messages": self.messages.iter().map(|m| {
+                serde_json::json!({
+                    "role": format!("{:?}", m.role),
+                    "content": m.content.as_deref().unwrap_or(""),
+                    "tool_call_id": m.tool_call_id,
+                    "tool_calls": m.tool_calls,
+                    "reasoning_content": m.reasoning_content,
+                })
+            }).collect::<Vec<_>>(),
+        });
+        let json = serde_json::to_string_pretty(&payload).map_err(|e| {
+            AgentError::Config(format!("Failed to serialize session snapshot: {e}"))
+        })?;
+        std::fs::write(&path, json).map_err(|e| {
+            AgentError::Io(format!(
+                "Failed to write session snapshot {}: {}",
+                path.display(),
+                e
+            ))
+        })?;
+        Ok(path)
     }
 
     fn model_auto_remediation_enabled() -> bool {
@@ -1205,6 +1254,49 @@ mod tests {
         let back: SessionInfo = serde_json::from_str(&json).unwrap();
         assert_eq!(back.session_id, "test-123");
         assert_eq!(back.model, "gpt-4o");
+    }
+
+    #[test]
+    fn test_persist_session_snapshot_writes_default_session_file() {
+        let _guard = env_test_lock();
+        let prev_home = std::env::var("HERMES_HOME").ok();
+        let tmp = tempfile::tempdir().expect("tempdir");
+        std::env::set_var("HERMES_HOME", tmp.path());
+
+        let mut app = build_minimal_test_app();
+        app.session_id = "resume-test".to_string();
+        app.messages = vec![
+            hermes_core::Message::system("[SESSION_OBJECTIVE] Preserve context"),
+            hermes_core::Message::user("hello"),
+            hermes_core::Message::assistant("world"),
+        ];
+
+        let path = app
+            .persist_session_snapshot(None)
+            .expect("persist session snapshot");
+        assert!(path.ends_with("resume-test.json"));
+        assert!(path.exists());
+        let content = std::fs::read_to_string(&path).expect("read snapshot");
+        let value: serde_json::Value = serde_json::from_str(&content).expect("parse snapshot");
+        assert_eq!(
+            value
+                .get("session_info")
+                .and_then(|v| v.get("session_id"))
+                .and_then(|v| v.as_str()),
+            Some("resume-test")
+        );
+        assert_eq!(
+            value
+                .get("messages")
+                .and_then(|v| v.as_array())
+                .map(|v| v.len()),
+            Some(3)
+        );
+
+        match prev_home {
+            Some(val) => std::env::set_var("HERMES_HOME", val),
+            None => std::env::remove_var("HERMES_HOME"),
+        }
     }
 
     #[test]

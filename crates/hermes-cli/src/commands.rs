@@ -5057,33 +5057,7 @@ async fn handle_ops_command(app: &mut App, args: &[&str]) -> Result<CommandResul
 }
 
 fn handle_save_command(app: &mut App, args: &[&str]) -> Result<CommandResult, AgentError> {
-    let sessions_dir = hermes_config::hermes_home().join("sessions");
-    std::fs::create_dir_all(&sessions_dir)
-        .map_err(|e| AgentError::Io(format!("Failed to create sessions dir: {}", e)))?;
-
-    let filename = if args.is_empty() {
-        format!("{}.json", app.session_id)
-    } else {
-        format!("{}.json", args[0])
-    };
-
-    let path = sessions_dir.join(&filename);
-    let info = app.session_info();
-    let data = serde_json::json!({
-        "session_info": info,
-        "messages": app.messages.iter().map(|m| {
-            serde_json::json!({
-                "role": format!("{:?}", m.role),
-                "content": m.content.as_deref().unwrap_or(""),
-            })
-        }).collect::<Vec<_>>(),
-    });
-
-    let json =
-        serde_json::to_string_pretty(&data).map_err(|e| AgentError::Config(e.to_string()))?;
-    std::fs::write(&path, json)
-        .map_err(|e| AgentError::Io(format!("Failed to save session: {}", e)))?;
-
+    let path = app.persist_session_snapshot(args.first().copied())?;
     emit_command_output(app, format!("Session saved to {}", path.display()));
     Ok(CommandResult::Handled)
 }
