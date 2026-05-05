@@ -45,6 +45,10 @@ impl ToolCallParser for HermesToolCallParser {
         let func_calls_re = Regex::new(r"(?s)<function_calls>(.*?)</function_calls>").unwrap();
         let invoke_re = Regex::new(r#"(?s)<invoke\s+name="([^"]+)">(.*?)</invoke>"#).unwrap();
         let param_re = Regex::new(r#"<parameter\s+name="([^"]+)">(.*?)</parameter>"#).unwrap();
+        let tool_call_re =
+            Regex::new(r#"(?s)<tool_call\s+name=['"]([^'"]+)['"]\s*>(.*?)</tool_call>"#).unwrap();
+        let argument_re =
+            Regex::new(r#"(?s)<argument\s+name=['"]([^'"]+)['"]\s*>(.*?)</argument>"#).unwrap();
 
         for fc_caps in func_calls_re.captures_iter(content) {
             let block = fc_caps.get(1).unwrap().as_str();
@@ -61,6 +65,29 @@ impl ToolCallParser for HermesToolCallParser {
                     args.insert(pname, val);
                 }
 
+                calls.push(ToolCall {
+                    id: next_call_id(),
+                    function: FunctionCall {
+                        name,
+                        arguments: serde_json::Value::Object(args).to_string(),
+                    },
+                    extra_content: None,
+                });
+            }
+        }
+
+        if calls.is_empty() {
+            for call_caps in tool_call_re.captures_iter(content) {
+                let name = call_caps.get(1).unwrap().as_str().to_string();
+                let args_block = call_caps.get(2).unwrap().as_str();
+                let mut args = serde_json::Map::new();
+                for arg_caps in argument_re.captures_iter(args_block) {
+                    let arg_name = arg_caps.get(1).unwrap().as_str().to_string();
+                    let raw_value = arg_caps.get(2).unwrap().as_str().trim();
+                    let parsed = serde_json::from_str(raw_value)
+                        .unwrap_or_else(|_| serde_json::Value::String(raw_value.to_string()));
+                    args.insert(arg_name, parsed);
+                }
                 calls.push(ToolCall {
                     id: next_call_id(),
                     function: FunctionCall {
@@ -137,6 +164,11 @@ pub fn separate_text_and_calls(content: &str) -> (String, Vec<ToolCall>) {
     // Remove ```tool_call ... ``` blocks
     let tool_call_re = Regex::new(r"(?s)```tool_call\s*\n.*?\n```").unwrap();
     result = tool_call_re.replace_all(&result, "").to_string();
+
+    // Remove <tool_call ...>...</tool_call> blocks
+    let alt_tool_call_re =
+        Regex::new(r#"(?s)<tool_call\s+name=['"][^'"]+['"]\s*>.*?</tool_call>"#).unwrap();
+    result = alt_tool_call_re.replace_all(&result, "").to_string();
 
     // Trim excessive whitespace left behind
     let result = result.trim().to_string();
@@ -279,6 +311,40 @@ Hello! Let me search for that.
         let content = "Just a plain message.";
         let calls = parse_tool_calls(content).unwrap();
         assert!(calls.is_empty());
+    }
+
+    #[test]
+    fn test_parse_tool_call_xml_variant() {
+        let content = r#"
+<tool_call name="skill_view">
+<argument name="skill">contextlattice-master-router</argument>
+</tool_call>
+<tool_call name="terminal">
+<argument name="command">"pwd"</argument>
+</tool_call>
+"#;
+        let calls = parse_tool_calls(content).unwrap();
+        assert_eq!(calls.len(), 2);
+        assert_eq!(calls[0].function.name, "skill_view");
+        let args0: serde_json::Value = serde_json::from_str(&calls[0].function.arguments).unwrap();
+        assert_eq!(args0["skill"], "contextlattice-master-router");
+        assert_eq!(calls[1].function.name, "terminal");
+        let args1: serde_json::Value = serde_json::from_str(&calls[1].function.arguments).unwrap();
+        assert_eq!(args1["command"], "pwd");
+    }
+
+    #[test]
+    fn test_separate_text_and_calls_removes_tool_call_xml_variant() {
+        let content = r#"
+Proceeding with discovery now.
+<tool_call name="skill_view">
+<argument name="skill">contextlattice-local-runtime-check</argument>
+</tool_call>
+"#;
+        let (text, calls) = separate_text_and_calls(content);
+        assert_eq!(calls.len(), 1);
+        assert!(!text.contains("<tool_call"));
+        assert!(text.contains("Proceeding with discovery now."));
     }
 
     #[test]

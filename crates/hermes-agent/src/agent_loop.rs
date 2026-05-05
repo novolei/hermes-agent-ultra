@@ -24,8 +24,8 @@ use tokio::task::JoinSet;
 use tokio::time::sleep;
 
 use hermes_core::{
-    AgentError, AgentResult, BudgetConfig, LlmProvider, LlmResponse, Message, MessageRole,
-    StreamChunk, ToolCall, ToolError, ToolResult, ToolSchema, UsageStats,
+    separate_text_and_calls, AgentError, AgentResult, BudgetConfig, LlmProvider, LlmResponse,
+    Message, MessageRole, StreamChunk, ToolCall, ToolError, ToolResult, ToolSchema, UsageStats,
 };
 
 use crate::api_bridge::CodexProvider;
@@ -2999,6 +2999,28 @@ impl AgentLoop {
         !strip_think_blocks_for_ack(content).trim().is_empty()
     }
 
+    fn coerce_textual_tool_calls(mut m: Message) -> (Message, Vec<ToolCall>, bool) {
+        let declared = m.tool_calls.clone().unwrap_or_default();
+        if !declared.is_empty() {
+            return (m, declared, false);
+        }
+        let Some(content) = m.content.as_deref() else {
+            return (m, Vec::new(), false);
+        };
+        let (plain_text, parsed_calls) = separate_text_and_calls(content);
+        if parsed_calls.is_empty() {
+            return (m, Vec::new(), false);
+        }
+        m.tool_calls = Some(parsed_calls.clone());
+        let trimmed = plain_text.trim();
+        m.content = if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        };
+        (m, parsed_calls, true)
+    }
+
     fn assistant_has_reasoning(m: &Message) -> bool {
         m.reasoning_content
             .as_deref()
@@ -4030,8 +4052,14 @@ impl AgentLoop {
                 .get_messages()
                 .iter()
                 .any(|m| m.role == MessageRole::Tool);
-            let assistant_msg = response.message.clone();
-            let tool_calls = assistant_msg.tool_calls.clone();
+            let (assistant_msg, parsed_tool_calls, parsed_textual_tool_calls) =
+                Self::coerce_textual_tool_calls(response.message.clone());
+            if parsed_textual_tool_calls {
+                self.emit_status(
+                    "lifecycle",
+                    "Parsed textual tool-call markup from assistant output; executing parsed calls.",
+                );
+            }
             ctx.add_message(assistant_msg.clone());
             if assistant_msg
                 .tool_calls
@@ -4053,56 +4081,54 @@ impl AgentLoop {
             }
 
             // If no tool calls, the agent is done
-            let tool_calls = match tool_calls {
-                Some(calls) if !calls.is_empty() => calls,
-                _ => {
-                    if self.config.api_mode == ApiMode::CodexResponses
-                        && !tool_schemas.is_empty()
-                        && codex_ack_continuations < 2
-                        && looks_like_codex_intermediate_ack(
-                            &task_hint,
-                            assistant_msg.content.as_deref().unwrap_or(""),
-                            history_includes_tool,
-                        )
-                    {
-                        codex_ack_continuations += 1;
-                        ctx.add_message(Message::user(CODEX_CONTINUE_USER_MESSAGE));
-                        continue;
-                    }
-                    if !Self::assistant_visible_text_after_think_blocks(&assistant_msg) {
-                        if let Some(fallback) = last_content_with_tools.take() {
-                            if let Some(last) = ctx.get_messages_mut().last_mut() {
-                                if last.role == MessageRole::Assistant {
-                                    last.content = Some(fallback);
-                                }
+            let tool_calls = if !parsed_tool_calls.is_empty() {
+                parsed_tool_calls
+            } else {
+                if !tool_schemas.is_empty()
+                    && codex_ack_continuations < 2
+                    && looks_like_codex_intermediate_ack(
+                        &task_hint,
+                        assistant_msg.content.as_deref().unwrap_or(""),
+                        history_includes_tool,
+                    )
+                {
+                    codex_ack_continuations += 1;
+                    ctx.add_message(Message::user(CODEX_CONTINUE_USER_MESSAGE));
+                    continue;
+                }
+                if !Self::assistant_visible_text_after_think_blocks(&assistant_msg) {
+                    if let Some(fallback) = last_content_with_tools.take() {
+                        if let Some(last) = ctx.get_messages_mut().last_mut() {
+                            if last.role == MessageRole::Assistant {
+                                last.content = Some(fallback);
                             }
                         }
                     }
-                    tracing::debug!("No tool calls in response, finishing naturally");
-                    // Final memory sync
-                    let (u, a) = extract_last_user_assistant(ctx.get_messages());
-                    self.memory_sync(&u, &a, session_id);
-                    self.spawn_background_review(total_turns, &ctx, review_memory_at_end);
-                    self.memory_on_session_end(ctx.get_messages());
-                    replay.record(
-                        "session_end",
-                        serde_json::json!({
-                            "reason": "finished_naturally",
-                            "total_turns": total_turns,
-                            "session_cost_usd": session_cost_usd,
-                        }),
-                    );
-                    return Ok(AgentResult {
-                        messages: self.messages_for_persisted_result(&ctx, persist_user_idx),
-                        finished_naturally: true,
-                        total_turns,
-                        tool_errors,
-                        usage: accumulated_usage,
-                        interrupted: false,
-                        session_cost_usd: Some(session_cost_usd),
-                        session_started_hooks_fired,
-                    });
                 }
+                tracing::debug!("No tool calls in response, finishing naturally");
+                // Final memory sync
+                let (u, a) = extract_last_user_assistant(ctx.get_messages());
+                self.memory_sync(&u, &a, session_id);
+                self.spawn_background_review(total_turns, &ctx, review_memory_at_end);
+                self.memory_on_session_end(ctx.get_messages());
+                replay.record(
+                    "session_end",
+                    serde_json::json!({
+                        "reason": "finished_naturally",
+                        "total_turns": total_turns,
+                        "session_cost_usd": session_cost_usd,
+                    }),
+                );
+                return Ok(AgentResult {
+                    messages: self.messages_for_persisted_result(&ctx, persist_user_idx),
+                    finished_naturally: true,
+                    total_turns,
+                    tool_errors,
+                    usage: accumulated_usage,
+                    interrupted: false,
+                    session_cost_usd: Some(session_cost_usd),
+                    session_started_hooks_fired,
+                });
             };
 
             codex_ack_continuations = 0;
@@ -4998,8 +5024,14 @@ impl AgentLoop {
                 .get_messages()
                 .iter()
                 .any(|m| m.role == MessageRole::Tool);
-            let assistant_msg = response.message.clone();
-            let tool_calls = assistant_msg.tool_calls.clone();
+            let (assistant_msg, parsed_tool_calls, parsed_textual_tool_calls) =
+                Self::coerce_textual_tool_calls(response.message.clone());
+            if parsed_textual_tool_calls {
+                self.emit_status(
+                    "lifecycle",
+                    "Parsed textual tool-call markup from assistant output; executing parsed calls.",
+                );
+            }
             ctx.add_message(assistant_msg.clone());
             if assistant_msg
                 .tool_calls
@@ -5038,15 +5070,13 @@ impl AgentLoop {
                 cb(total_turns);
             }
 
-            let tool_calls: Vec<ToolCall> = tool_calls
-                .unwrap_or_default()
+            let tool_calls: Vec<ToolCall> = parsed_tool_calls
                 .into_iter()
                 .filter(|tc| !tc.function.name.is_empty())
                 .collect();
 
             if tool_calls.is_empty() {
-                if self.config.api_mode == ApiMode::CodexResponses
-                    && !tool_schemas.is_empty()
+                if !tool_schemas.is_empty()
                     && codex_ack_continuations < 2
                     && looks_like_codex_intermediate_ack(
                         &task_hint,
@@ -10030,5 +10060,40 @@ mod tests {
             r#"{"command":"which contextlattice"}"#
         ));
         assert!(!is_contextlattice_shell_invocation(r#"{"command":"ls"}"#));
+    }
+
+    #[test]
+    fn test_coerce_textual_tool_calls_extracts_and_cleans_message() {
+        let msg = Message::assistant(
+            "Proceeding with discovery now.\n<tool_call name=\"skill_view\">\n<argument name=\"skill\">contextlattice-master-router</argument>\n</tool_call>",
+        );
+        let (coerced, calls, parsed_textual) = AgentLoop::coerce_textual_tool_calls(msg);
+        assert!(parsed_textual);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].function.name, "skill_view");
+        assert_eq!(
+            coerced.content.as_deref(),
+            Some("Proceeding with discovery now.")
+        );
+    }
+
+    #[test]
+    fn test_coerce_textual_tool_calls_keeps_declared_calls() {
+        let msg = Message::assistant_with_tool_calls(
+            Some("Running tool.".to_string()),
+            vec![ToolCall {
+                id: "id1".to_string(),
+                function: hermes_core::FunctionCall {
+                    name: "terminal".to_string(),
+                    arguments: r#"{"command":"pwd"}"#.to_string(),
+                },
+                extra_content: None,
+            }],
+        );
+        let (coerced, calls, parsed_textual) = AgentLoop::coerce_textual_tool_calls(msg);
+        assert!(!parsed_textual);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(coerced.tool_calls.as_ref().map(|v| v.len()), Some(1));
+        assert_eq!(coerced.content.as_deref(), Some("Running tool."));
     }
 }
