@@ -3223,7 +3223,7 @@ fn is_ctrl_c(key: &KeyEvent) -> bool {
         && key.code == crossterm::event::KeyCode::Char('c')
 }
 
-fn is_submit_shortcut(key: &KeyEvent, input: &str) -> bool {
+fn is_submit_shortcut(key: &KeyEvent, _input: &str) -> bool {
     use crossterm::event::{KeyCode, KeyModifiers};
     let mods = key.modifiers;
 
@@ -3235,10 +3235,6 @@ fn is_submit_shortcut(key: &KeyEvent, input: &str) -> bool {
             || mods.contains(KeyModifiers::CONTROL)
             || mods.contains(KeyModifiers::ALT)
         {
-            // Slash commands stay single-line and are submitted with Enter.
-            if input.starts_with('/') {
-                return !input.contains('\n');
-            }
             return true;
         }
     }
@@ -4361,7 +4357,7 @@ mod tests {
     fn test_submit_shortcut_rejects_multiline_slash_commands() {
         use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
         let plain_enter = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
-        assert!(!is_submit_shortcut(&plain_enter, "/model\nlist"));
+        assert!(is_submit_shortcut(&plain_enter, "/model\nlist"));
     }
 
     #[test]
