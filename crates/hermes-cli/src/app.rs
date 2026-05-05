@@ -281,7 +281,7 @@ impl App {
         true
     }
 
-    async fn refresh_runtime_provider_credentials_if_needed(&mut self) {
+    async fn refresh_runtime_provider_credentials_if_needed(&mut self, force_refresh: bool) {
         let (provider_name, _) = resolve_provider_and_model(&self.config, &self.current_model);
         let provider = normalize_runtime_provider_name(provider_name.as_str());
         let mut rotated = false;
@@ -289,7 +289,7 @@ impl App {
 
         match provider.as_str() {
             "nous" => match resolve_nous_runtime_credentials(
-                false,
+                force_refresh,
                 true,
                 NOUS_ACCESS_TOKEN_REFRESH_SKEW_SECONDS,
                 DEFAULT_NOUS_AGENT_KEY_MIN_TTL_SECONDS,
@@ -314,7 +314,7 @@ impl App {
                 }
             },
             "qwen-oauth" => match resolve_qwen_runtime_credentials(
-                false,
+                force_refresh,
                 true,
                 QWEN_ACCESS_TOKEN_REFRESH_SKEW_SECONDS,
             )
@@ -340,7 +340,7 @@ impl App {
                 }
             },
             "google-gemini-cli" | "gemini-cli" | "gemini-oauth" => {
-                match resolve_gemini_oauth_runtime_credentials(false).await {
+                match resolve_gemini_oauth_runtime_credentials(force_refresh).await {
                     Ok(creds) => {
                         rotated |=
                             Self::set_env_if_changed("HERMES_GEMINI_OAUTH_API_KEY", &creds.api_key);
@@ -825,9 +825,11 @@ impl App {
     /// Checks the interrupt controller before running and clears it after.
     async fn run_agent(&mut self) -> Result<(), AgentError> {
         let run_started_at = Instant::now();
-        self.refresh_runtime_provider_credentials_if_needed().await;
+        self.refresh_runtime_provider_credentials_if_needed(false)
+            .await;
         self.interrupt_controller.clear_interrupt();
         let mut remediation_attempted = false;
+        let mut auth_refresh_attempted = false;
         loop {
             Self::emit_lifecycle_event(
                 &self.stream_handle_shared,
@@ -924,6 +926,13 @@ impl App {
                     );
                     if let Some(handle) = &self.stream_handle {
                         handle.send_done();
+                    }
+                    if !auth_refresh_attempted
+                        && Self::is_provider_auth_or_session_error(&e)
+                        && self.force_auth_refresh_after_error().await
+                    {
+                        auth_refresh_attempted = true;
+                        continue;
                     }
                     if !remediation_attempted {
                         if let Some((next_model, notice)) =
@@ -1112,6 +1121,107 @@ impl App {
             || message.contains("404 not found")
             || message.contains("openrouter catalog");
         model_not_found && message.contains("model")
+    }
+
+    fn is_provider_auth_or_session_error(err: &AgentError) -> bool {
+        let message = match err {
+            AgentError::LlmApi(msg)
+            | AgentError::Config(msg)
+            | AgentError::ToolExecution(msg)
+            | AgentError::Gateway(msg)
+            | AgentError::AuthFailed(msg) => msg.to_ascii_lowercase(),
+            _ => return false,
+        };
+        message.contains("401")
+            || message.contains("403")
+            || message.contains("unauthorized")
+            || message.contains("invalid token")
+            || message.contains("token expired")
+            || message.contains("invalid_token")
+            || message.contains("expired")
+            || message.contains("authentication")
+    }
+
+    async fn force_auth_refresh_after_error(&mut self) -> bool {
+        let (provider_name, _) = resolve_provider_and_model(&self.config, &self.current_model);
+        let provider = normalize_runtime_provider_name(provider_name.as_str());
+        let notice = match provider.as_str() {
+            "nous" => match resolve_nous_runtime_credentials(
+                true,
+                true,
+                NOUS_ACCESS_TOKEN_REFRESH_SKEW_SECONDS,
+                DEFAULT_NOUS_AGENT_KEY_MIN_TTL_SECONDS,
+            )
+            .await
+            {
+                Ok(creds) => {
+                    let mut changed = false;
+                    changed |= Self::set_env_if_changed("NOUS_API_KEY", &creds.api_key);
+                    if !creds.base_url.trim().is_empty() {
+                        changed |=
+                            Self::set_env_if_changed("NOUS_INFERENCE_BASE_URL", &creds.base_url);
+                    }
+                    if changed {
+                        self.switch_model(&self.current_model.clone());
+                    }
+                    Some("Nous auth auto-refresh succeeded; retrying request.".to_string())
+                }
+                Err(err) => Some(format!("Nous auth auto-refresh failed: {}", err)),
+            },
+            "qwen-oauth" => {
+                match resolve_qwen_runtime_credentials(
+                    true,
+                    true,
+                    QWEN_ACCESS_TOKEN_REFRESH_SKEW_SECONDS,
+                )
+                .await
+                {
+                    Ok(creds) => {
+                        let mut changed = false;
+                        changed |=
+                            Self::set_env_if_changed("HERMES_QWEN_OAUTH_API_KEY", &creds.api_key);
+                        changed |= Self::set_env_if_changed("DASHSCOPE_API_KEY", &creds.api_key);
+                        if !creds.base_url.trim().is_empty() {
+                            changed |=
+                                Self::set_env_if_changed("HERMES_QWEN_BASE_URL", &creds.base_url);
+                        }
+                        if changed {
+                            self.switch_model(&self.current_model.clone());
+                        }
+                        Some("Qwen OAuth auto-refresh succeeded; retrying request.".to_string())
+                    }
+                    Err(err) => Some(format!("Qwen OAuth auto-refresh failed: {}", err)),
+                }
+            }
+            "google-gemini-cli" | "gemini-cli" | "gemini-oauth" => {
+                match resolve_gemini_oauth_runtime_credentials(true).await {
+                    Ok(creds) => {
+                        let mut changed = false;
+                        changed |=
+                            Self::set_env_if_changed("HERMES_GEMINI_OAUTH_API_KEY", &creds.api_key);
+                        changed |= Self::set_env_if_changed("GOOGLE_API_KEY", &creds.api_key);
+                        changed |= Self::set_env_if_changed("GEMINI_API_KEY", &creds.api_key);
+                        if changed {
+                            self.switch_model(&self.current_model.clone());
+                        }
+                        Some("Gemini OAuth auto-refresh succeeded; retrying request.".to_string())
+                    }
+                    Err(err) => Some(format!("Gemini OAuth auto-refresh failed: {}", err)),
+                }
+            }
+            _ => None,
+        };
+
+        if let Some(text) = notice {
+            Self::emit_lifecycle_event(&self.stream_handle_shared, &text);
+            if self.stream_handle.is_some() {
+                self.push_ui_assistant(text);
+            } else {
+                println!("{}", text);
+            }
+            return true;
+        }
+        false
     }
 
     async fn model_auto_remediation_target(&self, err: &AgentError) -> Option<(String, String)> {
@@ -1788,6 +1898,14 @@ mod tests {
     fn test_is_model_not_found_error_ignores_non_catalog_errors() {
         let err = AgentError::LlmApi("Rate limit exceeded".to_string());
         assert!(!App::is_model_not_found_error(&err));
+    }
+
+    #[test]
+    fn test_is_provider_auth_or_session_error_detects_auth_failures() {
+        let err = AgentError::LlmApi("HTTP 401 Unauthorized: token expired".to_string());
+        assert!(App::is_provider_auth_or_session_error(&err));
+        let non_auth = AgentError::LlmApi("API error 404 Not Found: model missing".to_string());
+        assert!(!App::is_provider_auth_or_session_error(&non_auth));
     }
 
     #[test]

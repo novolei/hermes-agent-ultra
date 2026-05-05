@@ -2302,6 +2302,7 @@ impl AgentLoop {
         let provider_key = match provider {
             "openai" => "openai",
             "openai-codex" | "codex" => "openai-codex",
+            "nous" => "nous",
             "qwen-oauth" => "qwen-oauth",
             "anthropic" | "claude" | "claude-code" => "anthropic",
             "google-gemini-cli" | "gemini-cli" | "gemini-oauth" => "google-gemini-cli",
@@ -2329,6 +2330,8 @@ impl AgentLoop {
         self.refresh_single_oauth_store_token_if_needed("openai")
             .await;
         self.refresh_single_oauth_store_token_if_needed("openai-codex")
+            .await;
+        self.refresh_single_oauth_store_token_if_needed("nous")
             .await;
         self.refresh_single_oauth_store_token_if_needed("qwen-oauth")
             .await;
@@ -2423,6 +2426,7 @@ impl AgentLoop {
                 "HERMES_OPENAI_CODEX_OAUTH_TOKEN_URL",
                 "HERMES_OPENAI_CODEX_OAUTH_CLIENT_ID",
             ),
+            "nous" => ("HERMES_NOUS_OAUTH_TOKEN_URL", "HERMES_NOUS_OAUTH_CLIENT_ID"),
             "qwen-oauth" => ("HERMES_QWEN_OAUTH_TOKEN_URL", "HERMES_QWEN_OAUTH_CLIENT_ID"),
             "anthropic" => (
                 "HERMES_ANTHROPIC_OAUTH_TOKEN_URL",
@@ -2443,6 +2447,14 @@ impl AgentLoop {
                     .map(|s| s.trim().to_string())
                     .filter(|s| !s.is_empty())
                     .or_else(|| Some("https://auth.openai.com/oauth/token".to_string())),
+                "nous" => std::env::var("NOUS_PORTAL_BASE_URL")
+                    .ok()
+                    .map(|s| s.trim().trim_end_matches('/').to_string())
+                    .filter(|s| !s.is_empty())
+                    .map(|base| format!("{base}/api/oauth/token"))
+                    .or_else(|| {
+                        Some("https://portal.nousresearch.com/api/oauth/token".to_string())
+                    }),
                 "anthropic" => Some("https://console.anthropic.com/v1/oauth/token".to_string()),
                 _ => None,
             })?;
@@ -2459,6 +2471,11 @@ impl AgentLoop {
                     .map(|s| s.trim().to_string())
                     .filter(|s| !s.is_empty())
                     .or_else(|| Some("app_EMoamEEZ73f0CkXaXp7hrann".to_string())),
+                "nous" => std::env::var("NOUS_CLIENT_ID")
+                    .ok()
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .or_else(|| Some("hermes-cli".to_string())),
                 "anthropic" => Some("9d1c250a-e61b-44d9-88ed-5944d1962f5e".to_string()),
                 _ => None,
             })?;
@@ -3266,7 +3283,7 @@ impl AgentLoop {
                                     Ok(resp) => {
                                         self.emit_status(
                                             "lifecycle",
-                                            "Provider rejected tool schema; continued without tools for this turn",
+                                            "Model/tool-schema mismatch detected; retried once without tools for this turn",
                                         );
                                         return Ok(resp);
                                     }
@@ -9851,6 +9868,56 @@ mod tests {
         let (token_url, client_id) = agent.oauth_refresh_config("openai").unwrap();
         assert_eq!(token_url, "https://auth.openai.com/oauth/token");
         assert_eq!(client_id, "app_EMoamEEZ73f0CkXaXp7hrann");
+    }
+
+    #[test]
+    fn test_oauth_refresh_config_nous_defaults_available() {
+        use futures::stream::BoxStream;
+
+        struct DummyProvider;
+        #[async_trait::async_trait]
+        impl LlmProvider for DummyProvider {
+            async fn chat_completion(
+                &self,
+                _messages: &[Message],
+                _tools: &[ToolSchema],
+                _max_tokens: Option<u32>,
+                _temperature: Option<f64>,
+                _model: Option<&str>,
+                _extra_body: Option<&serde_json::Value>,
+            ) -> Result<hermes_core::LlmResponse, AgentError> {
+                Ok(hermes_core::LlmResponse {
+                    message: Message::assistant("dummy"),
+                    usage: None,
+                    model: "dummy".into(),
+                    finish_reason: Some("stop".into()),
+                })
+            }
+            fn chat_completion_stream(
+                &self,
+                _messages: &[Message],
+                _tools: &[ToolSchema],
+                _max_tokens: Option<u32>,
+                _temperature: Option<f64>,
+                _model: Option<&str>,
+                _extra_body: Option<&serde_json::Value>,
+            ) -> BoxStream<'static, Result<StreamChunk, AgentError>> {
+                futures::stream::empty().boxed()
+            }
+        }
+
+        std::env::remove_var("HERMES_NOUS_OAUTH_TOKEN_URL");
+        std::env::remove_var("HERMES_NOUS_OAUTH_CLIENT_ID");
+        std::env::remove_var("NOUS_PORTAL_BASE_URL");
+        std::env::remove_var("NOUS_CLIENT_ID");
+        let agent = AgentLoop::new(
+            AgentConfig::default(),
+            Arc::new(ToolRegistry::new()),
+            Arc::new(DummyProvider),
+        );
+        let (token_url, client_id) = agent.oauth_refresh_config("nous").unwrap();
+        assert_eq!(token_url, "https://portal.nousresearch.com/api/oauth/token");
+        assert_eq!(client_id, "hermes-cli");
     }
 
     #[test]
