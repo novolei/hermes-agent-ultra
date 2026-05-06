@@ -3022,6 +3022,41 @@ impl AgentLoop {
         ctx.compress();
     }
 
+    /// Emit explicit preflight compression status before first LLM call.
+    fn preflight_context_compress_with_status(&self, ctx: &mut ContextManager) {
+        let max_c = ctx.max_context_chars().max(1);
+        let before = ctx.total_chars();
+        let threshold = (max_c as f64 * 0.8) as usize;
+        let before_pct = (before * 100) / max_c;
+        if before <= threshold {
+            self.emit_status(
+                "lifecycle",
+                &format!(
+                    "Preflight compression check: {}% context usage, no compression needed",
+                    before_pct
+                ),
+            );
+            return;
+        }
+        self.emit_status(
+            "lifecycle",
+            &format!(
+                "Preflight compression check: {}% context usage, compressing before first turn",
+                before_pct
+            ),
+        );
+        self.auto_compress_if_over_threshold(ctx);
+        let after = ctx.total_chars();
+        let after_pct = (after * 100) / max_c;
+        self.emit_status(
+            "lifecycle",
+            &format!(
+                "Preflight compression complete: {}% -> {}% context usage",
+                before_pct, after_pct
+            ),
+        );
+    }
+
     fn emit_status(&self, event_type: &str, message: &str) {
         if self.config.quiet_mode {
             return;
@@ -3849,6 +3884,9 @@ impl AgentLoop {
         if let Some(hint) = contextlattice_connect_system_hint(ctx.get_messages()) {
             ctx.add_message(Message::system(hint));
         }
+        if let Some(hint) = exploratory_problem_solving_system_hint(ctx.get_messages()) {
+            ctx.add_message(Message::system(hint));
+        }
         if let Some(hint) = objective_mode_system_hint(ctx.get_messages()) {
             ctx.add_message(Message::system(hint));
         }
@@ -3892,7 +3930,7 @@ impl AgentLoop {
         }
 
         if self.config.preflight_context_compress {
-            self.auto_compress_if_over_threshold(&mut ctx);
+            self.preflight_context_compress_with_status(&mut ctx);
         }
         let replay = ReplayRecorder::for_session(&self.config, session_id);
         replay.record(
@@ -4823,6 +4861,9 @@ impl AgentLoop {
         if let Some(hint) = contextlattice_connect_system_hint(ctx.get_messages()) {
             ctx.add_message(Message::system(hint));
         }
+        if let Some(hint) = exploratory_problem_solving_system_hint(ctx.get_messages()) {
+            ctx.add_message(Message::system(hint));
+        }
         if let Some(hint) = objective_mode_system_hint(ctx.get_messages()) {
             ctx.add_message(Message::system(hint));
         }
@@ -4866,7 +4907,7 @@ impl AgentLoop {
         }
 
         if self.config.preflight_context_compress {
-            self.auto_compress_if_over_threshold(&mut ctx);
+            self.preflight_context_compress_with_status(&mut ctx);
         }
         let replay = ReplayRecorder::for_session(&self.config, session_id);
         replay.record(
@@ -6654,7 +6695,7 @@ impl AgentLoop {
         cfg.skill_creation_nudge_interval = 0;
         cfg.max_concurrent_delegates = 0;
         cfg.quiet_mode = true;
-        cfg.max_turns = cfg.max_turns.min(8);
+        cfg.max_turns = cfg.max_turns.min(16);
         let tools = self.tool_registry.clone();
         let provider = self.llm_provider.clone();
         let review_cb = self.callbacks.background_review_callback.clone();
@@ -6771,6 +6812,42 @@ fn detect_communication_intent(messages: &[Message]) -> bool {
         "dm",
     ];
     comm_terms.iter().any(|needle| text.contains(needle))
+}
+
+fn exploratory_problem_solving_system_hint(messages: &[Message]) -> Option<String> {
+    if !detect_repo_review_intent(messages) {
+        return None;
+    }
+    let user = latest_user_content(messages)
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    let objective = extract_session_objective(messages)
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    let combined = format!("{} {}", user, objective);
+    let exploratory = [
+        "explore",
+        "investigate",
+        "understand",
+        "diagnose",
+        "audit",
+        "deep",
+        "root cause",
+        "why",
+    ]
+    .iter()
+    .any(|needle| combined.contains(needle));
+    if !exploratory {
+        return None;
+    }
+    Some(
+        "[SYSTEM] Exploratory problem-solving protocol active. \
+1) Start by declaring workstreams (`workstream=<name>`) that cover the full problem surface. \
+2) Run focused evidence collection per workstream (`file=...`, `cmd=...`) rather than repeated broad scans. \
+3) After each evidence batch, update status per workstream (`complete|blocked|unproven`) and refine next probes. \
+4) Do not finalize until high-leverage workstreams are either complete or explicitly blocked with concrete blockers and next actions."
+            .to_string(),
+    )
 }
 
 fn detect_deep_repo_audit_intent(messages: &[Message]) -> bool {
@@ -7283,6 +7360,29 @@ fn is_contextlattice_shell_invocation(raw_args: &str) -> bool {
     lower == "contextlattice" || lower.starts_with("contextlattice ")
 }
 
+fn is_safe_background_review_message(message: &str) -> bool {
+    let trimmed = message.trim();
+    if trimmed.is_empty() || trimmed.len() > 200 {
+        return false;
+    }
+    let lower = trimmed.to_ascii_lowercase();
+    // Suppress operational/status leakage from background passes.
+    if lower.contains("status:")
+        || lower.contains("status=")
+        || lower.contains("token")
+        || lower.contains("api_key")
+        || lower.contains("secret")
+        || lower.contains("credential")
+    {
+        return false;
+    }
+    // Skip verbose object-like payloads.
+    if (trimmed.contains('{') && trimmed.contains('}')) || trimmed.contains('\n') {
+        return false;
+    }
+    true
+}
+
 fn summarize_background_review_result(messages: &[Message]) -> Option<String> {
     let mut actions: Vec<String> = Vec::new();
     for msg in messages {
@@ -7315,6 +7415,9 @@ fn summarize_background_review_result(messages: &[Message]) -> Option<String> {
             .trim()
             .to_string();
         if message.is_empty() {
+            continue;
+        }
+        if !is_safe_background_review_message(&message) {
             continue;
         }
         let lower = message.to_ascii_lowercase();
@@ -7592,6 +7695,179 @@ mod tests {
         assert!(out.starts_with("💾 "));
         assert!(out.contains("Skill 'prospect-scanner' created."));
         assert!(out.contains("Memory updated"));
+    }
+
+    #[test]
+    fn summarize_background_review_filters_status_and_secret_like_text() {
+        let msgs = vec![
+            Message::tool_result(
+                "tc_safe",
+                "{\"success\":true,\"message\":\"created docs/repo-review-notes.md\"}",
+            ),
+            Message::tool_result(
+                "tc_status",
+                "{\"success\":true,\"message\":\"status=ok token refreshed\"}",
+            ),
+            Message::tool_result(
+                "tc_obj",
+                "{\"success\":true,\"message\":\"{\\\"message\\\":\\\"updated config\\\"}\"}",
+            ),
+        ];
+        let out = summarize_background_review_result(&msgs).expect("summary should exist");
+        assert!(out.contains("created docs/repo-review-notes.md"));
+        assert!(!out.contains("status=ok token refreshed"));
+        assert!(!out.contains("{\"message\""));
+    }
+
+    #[test]
+    fn exploratory_hint_enabled_for_repo_exploration_intent() {
+        let msgs = vec![Message::user(
+            "Deeply audit /Users/sheawinkler/Documents/Projects/hermes-agent-ultra/crates/hermes-agent/src/agent_loop.rs and diagnose root cause.",
+        )];
+        let hint = exploratory_problem_solving_system_hint(&msgs).expect("hint should exist");
+        assert!(hint.contains("Exploratory problem-solving protocol active"));
+        assert!(hint.contains("workstream=<name>"));
+    }
+
+    #[test]
+    fn exploratory_hint_disabled_for_non_exploratory_repo_intent() {
+        let msgs = vec![Message::user(
+            "Implement this fix directly in /Users/sheawinkler/Documents/Projects/hermes-agent-ultra/src/main.rs.",
+        )];
+        assert!(exploratory_problem_solving_system_hint(&msgs).is_none());
+    }
+
+    #[test]
+    fn preflight_compression_status_reports_skipped_when_under_threshold() {
+        use futures::stream::BoxStream;
+
+        struct DummyProvider;
+        #[async_trait::async_trait]
+        impl LlmProvider for DummyProvider {
+            async fn chat_completion(
+                &self,
+                _messages: &[Message],
+                _tools: &[ToolSchema],
+                _max_tokens: Option<u32>,
+                _temperature: Option<f64>,
+                _model: Option<&str>,
+                _extra_body: Option<&serde_json::Value>,
+            ) -> Result<hermes_core::LlmResponse, AgentError> {
+                Ok(hermes_core::LlmResponse {
+                    message: Message::assistant("dummy"),
+                    usage: None,
+                    model: "dummy".into(),
+                    finish_reason: Some("stop".into()),
+                })
+            }
+
+            fn chat_completion_stream(
+                &self,
+                _messages: &[Message],
+                _tools: &[ToolSchema],
+                _max_tokens: Option<u32>,
+                _temperature: Option<f64>,
+                _model: Option<&str>,
+                _extra_body: Option<&serde_json::Value>,
+            ) -> BoxStream<'static, Result<StreamChunk, AgentError>> {
+                futures::stream::empty().boxed()
+            }
+        }
+
+        let captured = Arc::new(std::sync::Mutex::new(Vec::<(String, String)>::new()));
+        let cap_ref = captured.clone();
+        let callbacks = AgentCallbacks {
+            status_callback: Some(Arc::new(move |kind, msg| {
+                cap_ref
+                    .lock()
+                    .expect("status callback lock")
+                    .push((kind.to_string(), msg.to_string()));
+            })),
+            ..Default::default()
+        };
+
+        let agent = AgentLoop::new(
+            AgentConfig::default(),
+            Arc::new(ToolRegistry::new()),
+            Arc::new(DummyProvider),
+        )
+        .with_callbacks(callbacks);
+        let mut ctx = ContextManager::new(100);
+        ctx.add_message(Message::user("small"));
+        agent.preflight_context_compress_with_status(&mut ctx);
+
+        let rows = captured.lock().expect("captured lock");
+        assert!(rows
+            .iter()
+            .any(|(kind, msg)| { kind == "lifecycle" && msg.contains("no compression needed") }));
+    }
+
+    #[test]
+    fn preflight_compression_status_reports_when_compressing() {
+        use futures::stream::BoxStream;
+
+        struct DummyProvider;
+        #[async_trait::async_trait]
+        impl LlmProvider for DummyProvider {
+            async fn chat_completion(
+                &self,
+                _messages: &[Message],
+                _tools: &[ToolSchema],
+                _max_tokens: Option<u32>,
+                _temperature: Option<f64>,
+                _model: Option<&str>,
+                _extra_body: Option<&serde_json::Value>,
+            ) -> Result<hermes_core::LlmResponse, AgentError> {
+                Ok(hermes_core::LlmResponse {
+                    message: Message::assistant("dummy"),
+                    usage: None,
+                    model: "dummy".into(),
+                    finish_reason: Some("stop".into()),
+                })
+            }
+
+            fn chat_completion_stream(
+                &self,
+                _messages: &[Message],
+                _tools: &[ToolSchema],
+                _max_tokens: Option<u32>,
+                _temperature: Option<f64>,
+                _model: Option<&str>,
+                _extra_body: Option<&serde_json::Value>,
+            ) -> BoxStream<'static, Result<StreamChunk, AgentError>> {
+                futures::stream::empty().boxed()
+            }
+        }
+
+        let captured = Arc::new(std::sync::Mutex::new(Vec::<(String, String)>::new()));
+        let cap_ref = captured.clone();
+        let callbacks = AgentCallbacks {
+            status_callback: Some(Arc::new(move |kind, msg| {
+                cap_ref
+                    .lock()
+                    .expect("status callback lock")
+                    .push((kind.to_string(), msg.to_string()));
+            })),
+            ..Default::default()
+        };
+
+        let agent = AgentLoop::new(
+            AgentConfig::default(),
+            Arc::new(ToolRegistry::new()),
+            Arc::new(DummyProvider),
+        )
+        .with_callbacks(callbacks);
+        let mut ctx = ContextManager::new(100);
+        ctx.add_message(Message::user("x".repeat(95)));
+        agent.preflight_context_compress_with_status(&mut ctx);
+
+        let rows = captured.lock().expect("captured lock");
+        assert!(rows.iter().any(|(kind, msg)| {
+            kind == "lifecycle" && msg.contains("compressing before first turn")
+        }));
+        assert!(rows
+            .iter()
+            .any(|(kind, msg)| kind == "lifecycle" && msg.contains("compression complete")));
     }
 
     #[test]
