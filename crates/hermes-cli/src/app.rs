@@ -4,9 +4,9 @@
 //! and conversation message history. It coordinates input handling,
 //! slash commands, and session management.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex as StdMutex};
-use std::time::Instant;
+use std::time::{Instant, SystemTime};
 
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -42,6 +42,17 @@ use crate::model_switch::provider_model_ids;
 use crate::runtime_tool_wiring::{wire_cron_scheduler_backend, wire_stdio_clarify_backend};
 use crate::terminal_backend::build_terminal_backend;
 use crate::tui::StreamHandle;
+
+const SESSION_SNAPSHOT_MAX_FILES_DEFAULT: usize = 250;
+const SESSION_SNAPSHOT_MAX_TOTAL_BYTES_DEFAULT: u64 = 256 * 1024 * 1024;
+const SESSION_SNAPSHOT_MIN_FREE_BYTES_DEFAULT: u64 = 128 * 1024 * 1024;
+
+#[derive(Debug, Clone)]
+struct SessionSnapshotEntry {
+    path: PathBuf,
+    modified: SystemTime,
+    size_bytes: u64,
+}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "lowercase")]
@@ -113,6 +124,90 @@ impl PetSettings {
     pub fn mood_catalog() -> &'static [&'static str] {
         &Self::MOODS
     }
+}
+
+fn read_env_usize(name: &str, default: usize) -> usize {
+    std::env::var(name)
+        .ok()
+        .and_then(|raw| raw.trim().parse::<usize>().ok())
+        .unwrap_or(default)
+}
+
+fn read_env_u64(name: &str, default: u64) -> u64 {
+    std::env::var(name)
+        .ok()
+        .and_then(|raw| raw.trim().parse::<u64>().ok())
+        .unwrap_or(default)
+}
+
+fn snapshot_max_files() -> usize {
+    read_env_usize(
+        "HERMES_SESSION_SNAPSHOT_MAX_FILES",
+        SESSION_SNAPSHOT_MAX_FILES_DEFAULT,
+    )
+}
+
+fn snapshot_max_total_bytes() -> u64 {
+    read_env_u64(
+        "HERMES_SESSION_SNAPSHOT_MAX_TOTAL_BYTES",
+        SESSION_SNAPSHOT_MAX_TOTAL_BYTES_DEFAULT,
+    )
+}
+
+fn snapshot_min_free_bytes() -> u64 {
+    read_env_u64(
+        "HERMES_SESSION_SNAPSHOT_MIN_FREE_BYTES",
+        SESSION_SNAPSHOT_MIN_FREE_BYTES_DEFAULT,
+    )
+}
+
+fn list_session_snapshot_entries(sessions_dir: &Path) -> Vec<SessionSnapshotEntry> {
+    let mut entries: Vec<SessionSnapshotEntry> = Vec::new();
+    let Ok(read_dir) = std::fs::read_dir(sessions_dir) else {
+        return entries;
+    };
+    for entry in read_dir.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|v| v.to_str()) != Some("json") {
+            continue;
+        }
+        let Ok(meta) = entry.metadata() else {
+            continue;
+        };
+        if !meta.is_file() {
+            continue;
+        }
+        entries.push(SessionSnapshotEntry {
+            path,
+            modified: meta.modified().unwrap_or(SystemTime::UNIX_EPOCH),
+            size_bytes: meta.len(),
+        });
+    }
+    entries.sort_by_key(|row| row.modified);
+    entries
+}
+
+#[cfg(unix)]
+fn available_disk_space_bytes(path: &Path) -> Option<u64> {
+    use std::ffi::CString;
+    use std::os::unix::ffi::OsStrExt;
+
+    let c_path = CString::new(path.as_os_str().as_bytes()).ok()?;
+    let mut stats = std::mem::MaybeUninit::<libc::statvfs>::uninit();
+    // SAFETY: `c_path` is a valid NUL-terminated C string and `stats` points
+    // to valid writable memory for the kernel call.
+    let rc = unsafe { libc::statvfs(c_path.as_ptr(), stats.as_mut_ptr()) };
+    if rc != 0 {
+        return None;
+    }
+    // SAFETY: `rc == 0` means `stats` was initialized by `statvfs`.
+    let stats = unsafe { stats.assume_init() };
+    Some((stats.f_bavail as u64).saturating_mul(stats.f_frsize as u64))
+}
+
+#[cfg(not(unix))]
+fn available_disk_space_bytes(_path: &Path) -> Option<u64> {
+    None
 }
 
 // ---------------------------------------------------------------------------
@@ -1041,6 +1136,79 @@ impl App {
         active
     }
 
+    fn prune_session_snapshot_entry(
+        entry: &SessionSnapshotEntry,
+        total_bytes: &mut u64,
+    ) -> Result<(), AgentError> {
+        match std::fs::remove_file(&entry.path) {
+            Ok(()) => {
+                *total_bytes = total_bytes.saturating_sub(entry.size_bytes);
+                Ok(())
+            }
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(err) => Err(AgentError::Io(format!(
+                "Failed to prune session snapshot {}: {}",
+                entry.path.display(),
+                err
+            ))),
+        }
+    }
+
+    fn enforce_session_snapshot_guardrails(
+        &self,
+        sessions_dir: &Path,
+        preserve_path: &Path,
+    ) -> Result<(), AgentError> {
+        let preserve = preserve_path.to_path_buf();
+        let mut entries = list_session_snapshot_entries(sessions_dir);
+        let mut total_bytes = entries.iter().map(|e| e.size_bytes).sum::<u64>();
+
+        let max_files = snapshot_max_files();
+        if max_files > 0 {
+            while entries.len() > max_files {
+                let Some(idx) = entries.iter().position(|entry| entry.path != preserve) else {
+                    break;
+                };
+                let removed = entries.remove(idx);
+                Self::prune_session_snapshot_entry(&removed, &mut total_bytes)?;
+            }
+        }
+
+        let max_total_bytes = snapshot_max_total_bytes();
+        if max_total_bytes > 0 {
+            while total_bytes > max_total_bytes {
+                let Some(idx) = entries.iter().position(|entry| entry.path != preserve) else {
+                    break;
+                };
+                let removed = entries.remove(idx);
+                Self::prune_session_snapshot_entry(&removed, &mut total_bytes)?;
+            }
+        }
+
+        let min_free_bytes = snapshot_min_free_bytes();
+        if min_free_bytes > 0 {
+            if let Some(mut free_bytes) = available_disk_space_bytes(sessions_dir) {
+                while free_bytes < min_free_bytes {
+                    let Some(idx) = entries.iter().position(|entry| entry.path != preserve) else {
+                        break;
+                    };
+                    let removed = entries.remove(idx);
+                    Self::prune_session_snapshot_entry(&removed, &mut total_bytes)?;
+                    free_bytes = available_disk_space_bytes(sessions_dir).unwrap_or(free_bytes);
+                }
+                if free_bytes < min_free_bytes {
+                    return Err(AgentError::Io(format!(
+                        "Session snapshot write blocked by disk guardrail: free={} bytes, required_min={} bytes (dir={})",
+                        free_bytes,
+                        min_free_bytes,
+                        sessions_dir.display()
+                    )));
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Get a serializable snapshot of the current session info.
     pub fn session_info(&self) -> SessionInfo {
         SessionInfo {
@@ -1095,6 +1263,7 @@ impl App {
                 e
             ))
         })?;
+        self.enforce_session_snapshot_guardrails(&sessions_dir, &path)?;
         Ok(path)
     }
 
@@ -1475,6 +1644,62 @@ mod tests {
                 .map(|arr| arr.len()),
             Some(0)
         );
+    }
+
+    #[test]
+    fn test_persist_session_snapshot_prunes_old_files_by_count_limit() {
+        let _guard = env_test_lock();
+        let prev_home = std::env::var("HERMES_HOME").ok();
+        let prev_max_files = std::env::var("HERMES_SESSION_SNAPSHOT_MAX_FILES").ok();
+        let prev_max_total = std::env::var("HERMES_SESSION_SNAPSHOT_MAX_TOTAL_BYTES").ok();
+        let prev_min_free = std::env::var("HERMES_SESSION_SNAPSHOT_MIN_FREE_BYTES").ok();
+        let tmp = tempfile::tempdir().expect("tempdir");
+        std::env::set_var("HERMES_HOME", tmp.path());
+        std::env::set_var("HERMES_SESSION_SNAPSHOT_MAX_FILES", "2");
+        std::env::set_var("HERMES_SESSION_SNAPSHOT_MAX_TOTAL_BYTES", "999999999");
+        std::env::set_var("HERMES_SESSION_SNAPSHOT_MIN_FREE_BYTES", "0");
+
+        let mut app = build_minimal_test_app();
+        app.session_id = "snap-prune".to_string();
+        app.messages = vec![hermes_core::Message::user("snapshot payload")];
+
+        let p1 = app
+            .persist_session_snapshot(Some("older-1"))
+            .expect("persist snapshot 1");
+        let p2 = app
+            .persist_session_snapshot(Some("older-2"))
+            .expect("persist snapshot 2");
+        let p3 = app
+            .persist_session_snapshot(Some("newest"))
+            .expect("persist snapshot 3");
+        assert!(!p1.exists(), "oldest snapshot should be pruned");
+        assert!(p2.exists(), "middle snapshot should remain");
+        assert!(p3.exists(), "newest snapshot should remain");
+
+        let sessions_dir = app.state_root.join("sessions");
+        let remaining: Vec<_> = std::fs::read_dir(&sessions_dir)
+            .expect("read sessions dir")
+            .flatten()
+            .filter(|entry| entry.path().extension().and_then(|v| v.to_str()) == Some("json"))
+            .collect();
+        assert_eq!(remaining.len(), 2, "snapshot file count should be capped");
+
+        match prev_min_free {
+            Some(v) => std::env::set_var("HERMES_SESSION_SNAPSHOT_MIN_FREE_BYTES", v),
+            None => std::env::remove_var("HERMES_SESSION_SNAPSHOT_MIN_FREE_BYTES"),
+        }
+        match prev_max_total {
+            Some(v) => std::env::set_var("HERMES_SESSION_SNAPSHOT_MAX_TOTAL_BYTES", v),
+            None => std::env::remove_var("HERMES_SESSION_SNAPSHOT_MAX_TOTAL_BYTES"),
+        }
+        match prev_max_files {
+            Some(v) => std::env::set_var("HERMES_SESSION_SNAPSHOT_MAX_FILES", v),
+            None => std::env::remove_var("HERMES_SESSION_SNAPSHOT_MAX_FILES"),
+        }
+        match prev_home {
+            Some(v) => std::env::set_var("HERMES_HOME", v),
+            None => std::env::remove_var("HERMES_HOME"),
+        }
     }
 
     #[test]
