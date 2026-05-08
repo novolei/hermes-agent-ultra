@@ -1712,6 +1712,8 @@ mod tests {
             oneshot: None,
             allow_tools: false,
             personality: None,
+            ignore_user_config: false,
+            ignore_rules: false,
         };
 
         apply_cli_runtime_overrides(&mut cfg, &cli);
@@ -1731,6 +1733,8 @@ mod tests {
             oneshot: None,
             allow_tools: false,
             personality: None,
+            ignore_user_config: false,
+            ignore_rules: false,
         };
 
         apply_cli_runtime_overrides(&mut cfg, &cli);

@@ -103,6 +103,14 @@ pub const SLASH_COMMANDS: &[(&str, &str)] = &[
     ("/retry", "Retry the last user message"),
     ("/undo", "Undo the last exchange"),
     ("/history", "Show recent conversation history"),
+    (
+        "/recap",
+        "Summarize recent session activity (`/recap [count]`)",
+    ),
+    (
+        "/context",
+        "Context breakdown (`status|breakdown|compress`)",
+    ),
     ("/title", "Set or show session title metadata"),
     ("/topic", "Session topic metadata controls"),
     (
@@ -2971,6 +2979,7 @@ fn canonical_command(cmd: &str) -> &str {
         "/question" => "/ask",
         "/autocompress" => "/autocompact",
         "/skins" => "/skin",
+        "/summary" => "/recap",
         "/sb" => "/statusbar",
         "/pilot" => "/autopilot",
         "/debug" => "/debug-dump",
@@ -3013,6 +3022,8 @@ pub async fn handle_slash_command(
             Ok(CommandResult::Handled)
         }
         "/history" => handle_history_command(app),
+        "/recap" => handle_recap_command(app, args),
+        "/context" => handle_context_command(app, args),
         "/title" | "/branch" | "/snapshot" | "/rollback" | "/queue" | "/steer" | "/btw"
         | "/sethome" => handle_session_compat_command(app, canonical_command(cmd), args),
         "/evolve" => handle_ops_evolve_command(app, args).await,
@@ -3063,10 +3074,11 @@ pub async fn handle_slash_command(
             Ok(CommandResult::Handled)
         }
         "/log" => handle_log_command(app),
-        "/debug-dump" | "/dump-format" | "/experiment" | "/feedback" | "/copy" | "/paste"
-        | "/gquota" | "/restart" | "/approve" | "/deny" | "/update" | "/redraw" => {
+        "/debug-dump" | "/dump-format" | "/experiment" | "/feedback" | "/paste" | "/gquota"
+        | "/restart" | "/approve" | "/deny" | "/update" | "/redraw" => {
             handle_compatibility_notice_command(app, canonical_command(cmd), args)
         }
+        "/copy" => handle_copy_command(app),
         "/save" => handle_save_command(app, args),
         "/load" => handle_load_command(app, args),
         "/resume" => handle_resume_command(app, args),
@@ -7480,6 +7492,175 @@ fn handle_history_command(app: &mut App) -> Result<CommandResult, AgentError> {
     Ok(CommandResult::Handled)
 }
 
+fn truncate_chars(input: &str, max_len: usize) -> String {
+    if max_len == 0 {
+        return String::new();
+    }
+    if input.chars().count() <= max_len {
+        return input.to_string();
+    }
+    let mut out: String = input.chars().take(max_len.saturating_sub(1)).collect();
+    out.push('…');
+    out
+}
+
+fn handle_recap_command(app: &mut App, args: &[&str]) -> Result<CommandResult, AgentError> {
+    let requested = args
+        .first()
+        .and_then(|raw| raw.trim().parse::<usize>().ok())
+        .unwrap_or(24)
+        .clamp(1, 200);
+    let transcript = app.transcript_messages();
+    if transcript.is_empty() {
+        emit_command_output(app, "No activity yet. Start with a prompt first.");
+        return Ok(CommandResult::Handled);
+    }
+
+    let start = transcript.len().saturating_sub(requested);
+    let window = &transcript[start..];
+    let mut user_msgs = 0usize;
+    let mut assistant_msgs = 0usize;
+    let mut tool_msgs = 0usize;
+    let mut system_msgs = 0usize;
+    let mut tool_call_count = 0usize;
+    let mut char_count = 0usize;
+
+    for msg in window {
+        match msg.role {
+            hermes_core::MessageRole::User => user_msgs += 1,
+            hermes_core::MessageRole::Assistant => assistant_msgs += 1,
+            hermes_core::MessageRole::Tool => tool_msgs += 1,
+            hermes_core::MessageRole::System => system_msgs += 1,
+        }
+        tool_call_count += msg.tool_calls.as_ref().map(|c| c.len()).unwrap_or(0);
+        char_count += msg.content.as_deref().map(str::len).unwrap_or(0);
+    }
+
+    let latest_user = window
+        .iter()
+        .rev()
+        .find(|m| matches!(m.role, hermes_core::MessageRole::User))
+        .and_then(|m| m.content.as_deref())
+        .map(|c| truncate_chars(c.trim(), 120))
+        .unwrap_or_else(|| "(none)".to_string());
+    let latest_assistant = window
+        .iter()
+        .rev()
+        .find(|m| matches!(m.role, hermes_core::MessageRole::Assistant))
+        .and_then(|m| m.content.as_deref())
+        .map(|c| truncate_chars(c.trim(), 120))
+        .unwrap_or_else(|| "(none)".to_string());
+
+    let approx_tokens = (char_count / 4).max(1);
+    emit_command_output(
+        app,
+        format!(
+            "Session recap (last {} messages)\n\
+             model: {}\n\
+             roles: user={} assistant={} tool={} system={}\n\
+             tool_calls: {}\n\
+             approx_tokens: {}\n\
+             latest_user: {}\n\
+             latest_hermes: {}",
+            window.len(),
+            app.current_model,
+            user_msgs,
+            assistant_msgs,
+            tool_msgs,
+            system_msgs,
+            tool_call_count,
+            approx_tokens,
+            latest_user,
+            latest_assistant
+        ),
+    );
+    Ok(CommandResult::Handled)
+}
+
+fn handle_context_command(app: &mut App, args: &[&str]) -> Result<CommandResult, AgentError> {
+    let action = args
+        .first()
+        .copied()
+        .unwrap_or("status")
+        .to_ascii_lowercase();
+    match action.as_str() {
+        "status" => {
+            let transcript = app.transcript_messages();
+            let total_chars: usize = transcript
+                .iter()
+                .map(|m| m.content.as_deref().map(str::len).unwrap_or(0))
+                .sum();
+            let approx_tokens = (total_chars / 4).max(1);
+            let context_files = if app.config.agent.skip_context_files {
+                "disabled"
+            } else {
+                "enabled"
+            };
+            emit_command_output(
+                app,
+                format!(
+                    "Context status\n\
+                     model: {}\n\
+                     transcript_messages: {}\n\
+                     approx_tokens: {}\n\
+                     context_files: {}\n\
+                     hint: run `/context breakdown` for per-message footprint or `/context compress` for immediate compaction",
+                    app.current_model,
+                    transcript.len(),
+                    approx_tokens,
+                    context_files
+                ),
+            );
+        }
+        "breakdown" => {
+            let transcript = app.transcript_messages();
+            if transcript.is_empty() {
+                emit_command_output(app, "No transcript yet.");
+                return Ok(CommandResult::Handled);
+            }
+            let mut out = String::from("Context breakdown (recent)\n");
+            for (idx, msg) in transcript.iter().enumerate().rev().take(20).rev() {
+                let role = match msg.role {
+                    hermes_core::MessageRole::User => "USER",
+                    hermes_core::MessageRole::Assistant => "HERMES",
+                    hermes_core::MessageRole::Tool => "TOOL",
+                    hermes_core::MessageRole::System => "SYSTEM",
+                };
+                let chars = msg.content.as_deref().map(str::len).unwrap_or(0);
+                let est_tokens = (chars / 4).max(1);
+                let preview = msg
+                    .content
+                    .as_deref()
+                    .unwrap_or("")
+                    .lines()
+                    .next()
+                    .unwrap_or("")
+                    .trim();
+                let _ = writeln!(
+                    out,
+                    "{:>3}. {:<7} chars={:<5} tok≈{:<5} {}",
+                    idx + 1,
+                    role,
+                    chars,
+                    est_tokens,
+                    truncate_chars(preview, 70)
+                );
+            }
+            emit_command_output(app, out.trim_end());
+        }
+        "compress" | "compact" => {
+            return handle_compress_command(app);
+        }
+        _ => {
+            emit_command_output(
+                app,
+                "Usage: /context [status|breakdown|compress]\nAlias: /summary -> /recap",
+            );
+        }
+    }
+    Ok(CommandResult::Handled)
+}
+
 async fn handle_provider_command(app: &mut App) -> Result<CommandResult, AgentError> {
     let providers = curated_provider_slugs();
     if providers.is_empty() {
@@ -7806,7 +7987,17 @@ fn handle_mcp_command(app: &mut App) -> Result<CommandResult, AgentError> {
             .as_deref()
             .filter(|u| !u.is_empty())
             .unwrap_or("<stdio>");
-        let _ = writeln!(out, "  - {:<18} {}", server.name, endpoint);
+        let _ = writeln!(
+            out,
+            "  - {:<18} {}  [parallel_tool_calls:{}]",
+            server.name,
+            endpoint,
+            if server.supports_parallel_tool_calls {
+                "on"
+            } else {
+                "off"
+            }
+        );
     }
     emit_command_output(app, out.trim_end());
     Ok(CommandResult::Handled)
@@ -7819,10 +8010,25 @@ fn handle_reload_command(app: &mut App, cmd: &str) -> Result<CommandResult, Agen
             "MCP reload requested. Restart session/gateway for full connector renegotiation.",
         );
     } else {
-        emit_command_output(
-            app,
-            "Config/env reload requested. Secrets and dynamic provider keys are re-read on next tool/model operation.",
-        );
+        hermes_config::loader::load_dotenv();
+        match hermes_config::load_config(app.state_root.to_str()) {
+            Ok(cfg) => {
+                app.config = Arc::new(cfg);
+                emit_command_output(
+                    app,
+                    "Reload complete: env + config rehydrated for this session.",
+                );
+            }
+            Err(err) => {
+                emit_command_output(
+                    app,
+                    format!(
+                        "Reload partially applied (.env refreshed), but config parse failed: {}",
+                        err
+                    ),
+                );
+            }
+        }
     }
     Ok(CommandResult::Handled)
 }
@@ -9817,10 +10023,39 @@ fn handle_session_compat_command(
             }
         }
         "/branch" => {
-            if arg_joined.trim().is_empty() {
-                "Branch marker created for current session.".to_string()
+            let label = if arg_joined.trim().is_empty() {
+                "branch".to_string()
             } else {
-                format!("Branch marker created: {}", arg_joined.trim())
+                arg_joined.trim().to_string()
+            };
+            let sanitized = label
+                .chars()
+                .map(|c| {
+                    if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                        c
+                    } else {
+                        '-'
+                    }
+                })
+                .collect::<String>()
+                .trim_matches('-')
+                .to_string();
+            let stem = format!(
+                "branch-{}-{}",
+                &app.session_id[..8.min(app.session_id.len())],
+                if sanitized.is_empty() {
+                    "checkpoint"
+                } else {
+                    sanitized.as_str()
+                }
+            );
+            match app.persist_session_snapshot(Some(&stem)) {
+                Ok(path) => format!(
+                    "Branch checkpoint saved: {}\nContinue in current session or run `/resume {}`.",
+                    path.display(),
+                    stem
+                ),
+                Err(err) => format!("Branch marker requested, but snapshot failed: {}", err),
             }
         }
         "/snapshot" => "Snapshot compatibility command acknowledged. Use `hermes backup` / `hermes import` for persisted state snapshots.".to_string(),
@@ -9977,7 +10212,6 @@ fn handle_compatibility_notice_command(
             }
         ),
         "/feedback" => "Feedback channels: open a GitHub issue in this repository with repro steps + `hermes debug share --local` output.".to_string(),
-        "/copy" => "Clipboard copy helper is platform-dependent; use terminal copy from transcript for now.".to_string(),
         "/paste" => "Clipboard attach helper is platform-dependent; use `/image <path>` for image workflows.".to_string(),
         "/gquota" => "Gemini quota details come from provider account dashboards; no direct CLI quota probe is active in this build.".to_string(),
         "/restart" => "Gateway restart is a gateway-mode command. Use `hermes gateway restart`.".to_string(),
@@ -9988,6 +10222,46 @@ fn handle_compatibility_notice_command(
         _ => "Compatibility command acknowledged.".to_string(),
     };
     emit_command_output(app, msg);
+    Ok(CommandResult::Handled)
+}
+
+fn handle_copy_command(app: &mut App) -> Result<CommandResult, AgentError> {
+    let maybe_text = app.transcript_messages().into_iter().rev().find_map(|msg| {
+        if msg.role != hermes_core::MessageRole::Assistant {
+            return None;
+        }
+        let content = msg.content.unwrap_or_default();
+        let trimmed = content.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    });
+    let Some(text) = maybe_text else {
+        emit_command_output(
+            app,
+            "Copy skipped: no assistant message content available yet.",
+        );
+        return Ok(CommandResult::Handled);
+    };
+
+    match arboard::Clipboard::new().and_then(|mut cb| cb.set_text(text.clone())) {
+        Ok(()) => emit_command_output(
+            app,
+            format!(
+                "Copied latest assistant message ({} chars).",
+                text.chars().count()
+            ),
+        ),
+        Err(err) => emit_command_output(
+            app,
+            format!(
+                "Clipboard unavailable ({}). Copy directly from transcript as fallback.",
+                err
+            ),
+        ),
+    }
     Ok(CommandResult::Handled)
 }
 
@@ -13200,6 +13474,7 @@ pub async fn handle_cli_mcp(
     server: Option<String>,
     url: Option<String>,
     command: Option<String>,
+    parallel_tools: bool,
 ) -> Result<(), hermes_core::AgentError> {
     let config_dir = hermes_config::hermes_home();
     let mcp_config_path = config_dir.join("mcp_servers.json");
@@ -13269,19 +13544,36 @@ pub async fn handle_cli_mcp(
                     println!("MCP servers ({}):", mcp_config_path.display());
                     for (name, cfg) in obj {
                         let url = cfg.get("url").and_then(|v| v.as_str()).unwrap_or("(stdio)");
-                        println!("  • {} — {}", name, url);
+                        let parallel = cfg
+                            .get("supports_parallel_tool_calls")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false);
+                        println!(
+                            "  • {} — {}  [parallel_tool_calls:{}]",
+                            name,
+                            url,
+                            if parallel { "on" } else { "off" }
+                        );
                     }
                 }
             }
         }
         "add" => {
-            let (entry_name, entry, yaml_command, yaml_url) = if let Some(name) =
+            let (entry_name, entry, yaml_command, yaml_url, yaml_parallel) = if let Some(name) =
                 name.as_deref().map(str::trim).filter(|s| !s.is_empty())
             {
                 let entry = if let Some(url) = url.clone().filter(|v| !v.trim().is_empty()) {
-                    serde_json::json!({"url": url, "enabled": true})
+                    serde_json::json!({
+                        "url": url,
+                        "enabled": true,
+                        "supports_parallel_tool_calls": parallel_tools
+                    })
                 } else if let Some(command) = command.clone().filter(|v| !v.trim().is_empty()) {
-                    serde_json::json!({"command": command, "enabled": true})
+                    serde_json::json!({
+                        "command": command,
+                        "enabled": true,
+                        "supports_parallel_tool_calls": parallel_tools
+                    })
                 } else {
                     return Err(hermes_core::AgentError::Config(
                         "mcp add with positional name requires --url or --command".into(),
@@ -13292,6 +13584,7 @@ pub async fn handle_cli_mcp(
                     entry,
                     command.clone().filter(|v| !v.trim().is_empty()),
                     url.clone().filter(|v| !v.trim().is_empty()),
+                    parallel_tools,
                 )
             } else {
                 let srv = server
@@ -13300,22 +13593,30 @@ pub async fn handle_cli_mcp(
                     .filter(|s| !s.is_empty())
                     .ok_or_else(|| {
                         hermes_core::AgentError::Config(
-                            "Missing server. Usage: hermes mcp add <name> --url <url> | --command <cmd> (legacy: --server <name-or-url>)".into(),
+                            "Missing server. Usage: hermes mcp add <name> --url <url> | --command <cmd> [--parallel-tools] (legacy: --server <name-or-url>)".into(),
                         )
                     })?;
                 let (entry, yaml_url) = if srv.starts_with("http://") || srv.starts_with("https://")
                 {
                     (
-                        serde_json::json!({"url": srv, "enabled": true}),
+                        serde_json::json!({
+                            "url": srv,
+                            "enabled": true,
+                            "supports_parallel_tool_calls": parallel_tools
+                        }),
                         Some(srv.to_string()),
                     )
                 } else {
                     (
-                        serde_json::json!({"url": srv, "enabled": true}),
+                        serde_json::json!({
+                            "url": srv,
+                            "enabled": true,
+                            "supports_parallel_tool_calls": parallel_tools
+                        }),
                         Some(srv.to_string()),
                     )
                 };
-                (srv.to_string(), entry, None, yaml_url)
+                (srv.to_string(), entry, None, yaml_url, parallel_tools)
             };
             println!("Adding MCP server: {}", entry_name);
             let mut servers: serde_json::Value = if mcp_config_path.exists() {
@@ -13332,7 +13633,14 @@ pub async fn handle_cli_mcp(
                 .map_err(|e| hermes_core::AgentError::Config(e.to_string()))?;
             std::fs::write(&mcp_config_path, json)
                 .map_err(|e| hermes_core::AgentError::Io(e.to_string()))?;
-            update_yaml_mcp_server(&config_dir, &entry_name, yaml_command, yaml_url, false)?;
+            update_yaml_mcp_server(
+                &config_dir,
+                &entry_name,
+                yaml_command,
+                yaml_url,
+                yaml_parallel,
+                false,
+            )?;
             println!(
                 "MCP server '{}' added to {}",
                 entry_name,
@@ -13364,7 +13672,7 @@ pub async fn handle_cli_mcp(
                         .map_err(|e| hermes_core::AgentError::Config(e.to_string()))?;
                     std::fs::write(&mcp_config_path, json)
                         .map_err(|e| hermes_core::AgentError::Io(e.to_string()))?;
-                    update_yaml_mcp_server(&config_dir, &srv, None, None, true)?;
+                    update_yaml_mcp_server(&config_dir, &srv, None, None, false, true)?;
                     println!("MCP server '{}' removed.", srv);
                     if mcp_auth_path.exists() {
                         let raw = std::fs::read_to_string(&mcp_auth_path).unwrap_or_default();
@@ -13422,9 +13730,17 @@ pub async fn handle_cli_mcp(
                 Some(cfg) => {
                     let url = cfg.get("url").and_then(|v| v.as_str()).unwrap_or("(stdio)");
                     let enabled = cfg.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true);
+                    let parallel = cfg
+                        .get("supports_parallel_tool_calls")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
                     println!("  Server: {}", srv);
                     println!("  URL: {}", url);
                     println!("  Enabled: {}", enabled);
+                    println!(
+                        "  Parallel tool calls: {}",
+                        if parallel { "on" } else { "off" }
+                    );
                     if url.starts_with("http") {
                         match reqwest::Client::new()
                             .get(url)
@@ -13568,7 +13884,8 @@ fn sentrux_entry() -> serde_json::Value {
     serde_json::json!({
         "command": SENTRUX_MCP_COMMAND,
         "args": [SENTRUX_MCP_ARG],
-        "enabled": true
+        "enabled": true,
+        "supports_parallel_tool_calls": true
     })
 }
 
@@ -13577,6 +13894,7 @@ fn update_yaml_mcp_server(
     name: &str,
     command: Option<String>,
     url: Option<String>,
+    supports_parallel_tool_calls: bool,
     remove: bool,
 ) -> Result<(), hermes_core::AgentError> {
     let cfg_path = config_dir.join("config.yaml");
@@ -13588,6 +13906,7 @@ fn update_yaml_mcp_server(
             name: name.to_string(),
             command,
             url,
+            supports_parallel_tool_calls,
         });
         cfg.mcp_servers.sort_by(|a, b| a.name.cmp(&b.name));
     }
@@ -13616,6 +13935,7 @@ fn upsert_sentrux_mcp_profile(config_dir: &Path) -> Result<bool, hermes_core::Ag
         SENTRUX_MCP_SERVER_NAME,
         Some(format!("{SENTRUX_MCP_COMMAND} {SENTRUX_MCP_ARG}")),
         None,
+        true,
         false,
     )?;
     Ok(command_on_path(SENTRUX_MCP_COMMAND))
@@ -13636,7 +13956,7 @@ fn remove_sentrux_mcp_profile(config_dir: &Path) -> Result<(), hermes_core::Agen
         std::fs::write(&mcp_config_path, json)
             .map_err(|e| hermes_core::AgentError::Io(e.to_string()))?;
     }
-    update_yaml_mcp_server(config_dir, SENTRUX_MCP_SERVER_NAME, None, None, true)
+    update_yaml_mcp_server(config_dir, SENTRUX_MCP_SERVER_NAME, None, None, false, true)
 }
 
 fn sentrux_mcp_status(config_dir: &Path) -> (bool, bool, bool) {

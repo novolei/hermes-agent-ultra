@@ -480,6 +480,9 @@ pub enum CliCommand {
         /// Command for stdio server add action.
         #[arg(long)]
         command: Option<String>,
+        /// Mark this MCP server as supporting parallel tool calls.
+        #[arg(long)]
+        parallel_tools: bool,
     },
 
     /// Session management.
@@ -658,6 +661,14 @@ pub struct Cli {
     /// Override the personality / persona.
     #[arg(short = 'p', long, global = true)]
     pub personality: Option<String>,
+
+    /// Ignore user config files (`config.yaml`, `cli-config.yaml`, `gateway.json`) for this run.
+    #[arg(long, global = true)]
+    pub ignore_user_config: bool,
+
+    /// Ignore local instruction/rules context injection (AGENTS.md/SOUL.md/etc.) for this run.
+    #[arg(long, global = true)]
+    pub ignore_rules: bool,
 }
 
 impl Cli {
@@ -682,6 +693,8 @@ mod tests {
         assert!(cli.provider.is_none());
         assert!(cli.oneshot.is_none());
         assert!(!cli.allow_tools);
+        assert!(!cli.ignore_user_config);
+        assert!(!cli.ignore_rules);
     }
 
     #[test]
@@ -727,6 +740,14 @@ mod tests {
         assert_eq!(cli.provider.as_deref(), Some("anthropic"));
         assert_eq!(cli.oneshot.as_deref(), Some("reply with 1"));
         assert!(cli.allow_tools);
+    }
+
+    #[test]
+    fn cli_parse_ignore_flags() {
+        let cli =
+            Cli::try_parse_from(vec!["hermes", "--ignore-user-config", "--ignore-rules"]).unwrap();
+        assert!(cli.ignore_user_config);
+        assert!(cli.ignore_rules);
     }
 
     #[test]

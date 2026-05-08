@@ -581,6 +581,9 @@ pub struct McpServerEntry {
     pub command: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
+    /// Whether this MCP server supports parallel tool calls safely.
+    #[serde(default)]
+    pub supports_parallel_tool_calls: bool,
 }
 
 /// Active profile info.

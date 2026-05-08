@@ -178,6 +178,9 @@ pub struct McpServerConfig {
     /// URL for remote (HTTP/SSE) MCP servers.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
+    /// Whether this server supports concurrent tool calls from one session.
+    #[serde(default)]
+    pub supports_parallel_tool_calls: bool,
     /// Optional authentication provider for remote servers.
     #[serde(skip)]
     pub auth_provider: Option<Arc<dyn McpAuthProvider>>,
@@ -190,6 +193,10 @@ impl std::fmt::Debug for McpServerConfig {
             .field("args", &self.args)
             .field("env", &self.env)
             .field("url", &self.url)
+            .field(
+                "supports_parallel_tool_calls",
+                &self.supports_parallel_tool_calls,
+            )
             .field(
                 "auth_provider",
                 &self.auth_provider.as_ref().map(|_| "<McpAuthProvider>"),
@@ -204,6 +211,7 @@ impl PartialEq for McpServerConfig {
             && self.args == other.args
             && self.env == other.env
             && self.url == other.url
+            && self.supports_parallel_tool_calls == other.supports_parallel_tool_calls
     }
 }
 
@@ -215,6 +223,7 @@ impl McpServerConfig {
             args,
             env: HashMap::new(),
             url: None,
+            supports_parallel_tool_calls: false,
             auth_provider: None,
         }
     }
@@ -226,8 +235,15 @@ impl McpServerConfig {
             args: Vec::new(),
             env: HashMap::new(),
             url: Some(url.into()),
+            supports_parallel_tool_calls: false,
             auth_provider: None,
         }
+    }
+
+    /// Set explicit parallel-tool-call capability for this server.
+    pub fn with_parallel_tool_calls(mut self, enabled: bool) -> Self {
+        self.supports_parallel_tool_calls = enabled;
+        self
     }
 
     /// Add environment variables to the config.

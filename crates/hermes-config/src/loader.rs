@@ -166,6 +166,15 @@ fn strip_quotes(s: &str) -> &str {
     }
 }
 
+fn env_truthy(name: &str) -> bool {
+    std::env::var(name).ok().is_some_and(|v| {
+        matches!(
+            v.trim().to_ascii_lowercase().as_str(),
+            "1" | "true" | "yes" | "on"
+        )
+    })
+}
+
 // ---------------------------------------------------------------------------
 // load_config
 // ---------------------------------------------------------------------------
@@ -188,12 +197,13 @@ pub fn load_config(home_dir: Option<&str>) -> Result<GatewayConfig, ConfigError>
     let config_yaml_path = Path::new(&effective_home).join("config.yaml");
     let cli_config_yaml_path = Path::new(&effective_home).join("cli-config.yaml");
     let gateway_json_path = Path::new(&effective_home).join("gateway.json");
+    let ignore_user_config = env_truthy("HERMES_IGNORE_USER_CONFIG");
 
     // Start from defaults
     let mut config = GatewayConfig::default();
 
     // Layer 1: gateway.json (lowest priority file source)
-    if gateway_json_path.exists() {
+    if !ignore_user_config && gateway_json_path.exists() {
         match load_from_json(&gateway_json_path) {
             Ok(json_cfg) => config = json_cfg,
             Err(e) => {
@@ -203,7 +213,7 @@ pub fn load_config(home_dir: Option<&str>) -> Result<GatewayConfig, ConfigError>
     }
 
     // Layer 2: config.yaml (higher priority file source)
-    if config_yaml_path.exists() {
+    if !ignore_user_config && config_yaml_path.exists() {
         match load_from_yaml(&config_yaml_path) {
             Ok(yaml_cfg) => {
                 config = merge_configs(&yaml_cfg, &config);
@@ -215,7 +225,7 @@ pub fn load_config(home_dir: Option<&str>) -> Result<GatewayConfig, ConfigError>
     }
 
     // Layer 2.5: cli-config.yaml (CLI-specific + high-priority overlay)
-    if cli_config_yaml_path.exists() {
+    if !ignore_user_config && cli_config_yaml_path.exists() {
         match load_from_yaml(&cli_config_yaml_path) {
             Ok(cli_cfg) => {
                 config = merge_configs(&cli_cfg, &config);
@@ -795,6 +805,9 @@ pub fn apply_env_overrides(config: &mut GatewayConfig) {
     if let Ok(v) = std::env::var("HERMES_SYSTEM_PROMPT") {
         config.system_prompt = Some(v);
     }
+    if env_truthy("HERMES_AGENT_SKIP_CONTEXT_FILES") || env_truthy("HERMES_IGNORE_RULES") {
+        config.agent.skip_context_files = true;
+    }
     if let Ok(v) = std::env::var("HERMES_ALLOW_PRIVATE_URLS") {
         let normalized = v.trim().to_ascii_lowercase();
         match normalized.as_str() {
@@ -1367,6 +1380,39 @@ mod tests {
 
         unsafe {
             std::env::remove_var("SLACK_BOT_TOKEN");
+        }
+    }
+
+    #[test]
+    fn apply_env_overrides_respects_ignore_rules_flags() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::set_var("HERMES_IGNORE_RULES", "1");
+        }
+        let mut cfg = GatewayConfig::default();
+        cfg.agent.skip_context_files = false;
+        apply_env_overrides(&mut cfg);
+        assert!(cfg.agent.skip_context_files);
+        unsafe {
+            std::env::remove_var("HERMES_IGNORE_RULES");
+        }
+    }
+
+    #[test]
+    fn load_config_ignore_user_config_uses_defaults_when_files_exist() {
+        use tempfile::tempdir;
+
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let home = tempdir().expect("tempdir");
+        let cfg_path = home.path().join("config.yaml");
+        std::fs::write(&cfg_path, "max_turns: 777\n").expect("write config");
+        unsafe {
+            std::env::set_var("HERMES_IGNORE_USER_CONFIG", "1");
+        }
+        let cfg = load_config(Some(home.path().to_string_lossy().as_ref())).expect("load config");
+        assert_eq!(cfg.max_turns, GatewayConfig::default().max_turns);
+        unsafe {
+            std::env::remove_var("HERMES_IGNORE_USER_CONFIG");
         }
     }
 }

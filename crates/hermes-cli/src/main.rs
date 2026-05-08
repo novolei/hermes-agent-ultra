@@ -104,6 +104,13 @@ async fn main() {
     if let Some(config_dir) = cli.config_dir.as_deref() {
         std::env::set_var("HERMES_HOME", config_dir);
     }
+    if cli.ignore_user_config {
+        std::env::set_var("HERMES_IGNORE_USER_CONFIG", "1");
+    }
+    if cli.ignore_rules {
+        std::env::set_var("HERMES_IGNORE_RULES", "1");
+        std::env::set_var("HERMES_AGENT_SKIP_CONTEXT_FILES", "1");
+    }
     let effective_command = cli.effective_command();
     let global_model_override = cli.model.clone();
     let global_provider_override = cli.provider.clone();
@@ -325,7 +332,11 @@ async fn main() {
             server,
             url,
             command,
-        } => hermes_cli::commands::handle_cli_mcp(action, name, server, url, command).await,
+            parallel_tools,
+        } => {
+            hermes_cli::commands::handle_cli_mcp(action, name, server, url, command, parallel_tools)
+                .await
+        }
         CliCommand::Sessions { action, id, name } => {
             hermes_cli::commands::handle_cli_sessions(action, id, name).await
         }
@@ -1182,6 +1193,7 @@ async fn run_optional_setup_sections(
                     None,
                     None,
                     None,
+                    false,
                 )
                 .await?;
             }
