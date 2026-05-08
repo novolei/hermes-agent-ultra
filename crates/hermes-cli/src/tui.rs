@@ -249,6 +249,7 @@ struct TranscriptCache {
     fingerprint: u64,
     width: u16,
     lines: Vec<Line<'static>>,
+    visual_rows: usize,
     total_messages: usize,
     rendered_messages: usize,
     message_fingerprints: Vec<u64>,
@@ -263,6 +264,7 @@ impl Default for TranscriptCache {
             fingerprint: 0,
             width: 0,
             lines: Vec::new(),
+            visual_rows: 1,
             total_messages: 0,
             rendered_messages: 0,
             message_fingerprints: Vec::new(),
@@ -1326,6 +1328,8 @@ impl TuiState {
 const TRANSCRIPT_HARD_WRAP_COLS: u16 = 80;
 const TRANSCRIPT_CONTENT_WRAP_COLS: usize = 76;
 const OFFSET_ANCHOR_SEARCH_RADIUS: usize = 1200;
+const MAX_ASSISTANT_RENDER_LINES: usize = 260;
+const MAX_STREAM_RENDER_LINES: usize = 140;
 
 fn transcript_wrap_width(viewport_width: u16) -> u16 {
     viewport_width.min(TRANSCRIPT_HARD_WRAP_COLS).max(1)
@@ -1918,6 +1922,7 @@ fn count_renderable_messages(messages: &[hermes_core::Message]) -> usize {
 
 fn looks_like_internal_scaffold_line(line: &str) -> bool {
     let trimmed = line.trim_start();
+    let lowered = trimmed.to_ascii_lowercase();
     trimmed.starts_with("to=functions.")
         || trimmed.starts_with("to=tools.")
         || trimmed.starts_with("to=memory.")
@@ -1934,6 +1939,19 @@ fn looks_like_internal_scaffold_line(line: &str) -> bool {
         || trimmed.starts_with("<assistant(")
         || trimmed.starts_with("</assistant(")
         || trimmed.contains("(INVOKN_RESULT")
+        || lowered.contains("<tool_use>")
+        || lowered.contains("</tool_use>")
+        || lowered.contains("<tool_call")
+        || lowered.contains("</tool_call")
+        || lowered.contains("<arguments>")
+        || lowered.contains("</arguments>")
+        || lowered.contains("<name>")
+        || lowered.contains("</name>")
+        || lowered.contains("invoke_result")
+        || lowered.contains("invokn_result")
+        || lowered.contains("to=functions.")
+        || lowered.contains("to=tools.")
+        || lowered.contains("to=memory.")
 }
 
 fn strict_default_language_output_enabled() -> bool {
@@ -2202,6 +2220,61 @@ fn render_assistant_markdown_lines(
     rendered
 }
 
+fn collapse_render_lines_with_notice(
+    lines: Vec<Line<'static>>,
+    max_lines: usize,
+    colors: &crate::theme::RatatuiColors,
+) -> Vec<Line<'static>> {
+    if lines.len() <= max_lines.max(1) {
+        return lines;
+    }
+    let cap = max_lines.max(8);
+    let mut out: Vec<Line<'static>> = Vec::with_capacity(cap + 2);
+    let head = (cap * 2) / 3;
+    let tail = cap.saturating_sub(head).saturating_sub(1);
+    let total = lines.len();
+    out.extend(lines.iter().take(head).cloned());
+    out.push(Line::from(vec![Span::styled(
+        format!(
+            "    … transcript compressed for readability ({} lines hidden)",
+            total.saturating_sub(head + tail)
+        ),
+        Style::default()
+            .fg(colors.status_bar_dim)
+            .bg(colors.background)
+            .add_modifier(Modifier::ITALIC),
+    )]));
+    if tail > 0 {
+        out.extend(lines.into_iter().skip(total.saturating_sub(tail)));
+    }
+    out
+}
+
+fn tail_render_lines_with_notice(
+    lines: Vec<Line<'static>>,
+    max_lines: usize,
+    colors: &crate::theme::RatatuiColors,
+) -> Vec<Line<'static>> {
+    if lines.len() <= max_lines.max(1) {
+        return lines;
+    }
+    let keep = max_lines.max(4);
+    let total = lines.len();
+    let mut out = Vec::with_capacity(keep + 1);
+    out.push(Line::from(vec![Span::styled(
+        format!(
+            "    … live stream trimmed (showing last {} of {} lines)",
+            keep, total
+        ),
+        Style::default()
+            .fg(colors.status_bar_dim)
+            .bg(colors.background)
+            .add_modifier(Modifier::ITALIC),
+    )]));
+    out.extend(lines.into_iter().skip(total.saturating_sub(keep)));
+    out
+}
+
 fn value_to_display_text(value: &serde_json::Value) -> String {
     match value {
         serde_json::Value::String(raw) => {
@@ -2334,7 +2407,12 @@ fn append_transcript_message_lines(
     if let Some(content) = msg.content.as_deref() {
         match msg.role {
             hermes_core::MessageRole::Assistant => {
-                lines.extend(render_assistant_markdown_lines(content, styles, colors));
+                let assistant_lines = render_assistant_markdown_lines(content, styles, colors);
+                lines.extend(collapse_render_lines_with_notice(
+                    assistant_lines,
+                    MAX_ASSISTANT_RENDER_LINES,
+                    colors,
+                ));
             }
             hermes_core::MessageRole::Tool => {
                 let card_key = format!("tool:{msg_idx}");
@@ -2487,9 +2565,10 @@ fn build_transcript_lines(
                 styles.assistant_response.add_modifier(Modifier::BOLD),
             ),
         ]));
-        lines.extend(render_assistant_markdown_lines(
-            &state.stream_buffer,
-            styles,
+        let stream_lines = render_assistant_markdown_lines(&state.stream_buffer, styles, colors);
+        lines.extend(tail_render_lines_with_notice(
+            stream_lines,
+            MAX_STREAM_RENDER_LINES,
             colors,
         ));
         lines.push(Line::from(vec![Span::styled(
@@ -2621,6 +2700,7 @@ fn render_messages(
             state.transcript_cache = TranscriptCache {
                 fingerprint,
                 width: wrap_width,
+                visual_rows: approximate_visual_rows(&lines, wrap_width),
                 total_messages: transcript.len(),
                 rendered_messages,
                 message_fingerprints,
@@ -2653,6 +2733,7 @@ fn render_messages(
             };
 
             let new_lines = build_transcript_lines(&transcript, state, styles, colors, wrap_width);
+            let new_visual_rows = approximate_visual_rows(&new_lines, wrap_width);
             if let Some((anchor_text, old_start, old_len)) = prev_anchor_line {
                 let new_len = new_lines.len();
                 let expected_idx = if old_len > 0 {
@@ -2672,6 +2753,7 @@ fn render_messages(
             state.transcript_cache = TranscriptCache {
                 fingerprint,
                 width: wrap_width,
+                visual_rows: new_visual_rows,
                 total_messages: transcript.len(),
                 rendered_messages: count_renderable_messages(&transcript),
                 message_fingerprints,
@@ -2687,7 +2769,7 @@ fn render_messages(
     if state.auto_follow_transcript {
         state.scroll_offset = 0;
     }
-    let total_visual_rows = approximate_visual_rows(lines, wrap_width);
+    let total_visual_rows = state.transcript_cache.visual_rows.max(1);
     let max_hidden_from_bottom = total_visual_rows.saturating_sub(viewport_rows);
     let hidden_from_bottom = usize::from(state.scroll_offset).min(max_hidden_from_bottom);
     if usize::from(state.scroll_offset) != hidden_from_bottom {
@@ -3911,6 +3993,20 @@ fn handle_agent_run_complete(
 fn process_stream_lane_event(app: &mut App, state: &mut TuiState, event: Event) -> bool {
     match event {
         Event::StreamDelta(delta) => {
+            if !delta.is_empty() {
+                state.stream_chunk_count = state.stream_chunk_count.saturating_add(1);
+                state.stream_char_count = state
+                    .stream_char_count
+                    .saturating_add(delta.chars().count());
+                if !state.saw_first_token {
+                    state.saw_first_token = true;
+                    let first_token_ms = state
+                        .processing_started_at
+                        .map(|t| t.elapsed().as_millis())
+                        .unwrap_or_default();
+                    state.push_activity(format!("↧ first token in {}ms", first_token_ms));
+                }
+            }
             state.stream_buffer.push_str(&delta);
             true
         }
@@ -4411,10 +4507,14 @@ pub async fn run(mut app: App) -> Result<(), AgentError> {
             stream_event = tui.stream_events.recv() => {
                 if let Some(first) = stream_event {
                     let mut redraw = process_stream_lane_event(&mut app, &mut state, first);
-                    for _ in 0..256 {
+                    let drain_started = Instant::now();
+                    for _ in 0..96 {
                         match tui.stream_events.try_recv() {
                             Ok(next) => {
                                 redraw |= process_stream_lane_event(&mut app, &mut state, next);
+                                if drain_started.elapsed() >= Duration::from_millis(6) {
+                                    break;
+                                }
                             }
                             Err(tokio::sync::mpsc::error::TryRecvError::Empty) => break,
                             Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => break,
@@ -4993,5 +5093,46 @@ mod tests {
         assert!(!joined.contains('天'));
         assert!(!joined.contains('大'));
         assert!(joined.contains("regular line"));
+    }
+
+    #[test]
+    fn test_scaffold_detector_matches_embedded_tool_tags() {
+        let line = "random prefix <tool_use><name>terminal</name></tool_use> suffix";
+        assert!(looks_like_internal_scaffold_line(line));
+    }
+
+    #[test]
+    fn test_collapse_render_lines_adds_notice() {
+        let theme = Theme::default_theme();
+        let colors = theme.colors.to_ratatui_colors();
+        let input: Vec<Line<'static>> = (0..40)
+            .map(|idx| Line::from(format!("line-{idx}")))
+            .collect();
+        let collapsed = collapse_render_lines_with_notice(input, 12, &colors);
+        let joined = collapsed
+            .iter()
+            .map(Line::to_string)
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(collapsed.len() <= 13);
+        assert!(joined.contains("transcript compressed for readability"));
+    }
+
+    #[test]
+    fn test_tail_render_lines_keeps_latest_rows() {
+        let theme = Theme::default_theme();
+        let colors = theme.colors.to_ratatui_colors();
+        let input: Vec<Line<'static>> = (0..20)
+            .map(|idx| Line::from(format!("tail-{idx}")))
+            .collect();
+        let tailed = tail_render_lines_with_notice(input, 5, &colors);
+        let joined = tailed
+            .iter()
+            .map(Line::to_string)
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(tailed.len() <= 6);
+        assert!(joined.contains("tail-19"));
+        assert!(joined.contains("live stream trimmed"));
     }
 }
