@@ -201,10 +201,10 @@ pub const SLASH_COMMANDS: &[(&str, &str)] = &[
     ("/question", "Alias for /ask"),
     ("/steer", "Inject non-interrupt steering instruction"),
     ("/btw", "Run an ephemeral side-question"),
-    ("/plan", "Show planning helper status"),
-    ("/lsp", "Show language-server/indexing context status"),
-    ("/graph", "Show graph-memory/context status"),
-    ("/image", "Attach an image path for next prompt"),
+    ("/plan", "Queue planning work or inspect planner queue status"),
+    ("/lsp", "Show code-index/LSP context status and controls"),
+    ("/graph", "Show graph-memory and ContextLattice status"),
+    ("/image", "Attach/clear an image hint consumed by next prompt"),
     ("/config", "Show or modify configuration"),
     (
         "/autocompact",
@@ -246,19 +246,19 @@ pub const SLASH_COMMANDS: &[(&str, &str)] = &[
     ("/commands", "Show categorized slash command catalog"),
     ("/log", "Show recent runtime log files"),
     ("/debug", "Generate local debug-report guidance"),
-    ("/debug-dump", "Dump local debug/session details"),
-    ("/dump-format", "Show transcript export format"),
-    ("/experiment", "Show experiment toggle surface"),
-    ("/feedback", "Show feedback/report channels"),
+    ("/debug-dump", "Write local session diagnostics snapshot"),
+    ("/dump-format", "Show concrete transcript snapshot schema"),
+    ("/experiment", "Set/clear experiment steering context"),
+    ("/feedback", "Record feedback note into local logs"),
     ("/copy", "Copy latest assistant message (if supported)"),
     ("/paste", "Attach clipboard payload (if supported)"),
     ("/gquota", "Show Google quota hint (if configured)"),
     ("/sethome", "Set home channel/session marker"),
     ("/set-home", "Alias for /sethome"),
-    ("/restart", "Restart gateway process (gateway mode)"),
+    ("/restart", "Restart current interactive session"),
     ("/approve", "Approve pending action (gateway mode)"),
     ("/deny", "Deny pending action (gateway mode)"),
-    ("/update", "Check update policy/status"),
+    ("/update", "Run update checker and report status"),
     ("/save", "Save current session to disk"),
     ("/load", "Load a saved session"),
     ("/resume", "Resume the most recent or named saved session"),
@@ -275,7 +275,7 @@ pub const SLASH_COMMANDS: &[(&str, &str)] = &[
         "/browser",
         "Manage local Chrome CDP bridge (`status|connect [ws/http-url]|disconnect`)",
     ),
-    ("/redraw", "Force TUI redraw compatibility surface"),
+    ("/redraw", "Force a local repaint pulse in the TUI"),
     (
         "/reasoning",
         "Reasoning controls (display + effort: status/on/off/set <low|medium|high|xhigh>)",
@@ -3058,9 +3058,10 @@ pub async fn handle_slash_command(
         "/cron" => handle_cron_command(app),
         "/agents" => handle_agents_command(app),
         "/kanban" => handle_kanban_command(app, args),
-        "/plan" | "/lsp" | "/graph" | "/image" => {
-            handle_capability_surface_command(app, canonical_command(cmd), args)
-        }
+        "/plan" => handle_plan_command(app, args),
+        "/lsp" => handle_lsp_command(app, args),
+        "/graph" => handle_graph_command(app, args),
+        "/image" => handle_image_command(app, args),
         "/config" => handle_config_command(app, args),
         "/autocompact" => handle_autocompact_command(app, args),
         "/compress" => handle_compress_command(app),
@@ -3080,8 +3081,13 @@ pub async fn handle_slash_command(
             Ok(CommandResult::Handled)
         }
         "/log" => handle_log_command(app),
-        "/debug-dump" | "/dump-format" | "/experiment" | "/feedback" | "/restart" | "/update"
-        | "/redraw" => handle_compatibility_notice_command(app, canonical_command(cmd), args),
+        "/debug-dump" => handle_debug_dump_command(app, args),
+        "/dump-format" => handle_dump_format_command(app),
+        "/experiment" => handle_experiment_command(app, args),
+        "/feedback" => handle_feedback_command(app, args),
+        "/restart" => handle_restart_command(app, args),
+        "/update" => handle_update_command(app, args).await,
+        "/redraw" => handle_redraw_command(app),
         "/paste" => handle_paste_command(app, args),
         "/gquota" => handle_gquota_command(app, args).await,
         "/approve" => handle_approve_command(app, args),
@@ -8657,33 +8663,204 @@ fn handle_kanban_command(app: &mut App, args: &[&str]) -> Result<CommandResult, 
     Ok(CommandResult::Handled)
 }
 
-fn handle_capability_surface_command(
-    app: &mut App,
-    cmd: &str,
-    args: &[&str],
-) -> Result<CommandResult, AgentError> {
-    let msg = match cmd {
-        "/plan" => "Planning mode is available through structured prompting and delegated workers; use `/background <task>` for long-running plans.",
-        "/lsp" => "LSP/code-index context is enabled by default for workspace-aware runs. If context seems stale, restart the session to refresh index snapshots.",
-        "/graph" => "Graph-memory and ContextLattice integration are active; use normal prompts and the agent will retrieve memory context automatically.",
-        "/image" => {
-            if let Some(path) = args.first() {
-                return {
-                    emit_command_output(
-                        app,
-                        format!(
-                            "Image hint captured: `{}`.\nSend your next prompt describing how Hermes should use this image.",
-                            path
-                        ),
-                    );
-                    Ok(CommandResult::Handled)
-                };
-            }
-            "Usage: /image <path> — attach an image hint for your next prompt."
+fn handle_plan_command(app: &mut App, args: &[&str]) -> Result<CommandResult, AgentError> {
+    if args.is_empty()
+        || args
+            .first()
+            .is_some_and(|v| matches!(v.to_ascii_lowercase().as_str(), "help" | "usage"))
+    {
+        emit_command_output(
+            app,
+            "Planner controls:\n  /plan <task>          Queue a planning/research task in background\n  /plan status          Show queue health + active steering\n  /plan list            Show queue health + active steering\n  /plan clear           Clear queued/running status records",
+        );
+        return Ok(CommandResult::Handled);
+    }
+
+    let sub = args[0].to_ascii_lowercase();
+    if sub == "status" || sub == "list" {
+        let (queued, running, completed, failed) = background_job_counts();
+        let mut out = String::new();
+        let _ = writeln!(out, "Planner queue status");
+        let _ = writeln!(
+            out,
+            "  queued={} running={} completed={} failed={}",
+            queued, running, completed, failed
+        );
+        if let Some(steer) = current_session_steer(app) {
+            let _ = writeln!(out, "  steering={}", truncate_chars(&steer, 160));
+        } else {
+            let _ = writeln!(out, "  steering=(none)");
         }
-        _ => "Command surface available.",
-    };
-    emit_command_output(app, msg);
+        if let Some(objective) = app.session_objective.as_deref() {
+            let _ = writeln!(out, "  objective={}", truncate_chars(objective, 160));
+        } else {
+            let _ = writeln!(out, "  objective=(none)");
+        }
+        emit_command_output(app, out.trim_end());
+        return Ok(CommandResult::Handled);
+    }
+    if sub == "clear" {
+        return handle_clear_queue_command(app);
+    }
+    handle_background_command(app, args)
+}
+
+fn handle_lsp_command(app: &mut App, args: &[&str]) -> Result<CommandResult, AgentError> {
+    let sub = args
+        .first()
+        .map(|v| v.to_ascii_lowercase())
+        .unwrap_or_else(|| "status".to_string());
+    match sub.as_str() {
+        "status" | "show" => {
+            let cwd = std::env::current_dir()
+                .map(|p| p.display().to_string())
+                .unwrap_or_else(|_| "<unavailable>".to_string());
+            let mut out = String::new();
+            let _ = writeln!(out, "LSP/code-index status");
+            let _ = writeln!(out, "  cwd: {}", cwd);
+            let _ = writeln!(
+                out,
+                "  code_index_enabled: {}",
+                yes_no(app.config.agent.code_index_enabled)
+            );
+            let _ = writeln!(
+                out,
+                "  code_index_max_files: {}",
+                app.config.agent.code_index_max_files
+            );
+            let _ = writeln!(
+                out,
+                "  code_index_max_symbols: {}",
+                app.config.agent.code_index_max_symbols
+            );
+            let _ = writeln!(
+                out,
+                "  lsp_context_enabled: {}",
+                yes_no(app.config.agent.lsp_context_enabled)
+            );
+            let _ = writeln!(
+                out,
+                "  lsp_context_max_chars: {}",
+                app.config.agent.lsp_context_max_chars
+            );
+            let _ = writeln!(
+                out,
+                "  tip: run `/plan map the repo architecture` to force a high-signal repo-map pass."
+            );
+            emit_command_output(app, out.trim_end());
+        }
+        "refresh" => {
+            emit_command_output(
+                app,
+                "Code index refresh is automatic while the agent executes tool calls. Queue a focused analysis with `/plan <task>` if you want a deliberate repo-map rebuild now.",
+            );
+        }
+        "help" => {
+            emit_command_output(
+                app,
+                "Usage: /lsp [status|refresh]\n  status   show code-index + LSP context configuration\n  refresh  explain how to trigger a fresh index pass",
+            );
+        }
+        _ => emit_command_output(app, "Usage: /lsp [status|refresh]"),
+    }
+    Ok(CommandResult::Handled)
+}
+
+fn handle_graph_command(app: &mut App, args: &[&str]) -> Result<CommandResult, AgentError> {
+    let sub = args
+        .first()
+        .map(|v| v.to_ascii_lowercase())
+        .unwrap_or_else(|| "status".to_string());
+    match sub.as_str() {
+        "status" | "show" => {
+            let contextlattice_mcp = app.config.mcp_servers.iter().any(|entry| {
+                let name = entry.name.to_ascii_lowercase();
+                let url = entry
+                    .url
+                    .as_deref()
+                    .unwrap_or_default()
+                    .to_ascii_lowercase();
+                name.contains("contextlattice") || url.contains("contextlattice")
+            });
+            let policy = load_contextlattice_policy().ok();
+            let mut out = String::new();
+            let _ = writeln!(out, "Graph-memory status");
+            let _ = writeln!(out, "  contextlattice_mcp: {}", yes_no(contextlattice_mcp));
+            if let Some(policy) = policy {
+                let _ = writeln!(
+                    out,
+                    "  retrieval_mode_hint: {}",
+                    policy.preferred_retrieval_mode
+                );
+                let _ = writeln!(out, "  preflight_required: {}", policy.preflight_required);
+                let _ = writeln!(
+                    out,
+                    "  include_grounding_required: {}",
+                    policy.include_grounding_required
+                );
+                let _ = writeln!(
+                    out,
+                    "  degradation_aware_planning: {}",
+                    policy.degradation_aware_planning
+                );
+            } else {
+                let _ = writeln!(out, "  contextlattice_policy: unavailable");
+            }
+            emit_command_output(app, out.trim_end());
+        }
+        "help" => emit_command_output(app, "Usage: /graph [status]"),
+        _ => emit_command_output(app, "Usage: /graph [status]"),
+    }
+    Ok(CommandResult::Handled)
+}
+
+fn handle_image_command(app: &mut App, args: &[&str]) -> Result<CommandResult, AgentError> {
+    if args.is_empty() {
+        let status = app
+            .pending_image_hint()
+            .map(|path| {
+                format!(
+                    "Pending image hint: {}\nUse `/image clear` to remove it.",
+                    path
+                )
+            })
+            .unwrap_or_else(|| {
+                "No pending image hint.\nUsage: /image <path> | /image clear".to_string()
+            });
+        emit_command_output(app, status);
+        return Ok(CommandResult::Handled);
+    }
+
+    if args[0].eq_ignore_ascii_case("clear") {
+        app.clear_pending_image_hint();
+        emit_command_output(app, "Cleared pending image hint.");
+        return Ok(CommandResult::Handled);
+    }
+
+    let path = args.join(" ").trim().to_string();
+    if path.is_empty() {
+        emit_command_output(app, "Usage: /image <path> | /image clear");
+        return Ok(CommandResult::Handled);
+    }
+    let exists = Path::new(&path).exists();
+    app.set_pending_image_hint(path.clone());
+    if exists {
+        emit_command_output(
+            app,
+            format!(
+                "Image hint queued: `{}`.\nIt will be injected into the next prompt automatically.",
+                path
+            ),
+        );
+    } else {
+        emit_command_output(
+            app,
+            format!(
+                "Image hint queued: `{}` (path not found right now).\nIt will still be injected into the next prompt.",
+                path
+            ),
+        );
+    }
     Ok(CommandResult::Handled)
 }
 
@@ -10514,31 +10691,188 @@ fn handle_log_command(app: &mut App) -> Result<CommandResult, AgentError> {
     Ok(CommandResult::Handled)
 }
 
-fn handle_compatibility_notice_command(
-    app: &mut App,
-    cmd: &str,
-    args: &[&str],
-) -> Result<CommandResult, AgentError> {
-    let arg = args.join(" ");
-    let msg = match cmd {
-        "/debug-dump" => "Debug dump compatibility mode: use `hermes debug share --local` for a full local diagnostic bundle.".to_string(),
-        "/dump-format" => "Transcript export format: JSON session snapshots (`/save`) with role/content fields plus metadata.".to_string(),
-        "/experiment" => format!(
-            "Experiment surface ready. Current model: {}. {}",
-            app.current_model,
-            if arg.trim().is_empty() {
-                "Use `/model` to switch experiment variants.".to_string()
-            } else {
-                format!("Received experiment hint: {}", arg.trim())
-            }
+fn handle_debug_dump_command(app: &mut App, _args: &[&str]) -> Result<CommandResult, AgentError> {
+    let stamp = chrono::Utc::now().format("%Y%m%d-%H%M%S").to_string();
+    let prefix = app.session_id.chars().take(8).collect::<String>();
+    let stem = format!("debug-{}-{}", prefix, stamp);
+    let snapshot_path = app.persist_session_snapshot(Some(&stem))?;
+    let logs_dir = hermes_config::hermes_home().join("logs");
+    let log_files = std::fs::read_dir(&logs_dir)
+        .ok()
+        .into_iter()
+        .flat_map(|rd| rd.filter_map(|entry| entry.ok()))
+        .filter(|entry| entry.path().is_file())
+        .count();
+    let out = format!(
+        "Debug snapshot written.\n  session_id: {}\n  model: {}\n  messages: {}\n  snapshot: {}\n  logs_dir: {} ({} files)\nTip: run `hermes debug share --local` for a support bundle.",
+        app.session_id,
+        app.current_model,
+        app.messages.len(),
+        snapshot_path.display(),
+        logs_dir.display(),
+        log_files
+    );
+    emit_command_output(app, out);
+    Ok(CommandResult::Handled)
+}
+
+fn handle_dump_format_command(app: &mut App) -> Result<CommandResult, AgentError> {
+    let mut out = String::new();
+    let _ = writeln!(out, "Session snapshot format");
+    let _ = writeln!(out, "  root keys: session_info, messages");
+    let _ = writeln!(
+        out,
+        "  session_info keys: session_id, model, personality, message_count, created_at"
+    );
+    let _ = writeln!(
+        out,
+        "  message keys: role, content, tool_call_id, tool_calls, reasoning_content"
+    );
+    let _ = writeln!(
+        out,
+        "  save path: {}/sessions/<session-id>.json",
+        app.state_root.display()
+    );
+    let _ = writeln!(out, "Use `/save [name]` to persist a snapshot now.");
+    emit_command_output(app, out.trim_end());
+    Ok(CommandResult::Handled)
+}
+
+fn handle_experiment_command(app: &mut App, args: &[&str]) -> Result<CommandResult, AgentError> {
+    if args.is_empty() {
+        let active = current_session_steer(app)
+            .filter(|value| value.to_ascii_lowercase().starts_with("experiment: "))
+            .map(|value| value.trim_start_matches("Experiment: ").to_string())
+            .unwrap_or_else(|| "(none)".to_string());
+        emit_command_output(
+            app,
+            format!(
+                "Experiment steering: {}\nUsage: /experiment <label or instruction> | /experiment clear",
+                active
+            ),
+        );
+        return Ok(CommandResult::Handled);
+    }
+    if args[0].eq_ignore_ascii_case("clear") {
+        let active = current_session_steer(app)
+            .map(|value| value.to_ascii_lowercase().starts_with("experiment: "))
+            .unwrap_or(false);
+        if active {
+            set_session_steer(app, None);
+            emit_command_output(app, "Cleared experiment steering context.");
+        } else {
+            emit_command_output(
+                app,
+                "No experiment steering context active. Use `/experiment <instruction>`.",
+            );
+        }
+        return Ok(CommandResult::Handled);
+    }
+    let hint = args.join(" ").trim().to_string();
+    if hint.is_empty() {
+        emit_command_output(
+            app,
+            "Usage: /experiment <label or instruction> | /experiment clear",
+        );
+        return Ok(CommandResult::Handled);
+    }
+    let steer = format!("Experiment: {hint}");
+    set_session_steer(app, Some(steer.clone()));
+    emit_command_output(
+        app,
+        format!(
+            "Experiment steering applied.\n{}\nUse `/model` to switch variants, then `/retry` to re-run the last turn.",
+            steer
         ),
-        "/feedback" => "Feedback channels: open a GitHub issue in this repository with repro steps + `hermes debug share --local` output.".to_string(),
-        "/restart" => "Gateway restart is a gateway-mode command. Use `hermes gateway restart`.".to_string(),
-        "/update" => "Update compatibility command: use `hermes update` for updater workflow.".to_string(),
-        "/redraw" => "Manual redraw acknowledged. Hermes Ultra uses continuous redraw scheduling; if the UI looks stale press `Ctrl+L` to toggle the activity lane and force a repaint.".to_string(),
-        _ => "Compatibility command acknowledged.".to_string(),
-    };
-    emit_command_output(app, msg);
+    );
+    Ok(CommandResult::Handled)
+}
+
+fn feedback_log_path() -> PathBuf {
+    hermes_config::hermes_home()
+        .join("logs")
+        .join("feedback.ndjson")
+}
+
+fn handle_feedback_command(app: &mut App, args: &[&str]) -> Result<CommandResult, AgentError> {
+    if args.is_empty() {
+        emit_command_output(
+            app,
+            "Usage: /feedback <note>\nStores a local feedback record at ~/.hermes-agent-ultra/logs/feedback.ndjson.",
+        );
+        return Ok(CommandResult::Handled);
+    }
+    let note = args.join(" ").trim().to_string();
+    if note.is_empty() {
+        emit_command_output(app, "Usage: /feedback <note>");
+        return Ok(CommandResult::Handled);
+    }
+    let path = feedback_log_path();
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| AgentError::Io(format!("Failed to create {}: {}", parent.display(), e)))?;
+    }
+    let record = serde_json::json!({
+        "at": chrono::Utc::now().to_rfc3339(),
+        "session_id": app.session_id,
+        "model": app.current_model,
+        "note": note,
+    });
+    let mut writer = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .map_err(|e| AgentError::Io(format!("Failed to open {}: {}", path.display(), e)))?;
+    writer
+        .write_all(format!("{}\n", record).as_bytes())
+        .map_err(|e| AgentError::Io(format!("Failed to append {}: {}", path.display(), e)))?;
+    emit_command_output(app, format!("Feedback captured in {}", path.display()));
+    Ok(CommandResult::Handled)
+}
+
+fn handle_restart_command(app: &mut App, args: &[&str]) -> Result<CommandResult, AgentError> {
+    let preserve_model = args.first().is_some_and(|v| {
+        matches!(
+            v.to_ascii_lowercase().as_str(),
+            "keep-model" | "--keep-model"
+        )
+    });
+    let previous_model = app.current_model.clone();
+    app.new_session();
+    if preserve_model && !previous_model.eq_ignore_ascii_case(&app.current_model) {
+        app.switch_model(&previous_model);
+    }
+    emit_command_output(
+        app,
+        format!(
+            "Session restarted.\n  new_session_id: {}\n  model: {}",
+            app.session_id, app.current_model
+        ),
+    );
+    Ok(CommandResult::Handled)
+}
+
+async fn handle_update_command(app: &mut App, args: &[&str]) -> Result<CommandResult, AgentError> {
+    let check_only = args
+        .first()
+        .is_some_and(|v| matches!(v.to_ascii_lowercase().as_str(), "check" | "--check"));
+    let report = crate::update::check_for_updates().await?;
+    let mut out = String::new();
+    let _ = writeln!(out, "Update status");
+    if check_only {
+        let _ = writeln!(out, "  mode: check-only");
+    }
+    let _ = writeln!(out, "{}", report.trim());
+    emit_command_output(app, out.trim_end());
+    Ok(CommandResult::Handled)
+}
+
+fn handle_redraw_command(app: &mut App) -> Result<CommandResult, AgentError> {
+    app.push_ui_assistant("↻ Repaint pulse requested.");
+    emit_command_output(
+        app,
+        "Repaint pulse sent.\nIf the screen still looks stale: press Ctrl+L (lane toggle) or resize the terminal once.",
+    );
     Ok(CommandResult::Handled)
 }
 
@@ -16326,6 +16660,95 @@ mod tests {
         let output = latest_ui_assistant_text(&app);
         assert!(output.contains("Gemini quota/auth diagnostics"));
         assert!(output.contains("active provider:"));
+    }
+
+    #[tokio::test]
+    async fn promoted_image_command_queues_and_consumes_hint() {
+        let _guard = env_test_lock();
+        let tmp = tempdir().expect("tempdir");
+        let _home_guard = TempHomeGuard::new(tmp.path());
+        let mut app = build_test_app_with_stream(tmp.path()).await;
+
+        let result =
+            handle_image_command(&mut app, &["/tmp/example-image.png"]).expect("image queue");
+        assert_eq!(result, CommandResult::Handled);
+        assert_eq!(app.pending_image_hint(), Some("/tmp/example-image.png"));
+        assert!(latest_ui_assistant_text(&app).contains("Image hint queued"));
+
+        let prepared = app.prepare_user_message("analyze the screenshot");
+        assert!(prepared.starts_with("[IMAGE_HINT] path=/tmp/example-image.png"));
+        assert!(app.pending_image_hint().is_none());
+
+        let cleared = handle_image_command(&mut app, &["clear"]).expect("image clear");
+        assert_eq!(cleared, CommandResult::Handled);
+        assert!(latest_ui_assistant_text(&app).contains("Cleared pending image hint"));
+    }
+
+    #[tokio::test]
+    async fn promoted_feedback_command_writes_feedback_log() {
+        let _guard = env_test_lock();
+        let tmp = tempdir().expect("tempdir");
+        let _home_guard = TempHomeGuard::new(tmp.path());
+        let mut app = build_test_app_with_stream(tmp.path()).await;
+
+        let result = handle_feedback_command(&mut app, &["solid", "repro", "steps"])
+            .expect("feedback write");
+        assert_eq!(result, CommandResult::Handled);
+        let output = latest_ui_assistant_text(&app);
+        assert!(output.contains("Feedback captured in"));
+
+        let path = feedback_log_path();
+        let raw = std::fs::read_to_string(&path).expect("read feedback log");
+        assert!(raw.contains("\"note\":\"solid repro steps\""));
+    }
+
+    #[tokio::test]
+    async fn promoted_debug_dump_command_writes_session_snapshot() {
+        let _guard = env_test_lock();
+        let tmp = tempdir().expect("tempdir");
+        let _home_guard = TempHomeGuard::new(tmp.path());
+        let mut app = build_test_app_with_stream(tmp.path()).await;
+
+        app.messages.push(hermes_core::Message::user("hello"));
+        let result = handle_debug_dump_command(&mut app, &[]).expect("debug dump");
+        assert_eq!(result, CommandResult::Handled);
+        let output = latest_ui_assistant_text(&app);
+        assert!(output.contains("Debug snapshot written."));
+
+        let sessions_dir = app.state_root.join("sessions");
+        let count = std::fs::read_dir(sessions_dir)
+            .expect("sessions dir")
+            .filter_map(|entry| entry.ok())
+            .count();
+        assert!(count > 0);
+    }
+
+    #[tokio::test]
+    async fn promoted_plan_status_command_emits_queue_summary() {
+        let _guard = env_test_lock();
+        let tmp = tempdir().expect("tempdir");
+        let _home_guard = TempHomeGuard::new(tmp.path());
+        let mut app = build_test_app_with_stream(tmp.path()).await;
+
+        let result = handle_plan_command(&mut app, &["status"]).expect("plan status");
+        assert_eq!(result, CommandResult::Handled);
+        let output = latest_ui_assistant_text(&app);
+        assert!(output.contains("Planner queue status"));
+        assert!(output.contains("queued="));
+    }
+
+    #[tokio::test]
+    async fn promoted_lsp_status_command_emits_index_details() {
+        let _guard = env_test_lock();
+        let tmp = tempdir().expect("tempdir");
+        let _home_guard = TempHomeGuard::new(tmp.path());
+        let mut app = build_test_app_with_stream(tmp.path()).await;
+
+        let result = handle_lsp_command(&mut app, &["status"]).expect("lsp status");
+        assert_eq!(result, CommandResult::Handled);
+        let output = latest_ui_assistant_text(&app);
+        assert!(output.contains("LSP/code-index status"));
+        assert!(output.contains("code_index_enabled"));
     }
 
     #[tokio::test]

@@ -5952,7 +5952,7 @@ async fn run_auth(
     match action.as_deref().unwrap_or("status") {
         "add" => {
             let provider = normalize_auth_provider(provider.trim());
-            let auth_type = resolve_auth_type_for_provider(&provider, auth_type.as_deref());
+            let mut auth_type = resolve_auth_type_for_provider(&provider, auth_type.as_deref());
 
             if auth_type == "oauth" {
                 match provider.as_str() {
@@ -6264,10 +6264,11 @@ async fn run_auth(
                         return Ok(());
                     }
                     _ => {
-                        return Err(AgentError::Config(format!(
-                            "OAuth flow is not implemented for provider '{}'",
+                        println!(
+                            "OAuth flow is not implemented for provider '{}'; falling back to API key/manual token login.",
                             provider
-                        )));
+                        );
+                        auth_type = "api_key".to_string();
                     }
                 }
             }

@@ -4473,7 +4473,8 @@ pub async fn run(mut app: App) -> Result<(), AgentError> {
                                         // can be consumed/rendered live by this UI loop.
                                         app.input_history.push(trimmed.clone());
                                         app.history_index = app.input_history.len();
-                                        app.messages.push(Message::user(trimmed.clone()));
+                                        let user_message = app.prepare_user_message(&trimmed);
+                                        app.messages.push(Message::user(user_message));
 
                                         state.begin_processing_cycle(&app.current_model);
                                         state.status_message = "Processing...".to_string();

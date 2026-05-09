@@ -267,6 +267,8 @@ pub struct App {
     pub mouse_enabled: bool,
     /// Pending skin/theme slug to apply in the TUI loop.
     pub pending_theme: Option<String>,
+    /// Optional image path hint injected into the next user prompt.
+    pub pending_image_hint: Option<String>,
     /// Optional durable objective for the current interactive session.
     pub session_objective: Option<String>,
     /// Animated companion pet settings.
@@ -284,6 +286,7 @@ impl std::fmt::Debug for App {
             .field("history_index", &self.history_index)
             .field("mouse_enabled", &self.mouse_enabled)
             .field("pending_theme", &self.pending_theme)
+            .field("pending_image_hint", &self.pending_image_hint)
             .field("session_objective", &self.session_objective)
             .field("pet_settings", &self.pet_settings)
             .finish_non_exhaustive()
@@ -659,6 +662,7 @@ impl App {
             stream_handle_shared,
             mouse_enabled: default_mouse_enabled(),
             pending_theme: None,
+            pending_image_hint: None,
             session_objective: None,
             pet_settings: load_pet_settings(),
         };
@@ -691,6 +695,40 @@ impl App {
             return;
         }
         self.pending_theme = Some(value.to_string());
+    }
+
+    /// Queue an image hint for the next user prompt.
+    pub fn set_pending_image_hint(&mut self, path: String) {
+        let trimmed = path.trim();
+        self.pending_image_hint = if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        };
+    }
+
+    /// Read queued image hint without consuming it.
+    pub fn pending_image_hint(&self) -> Option<&str> {
+        self.pending_image_hint.as_deref()
+    }
+
+    /// Clear queued image hint.
+    pub fn clear_pending_image_hint(&mut self) {
+        self.pending_image_hint = None;
+    }
+
+    /// Prepare outbound user text, consuming any queued image hint.
+    pub fn prepare_user_message(&mut self, raw: &str) -> String {
+        let base = raw.trim();
+        if let Some(path) = self
+            .pending_image_hint
+            .take()
+            .filter(|value| !value.trim().is_empty())
+        {
+            format!("[IMAGE_HINT] path={}\n{}", path, base)
+        } else {
+            base.to_string()
+        }
     }
 
     /// Drain any queued skin/theme change request.
@@ -763,7 +801,8 @@ impl App {
             }
         } else {
             // Regular user message
-            self.messages.push(hermes_core::Message::user(trimmed));
+            let user_message = self.prepare_user_message(trimmed);
+            self.messages.push(hermes_core::Message::user(user_message));
             self.run_agent().await?;
         }
 
@@ -806,6 +845,7 @@ impl App {
         self.session_id = Uuid::new_v4().to_string();
         self.messages.clear();
         self.ui_messages.clear();
+        self.pending_image_hint = None;
         self.session_objective = None;
         self.input_history.clear();
         self.history_index = 0;
@@ -816,6 +856,7 @@ impl App {
     pub fn reset_session(&mut self) {
         self.messages.clear();
         self.ui_messages.clear();
+        self.pending_image_hint = None;
         self.session_objective = None;
         self.input_history.clear();
         self.history_index = 0;
@@ -1532,6 +1573,7 @@ mod tests {
             stream_handle_shared: Arc::new(StdMutex::new(None)),
             mouse_enabled: true,
             pending_theme: None,
+            pending_image_hint: None,
             session_objective: None,
             pet_settings: PetSettings::default(),
         }
