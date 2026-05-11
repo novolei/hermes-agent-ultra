@@ -807,6 +807,10 @@ fn fuse_memory_candidates(candidates: Vec<FusedMemoryCandidate>, query: &str) ->
 mod tests {
     use super::*;
 
+    lazy_static::lazy_static! {
+        static ref FUSION_ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    }
+
     /// A minimal test provider.
     struct TestProvider {
         provider_name: String,
@@ -965,6 +969,9 @@ mod tests {
 
     #[test]
     fn test_fusion_deduplicates_and_orders_by_score() {
+        let _guard = FUSION_ENV_LOCK.lock().expect("fusion env lock");
+        let orig = std::env::var("HERMES_MEMORY_FUSION_MIN_CONFIDENCE").ok();
+        std::env::remove_var("HERMES_MEMORY_FUSION_MIN_CONFIDENCE");
         let candidates = vec![
             FusedMemoryCandidate {
                 provider: "builtin".to_string(),
@@ -984,10 +991,15 @@ mod tests {
         assert!(fused[0].contains("Rust"));
         assert!(fused[0].contains("score="));
         assert!(fused[0].contains("conf="));
+        match orig {
+            Some(v) => std::env::set_var("HERMES_MEMORY_FUSION_MIN_CONFIDENCE", v),
+            None => std::env::remove_var("HERMES_MEMORY_FUSION_MIN_CONFIDENCE"),
+        }
     }
 
     #[test]
     fn test_fusion_min_confidence_gate_filters_low_confidence() {
+        let _guard = FUSION_ENV_LOCK.lock().expect("fusion env lock");
         let orig = std::env::var("HERMES_MEMORY_FUSION_MIN_CONFIDENCE").ok();
         std::env::set_var("HERMES_MEMORY_FUSION_MIN_CONFIDENCE", "0.95");
         let candidates = vec![

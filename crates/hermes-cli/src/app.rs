@@ -719,8 +719,12 @@ impl App {
         let agent_config = build_agent_config(&config, &current_model);
         let provider = build_provider(&config, &current_model);
 
-        let agent_inner = AgentLoop::new(agent_config, agent_tool_registry, provider)
-            .with_callbacks(Self::stream_callbacks(stream_handle_shared.clone()));
+        let agent_inner = hermes_agent::attach_discovered_memory(AgentLoop::new(
+            agent_config,
+            agent_tool_registry,
+            provider,
+        ))
+        .with_callbacks(Self::stream_callbacks(stream_handle_shared.clone()));
         let orchestrator = Arc::new(SubAgentOrchestrator::from_parent(
             &agent_inner,
             state_root.clone(),
@@ -1030,8 +1034,12 @@ impl App {
         let agent_config = build_agent_config(&self.config, &self.current_model);
         let agent_tool_registry = Arc::new(bridge_tool_registry(&self.tool_registry));
 
-        let agent_inner = AgentLoop::new(agent_config, agent_tool_registry, provider)
-            .with_callbacks(Self::stream_callbacks(self.stream_handle_shared.clone()));
+        let agent_inner = hermes_agent::attach_discovered_memory(AgentLoop::new(
+            agent_config,
+            agent_tool_registry,
+            provider,
+        ))
+        .with_callbacks(Self::stream_callbacks(self.stream_handle_shared.clone()));
         let orchestrator = Arc::new(SubAgentOrchestrator::from_parent(
             &agent_inner,
             self.state_root.clone(),
@@ -1670,8 +1678,12 @@ mod tests {
         let provider: Arc<dyn LlmProvider> = Arc::new(NoBackendProvider {
             model: "openai:gpt-4o".to_string(),
         });
-        let agent_inner = AgentLoop::new(agent_config, agent_tool_registry, provider)
-            .with_callbacks(App::stream_callbacks(Arc::new(StdMutex::new(None))));
+        let agent_inner = hermes_agent::attach_discovered_memory(AgentLoop::new(
+            agent_config,
+            agent_tool_registry,
+            provider,
+        ))
+        .with_callbacks(App::stream_callbacks(Arc::new(StdMutex::new(None))));
         let orchestrator = Arc::new(SubAgentOrchestrator::from_parent(
             &agent_inner,
             hermes_home_dir(),

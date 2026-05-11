@@ -20,6 +20,7 @@ use async_trait::async_trait;
 use axum::extract::ws::{Message as WsMessage, WebSocket};
 use axum::extract::{Path, State, WebSocketUpgrade};
 use axum::http::header;
+use axum::http::HeaderMap;
 use axum::http::StatusCode;
 use axum::middleware;
 use axum::response::{IntoResponse, Response};
@@ -47,6 +48,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 pub const HTTP_PLATFORM: &str = "http";
+const SESSION_KEY_HEADER: &str = "x-hermes-session-key";
 
 #[derive(Clone, Default)]
 pub struct ChatOutboundBuffer {
@@ -434,13 +436,24 @@ fn http_user_id(explicit: Option<String>) -> String {
         .unwrap_or_else(|| "http".to_string())
 }
 
+fn session_key_from_headers(headers: &HeaderMap) -> Option<String> {
+    headers
+        .get(SESSION_KEY_HEADER)
+        .and_then(|v| v.to_str().ok())
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+        .map(ToString::to_string)
+}
+
 async fn send_message(
     Path(session_id): Path<String>,
     State(state): State<HttpServerState>,
+    headers: HeaderMap,
     Json(req): Json<SendMessageRequest>,
 ) -> Result<Json<SendMessageResponse>, HttpError> {
     hermes_telemetry::record_http_request();
     let user_id = http_user_id(req.user_id.clone());
+    let effective_session_id = session_key_from_headers(&headers).unwrap_or(session_id);
 
     if req.model.is_some() || req.provider.is_some() {
         let full = resolve_model(
@@ -456,7 +469,7 @@ async fn send_message(
             .gateway
             .merge_request_runtime_overrides(
                 HTTP_PLATFORM,
-                &session_id,
+                &effective_session_id,
                 &user_id,
                 Some(full),
                 None,
@@ -468,7 +481,7 @@ async fn send_message(
             .gateway
             .merge_request_runtime_overrides(
                 HTTP_PLATFORM,
-                &session_id,
+                &effective_session_id,
                 &user_id,
                 None,
                 None,
@@ -477,10 +490,10 @@ async fn send_message(
             .await;
     }
 
-    state.outbound.clear_chat(&session_id);
+    state.outbound.clear_chat(&effective_session_id);
     let incoming = IncomingMessage {
         platform: HTTP_PLATFORM.to_string(),
-        chat_id: session_id.clone(),
+        chat_id: effective_session_id.clone(),
         user_id,
         text: req.text,
         message_id: None,
@@ -496,7 +509,7 @@ async fn send_message(
             message: e.to_string(),
         })?;
 
-    let parts = state.outbound.drain_chat(&session_id);
+    let parts = state.outbound.drain_chat(&effective_session_id);
     let reply = if parts.is_empty() {
         "(no gateway output)".to_string()
     } else {
@@ -505,11 +518,11 @@ async fn send_message(
 
     let message_count = state
         .gateway
-        .session_transcript_len(HTTP_PLATFORM, &session_id, &incoming.user_id)
+        .session_transcript_len(HTTP_PLATFORM, &effective_session_id, &incoming.user_id)
         .await;
 
     Ok(Json(SendMessageResponse {
-        session_id,
+        session_id: effective_session_id,
         reply,
         message_count,
     }))
@@ -517,6 +530,7 @@ async fn send_message(
 
 async fn exec_command(
     State(state): State<HttpServerState>,
+    headers: HeaderMap,
     Json(req): Json<CommandRequest>,
 ) -> Result<Json<CommandResponse>, HttpError> {
     hermes_telemetry::record_http_request();
@@ -534,11 +548,12 @@ async fn exec_command(
         format!("/{}", trimmed)
     };
 
-    let session_id = req
-        .session_id
-        .clone()
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| "default".to_string());
+    let session_id = session_key_from_headers(&headers).unwrap_or_else(|| {
+        req.session_id
+            .clone()
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "default".to_string())
+    });
     let user_id = http_user_id(req.user_id.clone());
 
     state.outbound.clear_chat(&session_id);
@@ -578,14 +593,22 @@ async fn ws_upgrade(
     ws: WebSocketUpgrade,
     Path(session_id): Path<String>,
     State(state): State<HttpServerState>,
+    headers: HeaderMap,
 ) -> Response {
-    ws.on_upgrade(move |socket| handle_ws(socket, state, session_id))
+    let session_key_override = session_key_from_headers(&headers);
+    ws.on_upgrade(move |socket| handle_ws(socket, state, session_id, session_key_override))
 }
 
-async fn handle_ws(mut socket: WebSocket, state: HttpServerState, session_id: String) {
+async fn handle_ws(
+    mut socket: WebSocket,
+    state: HttpServerState,
+    session_id: String,
+    session_key_override: Option<String>,
+) {
+    let effective_session_id = session_key_override.unwrap_or(session_id);
     let _ = socket
         .send(WsMessage::Text(
-            format!("connected session={}", session_id).into(),
+            format!("connected session={}", effective_session_id).into(),
         ))
         .await;
     while let Some(Ok(msg)) = socket.next().await {
@@ -600,8 +623,9 @@ async fn handle_ws(mut socket: WebSocket, state: HttpServerState, session_id: St
                     user_id: None,
                 });
                 let result = send_message(
-                    Path(session_id.clone()),
+                    Path(effective_session_id.clone()),
                     State(state.clone()),
+                    HeaderMap::new(),
                     Json(request),
                 )
                 .await;
@@ -829,7 +853,7 @@ fn build_agent_for_gateway_context(
             FsPath::new(h),
         );
     }
-    AgentLoop::new(agent_config, agent_tools, provider)
+    hermes_agent::attach_discovered_memory(AgentLoop::new(agent_config, agent_tools, provider))
 }
 
 fn extract_last_assistant_reply(messages: &[Message]) -> String {

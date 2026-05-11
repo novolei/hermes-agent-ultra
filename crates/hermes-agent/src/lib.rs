@@ -116,3 +116,48 @@ pub use hermes_core::{
     AgentError, AgentResult, BudgetConfig, LlmProvider, Message, StreamChunk, ToolCall, ToolError,
     ToolResult, ToolSchema, UsageStats,
 };
+
+fn default_memory_home() -> String {
+    std::env::var("HERMES_HOME")
+        .ok()
+        .filter(|v| !v.trim().is_empty())
+        .or_else(|| {
+            std::env::var("HERMES_AGENT_ULTRA_HOME")
+                .ok()
+                .filter(|v| !v.trim().is_empty())
+        })
+        .or_else(|| {
+            std::env::var("HOME")
+                .ok()
+                .map(|home| format!("{home}/.hermes-agent-ultra"))
+        })
+        .unwrap_or_else(|| ".hermes-agent-ultra".to_string())
+}
+
+/// Attach discovered external memory providers to an `AgentLoop`.
+///
+/// This keeps ContextLattice-first and multi-provider memory behavior enabled
+/// consistently across CLI, gateway, HTTP, and cron execution surfaces.
+pub fn attach_discovered_memory(mut agent: AgentLoop) -> AgentLoop {
+    if agent.config.skip_memory {
+        return agent;
+    }
+    let session_id = agent
+        .config
+        .session_id
+        .clone()
+        .unwrap_or_else(|| "session-default".to_string());
+    let hermes_home = agent
+        .config
+        .hermes_home
+        .clone()
+        .unwrap_or_else(default_memory_home);
+    if let Some(manager) = memory_plugins::build_initialized_memory_manager(
+        &session_id,
+        &hermes_home,
+        agent.config.memory_nudge_interval,
+    ) {
+        agent = agent.with_memory(manager);
+    }
+    agent
+}

@@ -12803,8 +12803,12 @@ pub async fn handle_cli_chat(
         on_tool_complete: Some(on_tool_complete),
         ..Default::default()
     };
-    let agent = hermes_agent::AgentLoop::new(agent_config, agent_tool_registry, provider)
-        .with_callbacks(callbacks);
+    let agent = hermes_agent::attach_discovered_memory(hermes_agent::AgentLoop::new(
+        agent_config,
+        agent_tool_registry,
+        provider,
+    ))
+    .with_callbacks(callbacks);
 
     match query {
         Some(q) => {
@@ -17798,7 +17802,11 @@ impl hermes_acp::AcpPromptExecutor for CliAcpPromptExecutor {
         agent_config.session_id = Some(session.session_id.clone());
 
         let agent_tools = Arc::new(crate::app::bridge_tool_registry(&self.tool_registry));
-        let agent = hermes_agent::AgentLoop::new(agent_config, agent_tools, provider);
+        let agent = hermes_agent::attach_discovered_memory(hermes_agent::AgentLoop::new(
+            agent_config,
+            agent_tools,
+            provider,
+        ));
         let messages = acp_history_to_messages(history, user_text);
 
         let result = agent

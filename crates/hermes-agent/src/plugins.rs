@@ -78,6 +78,8 @@ pub enum HookResult {
     Ok,
     /// Hook wants to inject additional context into the message stream.
     InjectContext(String),
+    /// Hook wants to rewrite final assistant text before delivery.
+    TransformLlmOutput(String),
     /// Hook encountered an error.
     Error(String),
 }

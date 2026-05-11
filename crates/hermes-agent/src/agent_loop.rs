@@ -1953,6 +1953,20 @@ impl AgentLoop {
         }
     }
 
+    fn apply_hook_output_transforms(&self, results: &[HookResult], content: &mut Option<String>) {
+        let mut current = content.clone().unwrap_or_default();
+        let mut changed = false;
+        for r in results {
+            if let HookResult::TransformLlmOutput(next) = r {
+                current = next.clone();
+                changed = true;
+            }
+        }
+        if changed {
+            *content = Some(current);
+        }
+    }
+
     fn hook_context_spill_threshold_chars(&self) -> usize {
         std::env::var("HERMES_HOOK_CONTEXT_SPILL_CHARS")
             .ok()
@@ -4621,7 +4635,7 @@ impl AgentLoop {
             let mut inner_empty = 0u32;
             let mut inner_thinking = 0u32;
             let mut turn_usage_acc: Option<UsageStats> = None;
-            let response = loop {
+            let mut response = loop {
                 if self.interrupt.take_interrupt_graceful().is_some() {
                     return Ok(self.graceful_interrupt_result(
                         &ctx,
@@ -4758,6 +4772,7 @@ impl AgentLoop {
             });
             let post_results = self.invoke_hook(HookType::PostLlmCall, &post_ctx);
             self.inject_hook_context(&post_results, &mut ctx);
+            self.apply_hook_output_transforms(&post_results, &mut response.message.content);
 
             // Accumulate usage (merged across semantic-retried sub-calls)
             if let Some(ref usage) = turn_usage_acc {
@@ -5659,7 +5674,7 @@ impl AgentLoop {
             let mut inner_thinking = 0u32;
             let mut turn_usage_acc: Option<UsageStats> = None;
             let mut inner_attempt: u32 = 0;
-            let response = loop {
+            let mut response = loop {
                 if self.interrupt.take_interrupt_graceful().is_some() {
                     return Ok(self.graceful_interrupt_result(
                         &ctx,
@@ -5843,6 +5858,7 @@ impl AgentLoop {
             });
             let post_results = self.invoke_hook(HookType::PostLlmCall, &post_ctx);
             self.inject_hook_context(&post_results, &mut ctx);
+            self.apply_hook_output_transforms(&post_results, &mut response.message.content);
 
             if let Some(ref usage) = turn_usage_acc {
                 accumulated_usage = Some(merge_usage(accumulated_usage, usage));
@@ -8837,6 +8853,56 @@ mod tests {
     }
 
     #[test]
+    fn post_llm_transform_hook_rewrites_assistant_content() {
+        use futures::stream::BoxStream;
+
+        struct DummyProvider;
+        #[async_trait::async_trait]
+        impl LlmProvider for DummyProvider {
+            async fn chat_completion(
+                &self,
+                _messages: &[Message],
+                _tools: &[ToolSchema],
+                _max_tokens: Option<u32>,
+                _temperature: Option<f64>,
+                _model: Option<&str>,
+                _extra_body: Option<&serde_json::Value>,
+            ) -> Result<hermes_core::LlmResponse, AgentError> {
+                Ok(hermes_core::LlmResponse {
+                    message: Message::assistant("dummy"),
+                    usage: None,
+                    model: "dummy".into(),
+                    finish_reason: Some("stop".into()),
+                })
+            }
+
+            fn chat_completion_stream(
+                &self,
+                _messages: &[Message],
+                _tools: &[ToolSchema],
+                _max_tokens: Option<u32>,
+                _temperature: Option<f64>,
+                _model: Option<&str>,
+                _extra_body: Option<&serde_json::Value>,
+            ) -> BoxStream<'static, Result<StreamChunk, AgentError>> {
+                futures::stream::empty().boxed()
+            }
+        }
+
+        let agent = AgentLoop::new(
+            AgentConfig::default(),
+            Arc::new(ToolRegistry::new()),
+            Arc::new(DummyProvider),
+        );
+        let mut content = Some("before".to_string());
+        agent.apply_hook_output_transforms(
+            &[HookResult::TransformLlmOutput("after".to_string())],
+            &mut content,
+        );
+        assert_eq!(content.as_deref(), Some("after"));
+    }
+
+    #[test]
     fn preflight_compression_status_reports_skipped_when_under_threshold() {
         use futures::stream::BoxStream;
 
@@ -9214,10 +9280,15 @@ mod tests {
                 .expect("seen model lock")
                 .push(model.unwrap_or_default().to_string());
 
-            let step = self.steps.get(idx).cloned().unwrap_or(ChaosHarnessStep {
-                kind: "success".to_string(),
-                message: Some("ok-default".to_string()),
-            });
+            let step = self
+                .steps
+                .get(idx)
+                .cloned()
+                .or_else(|| self.steps.last().cloned())
+                .unwrap_or(ChaosHarnessStep {
+                    kind: "success".to_string(),
+                    message: Some("ok-default".to_string()),
+                });
             match step.kind.as_str() {
                 "success" => Ok(hermes_core::LlmResponse {
                     message: Message::assistant(
