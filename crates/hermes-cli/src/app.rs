@@ -1151,9 +1151,10 @@ impl App {
 
             match result {
                 Ok(result) => {
-                    self.messages = result.messages;
-                    self.prune_ui_after_current_messages();
-                    if let Err(err) = self.persist_session_snapshot(None) {
+                    let total_turns = result.total_turns;
+                    let interrupted = result.interrupted;
+                    let finished_naturally = result.finished_naturally;
+                    if let Err(err) = self.apply_agent_result_and_persist(result) {
                         tracing::warn!("session autosave skipped: {}", err);
                     }
                     Self::emit_lifecycle_event(
@@ -1161,7 +1162,7 @@ impl App {
                         format!(
                             "run finished in {:.2}s (total_turns={})",
                             run_started_at.elapsed().as_secs_f64(),
-                            result.total_turns
+                            total_turns
                         ),
                     );
                     Self::emit_phase_event(
@@ -1173,17 +1174,17 @@ impl App {
                     if let Some(handle) = &self.stream_handle {
                         handle.send_done();
                     }
-                    if result.interrupted {
+                    if interrupted {
                         tracing::info!("Agent loop returned interrupted=true (graceful stop)");
                         if self.stream_handle.is_some() {
                             self.push_ui_assistant("[Agent execution interrupted]");
                         } else {
                             println!("[Agent execution interrupted]");
                         }
-                    } else if !result.finished_naturally {
+                    } else if !finished_naturally {
                         tracing::warn!(
                             "Agent stopped after {} turns (did not finish naturally)",
-                            result.total_turns
+                            total_turns
                         );
                     }
                     break;
@@ -1312,6 +1313,15 @@ impl App {
     pub fn apply_agent_result(&mut self, result: hermes_core::AgentResult) {
         self.messages = result.messages;
         self.prune_ui_after_current_messages();
+    }
+
+    /// Apply finalized messages and persist the session snapshot.
+    pub fn apply_agent_result_and_persist(
+        &mut self,
+        result: hermes_core::AgentResult,
+    ) -> Result<(), AgentError> {
+        self.apply_agent_result(result);
+        self.persist_session_snapshot(None).map(|_| ())
     }
 
     /// Count background jobs currently queued/running.
@@ -1826,6 +1836,44 @@ mod tests {
             app.state_root.join("sessions").join("state-root-test.json")
         );
         assert!(path.exists());
+    }
+
+    #[test]
+    fn test_apply_agent_result_and_persist_writes_updated_messages() {
+        let _guard = env_test_lock();
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let mut app = build_minimal_test_app();
+        app.state_root = tmp.path().join("custom-state-root");
+        app.session_id = "persist-after-run".to_string();
+
+        let result = hermes_core::AgentResult {
+            messages: vec![
+                hermes_core::Message::user("hello"),
+                hermes_core::Message::assistant("world"),
+            ],
+            finished_naturally: true,
+            interrupted: false,
+            total_turns: 1,
+            ..Default::default()
+        };
+
+        app.apply_agent_result_and_persist(result)
+            .expect("persist updated messages");
+
+        let path = app
+            .state_root
+            .join("sessions")
+            .join("persist-after-run.json");
+        assert!(path.exists());
+        let raw = std::fs::read_to_string(path).expect("read snapshot");
+        let value: serde_json::Value = serde_json::from_str(&raw).expect("parse snapshot");
+        assert_eq!(
+            value
+                .get("messages")
+                .and_then(|v| v.as_array())
+                .map(|arr| arr.len()),
+            Some(2)
+        );
     }
 
     #[test]

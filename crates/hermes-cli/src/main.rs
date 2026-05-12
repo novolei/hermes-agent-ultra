@@ -834,6 +834,32 @@ fn load_resume_payload(
     let sessions_dir = hermes_state_root(cli).join("sessions");
     let (resolved_id, source_path) =
         resolve_resume_session_file_with_legacy_fallback(&sessions_dir, requested)?;
+    let mut payload = parse_resume_payload_file(resolved_id, source_path)?;
+    if is_latest_resume_request(requested) && payload.messages.is_empty() {
+        if let Ok((fallback_id, fallback_path)) =
+            resolve_latest_nonempty_session_file_with_legacy_fallback(&sessions_dir)
+        {
+            if fallback_path != payload.source_path {
+                if let Ok(fallback_payload) =
+                    parse_resume_payload_file(fallback_id.clone(), fallback_path.clone())
+                {
+                    tracing::info!(
+                        "resume latest selected non-empty snapshot {} from {}",
+                        fallback_id,
+                        fallback_path.display()
+                    );
+                    payload = fallback_payload;
+                }
+            }
+        }
+    }
+    Ok(payload)
+}
+
+fn parse_resume_payload_file(
+    resolved_id: String,
+    source_path: PathBuf,
+) -> Result<ResumeSessionPayload, AgentError> {
     let raw = std::fs::read_to_string(&source_path).map_err(|e| {
         AgentError::Io(format!(
             "Failed to read session file {}: {}",
@@ -926,10 +952,30 @@ fn resolve_resume_session_file_with_legacy_fallback(
     }
 }
 
-fn should_resume_fallback_to_fresh(requested: Option<&str>, err: &AgentError) -> bool {
+fn resolve_latest_nonempty_session_file_with_legacy_fallback(
+    sessions_dir: &Path,
+) -> Result<(String, PathBuf), AgentError> {
+    match resolve_latest_nonempty_session_file(sessions_dir) {
+        Ok(found) => Ok(found),
+        Err(primary_err) => {
+            let Some(legacy_dir) = legacy_sessions_dir() else {
+                return Err(primary_err);
+            };
+            if legacy_dir == sessions_dir || !legacy_dir.exists() {
+                return Err(primary_err);
+            }
+            resolve_latest_nonempty_session_file(&legacy_dir).map_err(|_| primary_err)
+        }
+    }
+}
+
+fn is_latest_resume_request(requested: Option<&str>) -> bool {
     let requested = requested.unwrap_or("latest").trim();
-    let wants_latest = requested.is_empty() || requested.eq_ignore_ascii_case("latest");
-    if !wants_latest {
+    requested.is_empty() || requested.eq_ignore_ascii_case("latest")
+}
+
+fn should_resume_fallback_to_fresh(requested: Option<&str>, err: &AgentError) -> bool {
+    if !is_latest_resume_request(requested) {
         return false;
     }
     match err {
@@ -938,6 +984,56 @@ fn should_resume_fallback_to_fresh(requested: Option<&str>, err: &AgentError) ->
         }
         _ => false,
     }
+}
+
+fn resolve_latest_nonempty_session_file(
+    sessions_dir: &Path,
+) -> Result<(String, PathBuf), AgentError> {
+    let mut candidates: Vec<(PathBuf, std::time::SystemTime)> = Vec::new();
+    let rd = std::fs::read_dir(sessions_dir).map_err(|e| {
+        AgentError::Io(format!(
+            "Failed to read sessions directory {}: {}",
+            sessions_dir.display(),
+            e
+        ))
+    })?;
+    for entry in rd.filter_map(|entry| entry.ok()) {
+        let path = entry.path();
+        if !path.extension().map(|ext| ext == "json").unwrap_or(false) {
+            continue;
+        }
+        let modified = std::fs::metadata(&path)
+            .and_then(|m| m.modified())
+            .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+        candidates.push((path, modified));
+    }
+    candidates.sort_by(|a, b| b.1.cmp(&a.1));
+    for (path, _) in candidates {
+        if !session_file_has_nonempty_messages(&path) {
+            continue;
+        }
+        let resolved_id = path
+            .file_stem()
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "latest".to_string());
+        return Ok((resolved_id, path));
+    }
+    Err(AgentError::Config(format!(
+        "No non-empty saved sessions found in {}.",
+        sessions_dir.display()
+    )))
+}
+
+fn session_file_has_nonempty_messages(path: &Path) -> bool {
+    let Ok(raw) = std::fs::read_to_string(path) else {
+        return false;
+    };
+    let Ok(doc) = serde_json::from_str::<serde_json::Value>(&raw) else {
+        return false;
+    };
+    doc.get("messages")
+        .and_then(|v| v.as_array())
+        .is_some_and(|arr| !arr.is_empty())
 }
 
 fn resolve_resume_session_file(
@@ -14571,6 +14667,83 @@ max_turns: 50
             Some("nous:nousresearch/hermes-4-70b")
         );
         assert_eq!(payload.messages.len(), 0);
+    }
+
+    #[test]
+    fn load_resume_payload_latest_prefers_nonempty_snapshot_over_newer_stub() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let cli = cli_for_temp_state_root(tmp.path());
+        let sessions_dir = hermes_state_root(&cli).join("sessions");
+        std::fs::create_dir_all(&sessions_dir).expect("create sessions dir");
+
+        let non_empty = sessions_dir.join("history-real.json");
+        std::fs::write(
+            &non_empty,
+            r#"{
+  "session_info": {"session_id":"history-real","model":"nous:openai/gpt-5.5"},
+  "messages":[{"role":"User","content":"hello"},{"role":"Assistant","content":"world"}]
+}"#,
+        )
+        .expect("write non-empty session");
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        let stub = sessions_dir.join("startup-stub.json");
+        std::fs::write(
+            &stub,
+            r#"{
+  "session_info": {"session_id":"startup-stub","model":"nous:openai/gpt-5.5"},
+  "messages":[]
+}"#,
+        )
+        .expect("write stub session");
+
+        let payload = load_resume_payload(&cli, None).expect("load payload");
+        assert_eq!(payload.resolved_id, "history-real");
+        assert_eq!(payload.messages.len(), 2);
+        assert_eq!(payload.source_path, non_empty);
+    }
+
+    #[test]
+    fn load_resume_payload_latest_falls_back_to_legacy_nonempty_when_primary_stub_only() {
+        let _guard = env_lock();
+        let prev_home = std::env::var("HOME").ok();
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let fake_home = tmp.path().join("fake-home");
+        let legacy_sessions = fake_home.join(".hermes").join("sessions");
+        std::fs::create_dir_all(&legacy_sessions).expect("create legacy sessions dir");
+
+        let legacy_non_empty = legacy_sessions.join("legacy-rich.json");
+        std::fs::write(
+            &legacy_non_empty,
+            r#"{
+  "session_info": {"session_id":"legacy-rich","model":"nous:nousresearch/hermes-4-70b"},
+  "messages":[{"role":"User","content":"from legacy"}]
+}"#,
+        )
+        .expect("write legacy non-empty session");
+
+        std::env::set_var("HOME", &fake_home);
+        let state_root = tmp.path().join("ultra-state");
+        let cli = cli_for_temp_state_root(&state_root);
+        let sessions_dir = hermes_state_root(&cli).join("sessions");
+        std::fs::create_dir_all(&sessions_dir).expect("create sessions dir");
+        std::fs::write(
+            sessions_dir.join("stub-only.json"),
+            r#"{
+  "session_info": {"session_id":"stub-only","model":"nous:openai/gpt-5.5"},
+  "messages":[]
+}"#,
+        )
+        .expect("write primary stub");
+
+        let payload = load_resume_payload(&cli, None).expect("load payload");
+        assert_eq!(payload.resolved_id, "legacy-rich");
+        assert_eq!(payload.messages.len(), 1);
+        assert!(payload.source_path.starts_with(&legacy_sessions));
+
+        match prev_home {
+            Some(home) => std::env::set_var("HOME", home),
+            None => std::env::remove_var("HOME"),
+        }
     }
 
     #[test]

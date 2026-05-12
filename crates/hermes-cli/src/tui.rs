@@ -4442,7 +4442,10 @@ fn handle_agent_run_complete(
             let total_turns = agent_result.total_turns;
             let interrupted = agent_result.interrupted;
             let finished_naturally = agent_result.finished_naturally;
-            app.apply_agent_result(agent_result);
+            if let Err(err) = app.apply_agent_result_and_persist(agent_result) {
+                tracing::warn!("session autosave skipped: {}", err);
+                state.push_activity(format!("⚠ autosave skipped: {}", err));
+            }
             state.finish_processing_cycle("✔ completed in");
             state.status_message.clear();
             state.push_activity(format!(
