@@ -1448,6 +1448,9 @@ const TRANSCRIPT_CONTENT_WRAP_COLS: usize = 76;
 const OFFSET_ANCHOR_SEARCH_RADIUS: usize = 1200;
 const MAX_ASSISTANT_RENDER_LINES: usize = 260;
 const MAX_STREAM_RENDER_LINES: usize = 140;
+const TOOL_OUTPUT_MAX_LINES: usize = 180;
+const TOOL_OUTPUT_MAX_LINE_CHARS: usize = 600;
+const TOOL_OUTPUT_MAX_TOTAL_CHARS: usize = 48_000;
 
 fn transcript_wrap_width(viewport_width: u16) -> u16 {
     viewport_width.min(TRANSCRIPT_HARD_WRAP_COLS).max(1)
@@ -2634,6 +2637,39 @@ fn push_block(lines: &mut Vec<String>, header: &str, value: &serde_json::Value) 
     }
 }
 
+fn sanitize_tool_line(raw: &str) -> String {
+    let sanitized =
+        sanitize_line_to_default_language_ascii(raw, false).unwrap_or_else(|| String::new());
+    truncate_chars(&sanitized, TOOL_OUTPUT_MAX_LINE_CHARS)
+}
+
+fn finalize_tool_message_lines(raw_lines: Vec<String>) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    let mut total_chars = 0usize;
+    let mut omitted = 0usize;
+    for line in raw_lines {
+        let sanitized = sanitize_tool_line(&line);
+        let line_chars = sanitized.chars().count();
+        let next_total = total_chars.saturating_add(line_chars);
+        if out.len() < TOOL_OUTPUT_MAX_LINES && next_total <= TOOL_OUTPUT_MAX_TOTAL_CHARS {
+            total_chars = next_total;
+            out.push(sanitized);
+        } else {
+            omitted = omitted.saturating_add(1);
+        }
+    }
+    if omitted > 0 {
+        out.push(format!(
+            "… tool output truncated ({} lines omitted)",
+            omitted
+        ));
+    }
+    if out.is_empty() {
+        out.push(String::new());
+    }
+    out
+}
+
 fn format_tool_message_lines(content: &str) -> Vec<String> {
     let trimmed = content.trim();
     if trimmed.is_empty() {
@@ -2643,10 +2679,12 @@ fn format_tool_message_lines(content: &str) -> Vec<String> {
     let parsed = match serde_json::from_str::<serde_json::Value>(trimmed) {
         Ok(v) => v,
         Err(_) => {
-            return content
-                .lines()
-                .map(std::string::ToString::to_string)
-                .collect();
+            return finalize_tool_message_lines(
+                content
+                    .lines()
+                    .map(std::string::ToString::to_string)
+                    .collect(),
+            );
         }
     };
 
@@ -2686,18 +2724,20 @@ fn format_tool_message_lines(content: &str) -> Vec<String> {
             push_block(&mut lines, "meta", &serde_json::Value::Object(extras));
         }
         if !lines.is_empty() {
-            return lines;
+            return finalize_tool_message_lines(lines);
         }
     }
 
-    serde_json::to_string_pretty(&parsed)
-        .map(|s| s.lines().map(std::string::ToString::to_string).collect())
-        .unwrap_or_else(|_| {
-            content
-                .lines()
-                .map(std::string::ToString::to_string)
-                .collect()
-        })
+    finalize_tool_message_lines(
+        serde_json::to_string_pretty(&parsed)
+            .map(|s| s.lines().map(std::string::ToString::to_string).collect())
+            .unwrap_or_else(|_| {
+                content
+                    .lines()
+                    .map(std::string::ToString::to_string)
+                    .collect()
+            }),
+    )
 }
 
 fn tool_policy_remediation_from_payload(
@@ -5573,7 +5613,7 @@ mod tests {
         let payload = r#"{"result":"line1\nline2","_budget_warning":"[BUDGET WARNING: Iteration 40/50.]","error":"boom"}"#;
         let lines = format_tool_message_lines(payload);
         let joined = lines.join("\n");
-        assert!(joined.contains("⚠ [BUDGET WARNING"));
+        assert!(joined.contains("[BUDGET WARNING"));
         assert!(joined.contains("[result]"));
         assert!(joined.contains("line1"));
         assert!(joined.contains("[error]"));
@@ -5590,6 +5630,19 @@ mod tests {
         let joined = lines.join("\n");
         assert!(joined.contains("[remediation]"));
         assert!(joined.contains("Remove secret-like parameter names"));
+    }
+
+    #[test]
+    fn test_format_tool_message_lines_truncates_large_payload() {
+        let long = (0..(TOOL_OUTPUT_MAX_LINES + 40))
+            .map(|idx| format!("row-{idx}-{}", "x".repeat(120)))
+            .collect::<Vec<_>>()
+            .join("\\n");
+        let payload = format!(r#"{{"result":"{}"}}"#, long);
+        let lines = format_tool_message_lines(&payload);
+        let joined = lines.join("\n");
+        assert!(joined.contains("tool output truncated"));
+        assert!(lines.len() <= TOOL_OUTPUT_MAX_LINES + 8);
     }
 
     #[test]
