@@ -2441,7 +2441,8 @@ fn render_assistant_markdown_lines(
 
         let heading_level = trimmed.chars().take_while(|ch| *ch == '#').count();
         if (1..=6).contains(&heading_level) {
-            let rest = trimmed[heading_level..].trim_start();
+            // Avoid byte-index slicing with a char-count offset on multibyte text.
+            let rest = trimmed.trim_start_matches('#').trim_start();
             if !rest.is_empty() {
                 rendered.push(Line::from(vec![
                     Span::styled(
