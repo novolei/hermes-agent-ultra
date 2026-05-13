@@ -233,6 +233,7 @@ const OBJECTIVE_DEEP_AUDIT_MIN_UNIQUE_FILES: usize = 5;
 const OBJECTIVE_DEEP_AUDIT_MIN_UNIQUE_COMMANDS: usize = 3;
 const OBJECTIVE_DEEP_AUDIT_MIN_WORKSTREAMS: usize = 3;
 const FINALIZER_EVIDENCE_MAX_RETRIES: u32 = 2;
+const FINALIZER_OUTPUT_QUALITY_MAX_RETRIES: u32 = 2;
 
 // Python `AIAgent._MEMORY_REVIEW_PROMPT` / `_SKILL_REVIEW_PROMPT` / `_COMBINED_REVIEW_PROMPT` (v2026.4.13)
 const MEMORY_REVIEW_PROMPT: &str = "Review the conversation above and consider saving to memory if appropriate.\n\n\
@@ -4494,6 +4495,7 @@ impl AgentLoop {
         let mut repo_review_budget_state = RepoReviewBudgetState::default();
         let mut objective_guard_retries: u32 = 0;
         let mut finalizer_evidence_retries: u32 = 0;
+        let mut finalizer_output_quality_retries: u32 = 0;
         let governor_window_limit = governor_window_size();
 
         loop {
@@ -4911,7 +4913,30 @@ impl AgentLoop {
                     ));
                     continue;
                 }
+                if finalizer_output_quality_requires_retry(
+                    assistant_msg.content.as_deref().unwrap_or_default(),
+                    finalizer_output_quality_retries,
+                ) {
+                    finalizer_output_quality_retries =
+                        finalizer_output_quality_retries.saturating_add(1);
+                    self.emit_status(
+                        "lifecycle",
+                        "Detected templated/duplicated output; forcing concrete unique rewrite.",
+                    );
+                    ctx.add_message(Message::system(
+                        "[SYSTEM] Output quality contract: do not use placeholders or template filler.\n\
+                         Requirements:\n\
+                         - no unresolved placeholders (`[URL](URL)`, `(URL)`, `pack of authors`, `<insert...>`)\n\
+                         - no repeated list items or duplicated paragraphs\n\
+                         - provide concrete, unique, user-relevant items only; if unknown, mark as `UNPROVEN` instead of fabricating.",
+                    ));
+                    ctx.add_message(Message::user(
+                        "Re-issue the response now with concrete unique items and zero placeholders.",
+                    ));
+                    continue;
+                }
                 finalizer_evidence_retries = 0;
+                finalizer_output_quality_retries = 0;
                 let (objective_guard_active, requires_analytics, deep_audit_required) =
                     objective_guard_policy(ctx.get_messages());
                 if objective_guard_active {
@@ -5537,6 +5562,7 @@ impl AgentLoop {
         let mut repo_review_budget_state = RepoReviewBudgetState::default();
         let mut objective_guard_retries: u32 = 0;
         let mut finalizer_evidence_retries: u32 = 0;
+        let mut finalizer_output_quality_retries: u32 = 0;
         let governor_window_limit = governor_window_size();
 
         loop {
@@ -6024,7 +6050,30 @@ impl AgentLoop {
                     ));
                     continue;
                 }
+                if finalizer_output_quality_requires_retry(
+                    assistant_msg.content.as_deref().unwrap_or_default(),
+                    finalizer_output_quality_retries,
+                ) {
+                    finalizer_output_quality_retries =
+                        finalizer_output_quality_retries.saturating_add(1);
+                    self.emit_status(
+                        "lifecycle",
+                        "Detected templated/duplicated output; forcing concrete unique rewrite.",
+                    );
+                    ctx.add_message(Message::system(
+                        "[SYSTEM] Output quality contract: do not use placeholders or template filler.\n\
+                         Requirements:\n\
+                         - no unresolved placeholders (`[URL](URL)`, `(URL)`, `pack of authors`, `<insert...>`)\n\
+                         - no repeated list items or duplicated paragraphs\n\
+                         - provide concrete, unique, user-relevant items only; if unknown, mark as `UNPROVEN` instead of fabricating.",
+                    ));
+                    ctx.add_message(Message::user(
+                        "Re-issue the response now with concrete unique items and zero placeholders.",
+                    ));
+                    continue;
+                }
                 finalizer_evidence_retries = 0;
+                finalizer_output_quality_retries = 0;
                 let (objective_guard_active, requires_analytics, deep_audit_required) =
                     objective_guard_policy(ctx.get_messages());
                 if objective_guard_active {
@@ -8355,6 +8404,74 @@ fn finalizer_claim_requires_evidence_retry(
         || lower.contains("confidence=low")
         || lower.contains("confidence:");
     !(has_evidence && has_confidence)
+}
+
+fn strip_list_prefix(line: &str) -> &str {
+    let trimmed = line.trim();
+    let without_bullet = trimmed
+        .strip_prefix("- ")
+        .or_else(|| trimmed.strip_prefix("* "))
+        .or_else(|| trimmed.strip_prefix("+ "))
+        .unwrap_or(trimmed);
+    let mut chars = without_bullet.char_indices();
+    let mut end_idx = 0usize;
+    while let Some((idx, ch)) = chars.next() {
+        if ch.is_ascii_digit() {
+            end_idx = idx + ch.len_utf8();
+            continue;
+        }
+        if (ch == '.' || ch == ')') && end_idx > 0 {
+            let tail = &without_bullet[idx + ch.len_utf8()..];
+            return tail.trim_start();
+        }
+        break;
+    }
+    without_bullet
+}
+
+fn finalizer_output_quality_requires_retry(assistant_text: &str, retry_count: u32) -> bool {
+    if retry_count >= FINALIZER_OUTPUT_QUALITY_MAX_RETRIES {
+        return false;
+    }
+    let lower = assistant_text.to_ascii_lowercase();
+    let placeholder_markers = [
+        "[url](url)",
+        "(url)",
+        "[paper details](url)",
+        "pack of authors",
+        "lorem ipsum",
+        "<insert",
+        "<todo",
+    ];
+    if placeholder_markers
+        .iter()
+        .any(|marker| lower.contains(marker))
+    {
+        return true;
+    }
+
+    let mut counts: HashMap<String, usize> = HashMap::new();
+    let mut in_code_block = false;
+    for raw_line in assistant_text.lines() {
+        let line = raw_line.trim();
+        if line.starts_with("```") {
+            in_code_block = !in_code_block;
+            continue;
+        }
+        if in_code_block {
+            continue;
+        }
+        let normalized = strip_list_prefix(line).trim().to_ascii_lowercase();
+        if normalized.len() < 24 {
+            continue;
+        }
+        let entry = counts.entry(normalized).or_insert(0);
+        *entry += 1;
+        if *entry >= 3 {
+            return true;
+        }
+    }
+    false
 }
 
 fn detect_contextlattice_connect_intent(messages: &[Message]) -> bool {
@@ -12663,6 +12780,24 @@ mod tests {
         let note = apply_repo_review_discovery_budget_policy(&mut third, &msgs, &mut state);
         assert!(note.is_some());
         assert!(third.len() < 3);
+    }
+
+    #[test]
+    fn test_finalizer_output_quality_retry_detects_placeholders() {
+        let templated =
+            "**Title:** Example\n**Authors:** pack of authors\n(Full text available at [URL](URL))";
+        assert!(finalizer_output_quality_requires_retry(templated, 0));
+    }
+
+    #[test]
+    fn test_finalizer_output_quality_retry_detects_duplicate_lines() {
+        let duplicated =
+            "- **Title:** Bayesian Learning for Dive State Prediction and Management\n\
+            - **Title:** Bayesian Learning for Dive State Prediction and Management\n\
+            - **Title:** Bayesian Learning for Dive State Prediction and Management\n\
+            - **Title:** Bayesian Learning for Dive State Prediction and Management";
+        assert!(finalizer_output_quality_requires_retry(duplicated, 0));
+        assert!(!finalizer_output_quality_requires_retry(duplicated, 2));
     }
 
     #[test]

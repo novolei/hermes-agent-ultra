@@ -706,7 +706,8 @@ impl App {
             "\nRuntime execution reformulation (internal):\n\
              1) apply anti-scheming evidence-first discipline\n\
              2) pull ContextLattice context first when relevant\n\
-             3) route tool usage intentionally and avoid repetitive low-signal loops\n",
+             3) route tool usage intentionally and avoid repetitive low-signal loops\n\
+             4) match requested output shape exactly (count/format), with no template placeholders or duplicate list items\n",
         );
         out.push_str(&format!(
             "tool-profile(mode): {}\ncontextlattice(topic): {}\n{}\n",
