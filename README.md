@@ -145,10 +145,19 @@ Key operator commands:
 # OpenHuman-derived P0/P1 operator control-plane
 /commands search boot
 /boot quick
+/boot profile prod
 /walkthrough start quick
+/walkthrough insights
 /integrations status
+/integrations repair
+/integrations snapshot
 /triage eval webhook "secret leak panic outage"
+/triage feedback webhook critical "secret leak panic outage"
 /subconscious status
+/subconscious profile strict
+/subconscious run 2 --dry-run
+/compress rules recommend
+/compress rules autotune apply user
 
 # Session time-travel + simulation
 /timetravel list
