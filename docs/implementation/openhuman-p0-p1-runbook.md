@@ -2,6 +2,11 @@
 
 This runbook covers the P0/P1 surfaces added for Hermes Agent Ultra.
 
+Follow-on tranche docs:
+
+- `docs/implementation/openhuman-p2a-p2b-runbook.md`
+- `docs/implementation/openhuman-p2a-p2b-surface-matrix.md`
+
 ## P0 Operator Surfaces
 
 ### 1) Command Palette IA
@@ -94,4 +99,3 @@ This validates:
 - slash registrations
 - presence of tranche-critical tests
 - execution of targeted tests
-
