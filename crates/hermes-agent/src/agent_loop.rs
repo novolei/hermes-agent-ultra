@@ -8249,6 +8249,34 @@ fn repo_review_repeat_threshold() -> u32 {
         .clamp(1, 12)
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum RepoReviewDiscoveryBudgetMode {
+    Off,
+    Advisory,
+    Enforce,
+}
+
+impl RepoReviewDiscoveryBudgetMode {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Off => "off",
+            Self::Advisory => "advisory",
+            Self::Enforce => "enforce",
+        }
+    }
+}
+
+fn repo_review_discovery_budget_mode() -> RepoReviewDiscoveryBudgetMode {
+    let raw = std::env::var("HERMES_REPO_REVIEW_DISCOVERY_BUDGET_MODE")
+        .ok()
+        .unwrap_or_else(|| "advisory".to_string());
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "0" | "off" | "disable" | "disabled" => RepoReviewDiscoveryBudgetMode::Off,
+        "trim" | "hard" | "enforce" | "strict" => RepoReviewDiscoveryBudgetMode::Enforce,
+        _ => RepoReviewDiscoveryBudgetMode::Advisory,
+    }
+}
+
 fn repo_review_low_signal_threshold() -> u32 {
     std::env::var("HERMES_REPO_REVIEW_LOW_SIGNAL_STREAK_THRESHOLD")
         .ok()
@@ -8286,6 +8314,10 @@ fn apply_repo_review_discovery_budget_policy(
     messages: &[Message],
     state: &mut RepoReviewBudgetState,
 ) -> Option<String> {
+    let mode = repo_review_discovery_budget_mode();
+    if matches!(mode, RepoReviewDiscoveryBudgetMode::Off) {
+        return None;
+    }
     if !detect_repo_review_intent(messages) {
         *state = RepoReviewBudgetState::default();
         return None;
@@ -8317,6 +8349,19 @@ fn apply_repo_review_discovery_budget_policy(
     let low_signal_threshold_hit = state.low_signal_streak >= low_signal_threshold;
     if (!repeat_threshold_hit && !low_signal_threshold_hit) || !only_discovery_or_housekeeping {
         return None;
+    }
+
+    if matches!(mode, RepoReviewDiscoveryBudgetMode::Advisory) {
+        return Some(format!(
+            "[SYSTEM] Discovery budget advisory (mode={} repeat_streak={} threshold={} low_signal_streak={} threshold={} last_signal_score={:.2} min_signal={:.2}). Tool calls are not trimmed in advisory mode. Prefer narrower path/glob scope, context-pack pivots, and then move to concrete patch synthesis.",
+            mode.as_str(),
+            state.repeat_streak + 1,
+            repeat_threshold,
+            state.low_signal_streak,
+            low_signal_threshold,
+            state.last_signal_score,
+            repo_review_min_signal_score(),
+        ));
     }
 
     let mut kept_per_tool: HashMap<String, usize> = HashMap::new();
@@ -8954,6 +8999,14 @@ mod tests {
     use super::*;
     use futures::stream::BoxStream;
     use hermes_core::JsonSchema;
+    use std::sync::{Mutex, MutexGuard, OnceLock};
+
+    fn env_test_lock() -> MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+            .lock()
+            .expect("env test lock poisoned")
+    }
 
     #[test]
     fn test_agent_config_default() {
@@ -12873,6 +12926,7 @@ mod tests {
 
     #[test]
     fn test_repo_review_tool_profile_escape_hatch_disables_filtering() {
+        let _guard = env_test_lock();
         std::env::set_var("HERMES_REPO_REVIEW_TOOL_PROFILE_MODE", "focus");
         let msgs = vec![Message::user(
             "review repo at /tmp/app and diagnose issue; allow all tools",
@@ -12893,6 +12947,7 @@ mod tests {
 
     #[test]
     fn test_repo_review_tool_profile_off_mode_disables_filtering() {
+        let _guard = env_test_lock();
         std::env::set_var("HERMES_REPO_REVIEW_TOOL_PROFILE_MODE", "off");
         let msgs = vec![Message::user("review repo at /tmp/app and diagnose issue")];
         let mut calls = vec![ToolCall {
@@ -12911,6 +12966,8 @@ mod tests {
 
     #[test]
     fn test_repo_review_discovery_policy_trims_repeated_loops() {
+        let _guard = env_test_lock();
+        std::env::set_var("HERMES_REPO_REVIEW_DISCOVERY_BUDGET_MODE", "enforce");
         let msgs = vec![Message::user(
             "inspect repo /tmp/app and review codebase deeply",
         )];
@@ -12953,6 +13010,51 @@ mod tests {
         let note = apply_repo_review_discovery_budget_policy(&mut third, &msgs, &mut state);
         assert!(note.is_some());
         assert!(third.len() < 3);
+        std::env::remove_var("HERMES_REPO_REVIEW_DISCOVERY_BUDGET_MODE");
+    }
+
+    #[test]
+    fn test_repo_review_discovery_policy_advisory_keeps_calls() {
+        let _guard = env_test_lock();
+        std::env::set_var("HERMES_REPO_REVIEW_DISCOVERY_BUDGET_MODE", "advisory");
+        let msgs = vec![Message::user(
+            "inspect repo /tmp/app and review codebase deeply",
+        )];
+        let mut state = RepoReviewBudgetState::default();
+        let mut first = vec![
+            ToolCall {
+                id: "1".to_string(),
+                function: hermes_core::FunctionCall {
+                    name: "terminal".to_string(),
+                    arguments: r#"{"command":"rg -n TODO src"}"#.to_string(),
+                },
+                extra_content: None,
+            },
+            ToolCall {
+                id: "2".to_string(),
+                function: hermes_core::FunctionCall {
+                    name: "terminal".to_string(),
+                    arguments: r#"{"command":"rg -n TODO src"}"#.to_string(),
+                },
+                extra_content: None,
+            },
+            ToolCall {
+                id: "3".to_string(),
+                function: hermes_core::FunctionCall {
+                    name: "terminal".to_string(),
+                    arguments: r#"{"command":"rg -n TODO src"}"#.to_string(),
+                },
+                extra_content: None,
+            },
+        ];
+        assert!(apply_repo_review_discovery_budget_policy(&mut first, &msgs, &mut state).is_none());
+        let mut second = first.clone();
+        let _ = apply_repo_review_discovery_budget_policy(&mut second, &msgs, &mut state);
+        let mut third = first.clone();
+        let note = apply_repo_review_discovery_budget_policy(&mut third, &msgs, &mut state);
+        assert!(note.is_some());
+        assert_eq!(third.len(), 3, "advisory mode must not trim tool calls");
+        std::env::remove_var("HERMES_REPO_REVIEW_DISCOVERY_BUDGET_MODE");
     }
 
     #[test]

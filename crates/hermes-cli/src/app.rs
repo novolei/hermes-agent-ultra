@@ -420,6 +420,47 @@ impl App {
             .unwrap_or(3)
     }
 
+    fn quorum_voter_retry_limit() -> usize {
+        std::env::var("HERMES_QUORUM_VOTER_MAX_RETRIES")
+            .ok()
+            .and_then(|v| v.trim().parse::<usize>().ok())
+            .filter(|v| *v > 0)
+            .unwrap_or_else(Self::auth_refresh_retry_limit)
+            .max(2)
+    }
+
+    fn transient_retry_limit() -> usize {
+        std::env::var("HERMES_TRANSIENT_MAX_RETRIES")
+            .ok()
+            .and_then(|v| v.trim().parse::<usize>().ok())
+            .filter(|v| *v > 0)
+            .unwrap_or(2)
+    }
+
+    fn is_transient_retryable_error(err: &AgentError) -> bool {
+        let message = match err {
+            AgentError::LlmApi(msg)
+            | AgentError::Config(msg)
+            | AgentError::ToolExecution(msg)
+            | AgentError::Gateway(msg)
+            | AgentError::AuthFailed(msg)
+            | AgentError::Io(msg) => msg.to_ascii_lowercase(),
+            _ => return false,
+        };
+        message.contains("timed out")
+            || message.contains("timeout")
+            || message.contains("connection reset")
+            || message.contains("connection refused")
+            || message.contains("temporarily unavailable")
+            || message.contains("try again")
+            || message.contains("rate limit")
+            || message.contains("429")
+            || message.contains("502")
+            || message.contains("503")
+            || message.contains("504")
+            || message.contains("provider rejected")
+    }
+
     fn objective_execution_enforcer_enabled() -> bool {
         !matches!(
             std::env::var("HERMES_OBJECTIVE_EXECUTION_ENFORCER")
@@ -2104,7 +2145,7 @@ impl App {
                 .await;
 
             let started = Instant::now();
-            let max_attempts = 2usize;
+            let max_attempts = Self::quorum_voter_retry_limit();
             let voter_passes = Self::quorum_voter_passes();
             let mut pass_errors: Vec<String> = Vec::new();
             let mut combined_output = String::new();
@@ -2152,6 +2193,24 @@ impl App {
                                 if refreshed {
                                     continue;
                                 }
+                            }
+                            if Self::is_transient_retryable_error(&err) && attempts < max_attempts {
+                                let backoff_ms = (attempts as u64).saturating_mul(750).max(500);
+                                Self::emit_lifecycle_event(
+                                    &self.stream_handle_shared,
+                                    format!(
+                                        "quorum voter {}/{} transient error (attempt {}/{}): {} — retrying after {}ms",
+                                        display_index,
+                                        voter_models.len(),
+                                        attempts,
+                                        max_attempts,
+                                        err,
+                                        backoff_ms
+                                    ),
+                                );
+                                tokio::time::sleep(std::time::Duration::from_millis(backoff_ms))
+                                    .await;
+                                continue;
                             }
                             last_err = Some(err);
                             break;
@@ -2344,6 +2403,8 @@ impl App {
         let mut remediation_attempted = false;
         let mut auth_refresh_attempts = 0usize;
         let auth_refresh_retry_limit = Self::auth_refresh_retry_limit();
+        let mut transient_retry_attempts = 0usize;
+        let transient_retry_limit = Self::transient_retry_limit();
         let mut objective_continuation_attempts = 0usize;
         let objective_continuation_limit = Self::objective_continuation_retry_limit();
         loop {
@@ -2503,6 +2564,23 @@ impl App {
                                 ),
                             );
                         }
+                    }
+                    if Self::is_transient_retryable_error(&e)
+                        && transient_retry_attempts < transient_retry_limit
+                    {
+                        transient_retry_attempts += 1;
+                        let backoff_ms = (transient_retry_attempts as u64)
+                            .saturating_mul(1_000)
+                            .max(800);
+                        Self::emit_lifecycle_event(
+                            &self.stream_handle_shared,
+                            format!(
+                                "transient runtime error retry {}/{} after {}ms: {}",
+                                transient_retry_attempts, transient_retry_limit, backoff_ms, e
+                            ),
+                        );
+                        tokio::time::sleep(std::time::Duration::from_millis(backoff_ms)).await;
+                        continue;
                     }
                     if !remediation_attempted {
                         if let Some((next_model, notice)) =
@@ -4095,6 +4173,18 @@ mod tests {
         assert!(App::is_provider_auth_or_session_error(&err));
         let non_auth = AgentError::LlmApi("API error 404 Not Found: model missing".to_string());
         assert!(!App::is_provider_auth_or_session_error(&non_auth));
+    }
+
+    #[test]
+    fn test_is_transient_retryable_error_detects_timeout_and_rate_limit() {
+        let timeout =
+            AgentError::LlmApi("request timed out while waiting for provider".to_string());
+        let rate_limit = AgentError::LlmApi("HTTP 429 Too Many Requests".to_string());
+        let model_missing =
+            AgentError::LlmApi("API error 404 Not Found: model missing".to_string());
+        assert!(App::is_transient_retryable_error(&timeout));
+        assert!(App::is_transient_retryable_error(&rate_limit));
+        assert!(!App::is_transient_retryable_error(&model_missing));
     }
 
     #[test]
