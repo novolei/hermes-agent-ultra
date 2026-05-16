@@ -349,6 +349,22 @@ impl GenericProvider {
             .unwrap_or(false)
     }
 
+    fn is_local_request_control_key(key: &str) -> bool {
+        matches!(key, "strict_tool_calls" | "strict_api" | "provider_strict")
+    }
+
+    fn merge_extra_body_fields(body: &mut Value, extra_body: Option<&Value>) {
+        let Some(Value::Object(map)) = extra_body else {
+            return;
+        };
+        for (k, v) in map {
+            if Self::is_local_request_control_key(k) {
+                continue;
+            }
+            body[k] = v.clone();
+        }
+    }
+
     fn sanitize_messages_for_strict_api(messages: &[Message], enabled: bool) -> Value {
         let mut out = Vec::with_capacity(messages.len());
         for msg in messages {
@@ -503,13 +519,7 @@ impl LlmProvider for GenericProvider {
         if !tools.is_empty() {
             body["tools"] = Self::format_tools_for_openai_api(tools);
         }
-        if let Some(eb) = extra_body {
-            if let Value::Object(map) = eb {
-                for (k, v) in map {
-                    body[k] = v.clone();
-                }
-            }
-        }
+        Self::merge_extra_body_fields(&mut body, extra_body);
         self.apply_runtime_hints(&mut body, messages, extra_body);
 
         let url = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));
@@ -578,13 +588,7 @@ impl LlmProvider for GenericProvider {
             if !tools.is_empty() {
                 body["tools"] = GenericProvider::format_tools_for_openai_api(&tools);
             }
-            if let Some(ref eb) = extra_body {
-                if let Value::Object(map) = eb {
-                    for (k, v) in map {
-                        body[k] = v.clone();
-                    }
-                }
-            }
+            GenericProvider::merge_extra_body_fields(&mut body, extra_body.as_ref());
             provider.apply_runtime_hints(&mut body, &messages, extra_body.as_ref());
             // Request usage in the final streaming chunk
             body["stream_options"] = serde_json::json!({"include_usage": true});
@@ -1218,13 +1222,7 @@ impl LlmProvider for AnthropicProvider {
         if !tools.is_empty() {
             body["tools"] = serde_json::json!(Self::convert_tools(tools));
         }
-        if let Some(eb) = extra_body {
-            if let Value::Object(map) = eb {
-                for (k, v) in map {
-                    body[k] = v.clone();
-                }
-            }
-        }
+        GenericProvider::merge_extra_body_fields(&mut body, extra_body);
 
         let url = format!("{}/v1/messages", self.base_url.trim_end_matches('/'));
         let resp = self
@@ -1295,13 +1293,7 @@ impl LlmProvider for AnthropicProvider {
             if !tools.is_empty() {
                 body["tools"] = serde_json::json!(AnthropicProvider::convert_tools(&tools));
             }
-            if let Some(ref eb) = extra_body {
-                if let Value::Object(map) = eb {
-                    for (k, v) in map {
-                        body[k] = v.clone();
-                    }
-                }
-            }
+            GenericProvider::merge_extra_body_fields(&mut body, extra_body.as_ref());
 
             let url = format!("{}/v1/messages", provider.base_url.trim_end_matches('/'));
 
@@ -1676,6 +1668,19 @@ impl OpenRouterProvider {
         cleaned.remove("response_cache_enabled");
         cleaned.remove("response_cache_ttl_secs");
         cleaned.remove("response_cache_clear");
+        cleaned.remove("strict_tool_calls");
+        cleaned.remove("strict_api");
+        cleaned.remove("provider_strict");
+        if !cleaned.contains_key("reasoning") {
+            if let Some(effort) = cleaned.remove("reasoning_effort") {
+                cleaned.insert(
+                    "reasoning".to_string(),
+                    serde_json::json!({ "effort": effort }),
+                );
+            }
+        } else {
+            cleaned.remove("reasoning_effort");
+        }
         Some(Value::Object(cleaned))
     }
 
@@ -1791,13 +1796,7 @@ impl LlmProvider for OpenRouterProvider {
         if !tools.is_empty() {
             body["tools"] = GenericProvider::format_tools_for_openai_api(tools);
         }
-        if let Some(ref eb) = merged_extra {
-            if let Value::Object(map) = eb {
-                for (k, v) in map {
-                    body[k] = v.clone();
-                }
-            }
-        }
+        GenericProvider::merge_extra_body_fields(&mut body, merged_extra.as_ref());
 
         let cache_key = if cache_control.enabled && !cache_control.clear {
             Self::response_cache_key(effective_model, &body)
@@ -2071,6 +2070,22 @@ mod tests {
         assert_eq!(rows[0]["function"]["name"], "read_file");
         assert_eq!(rows[0]["function"]["description"], "Read file content");
         assert_eq!(rows[0]["function"]["parameters"]["type"], "object");
+    }
+
+    #[test]
+    fn test_merge_extra_body_fields_strips_local_request_controls() {
+        let extra = serde_json::json!({
+            "strict_api": true,
+            "strict_tool_calls": true,
+            "provider_strict": true,
+            "temperature": 0.2
+        });
+        let mut body = serde_json::json!({"model": "m", "messages": []});
+        GenericProvider::merge_extra_body_fields(&mut body, Some(&extra));
+        assert!(body.get("strict_api").is_none());
+        assert!(body.get("strict_tool_calls").is_none());
+        assert!(body.get("provider_strict").is_none());
+        assert_eq!(body["temperature"], 0.2);
     }
 
     #[test]
@@ -2563,6 +2578,10 @@ mod tests {
             "response_cache_enabled": true,
             "response_cache_ttl_secs": 30,
             "response_cache_clear": false,
+            "strict_api": true,
+            "strict_tool_calls": true,
+            "provider_strict": true,
+            "reasoning_effort": "high",
             "route": "fallback",
             "provider": {"order": ["openai"]}
         });
@@ -2571,6 +2590,11 @@ mod tests {
         assert!(merged.get("response_cache_enabled").is_none());
         assert!(merged.get("response_cache_ttl_secs").is_none());
         assert!(merged.get("response_cache_clear").is_none());
+        assert!(merged.get("strict_api").is_none());
+        assert!(merged.get("strict_tool_calls").is_none());
+        assert!(merged.get("provider_strict").is_none());
+        assert!(merged.get("reasoning_effort").is_none());
+        assert_eq!(merged["reasoning"]["effort"], "high");
         assert_eq!(
             merged.get("route").and_then(|v| v.as_str()),
             Some("fallback")

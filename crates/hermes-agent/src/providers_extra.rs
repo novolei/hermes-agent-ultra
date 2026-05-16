@@ -14,6 +14,33 @@ use hermes_core::{AgentError, LlmProvider, LlmResponse, Message, StreamChunk, To
 
 use crate::provider::GenericProvider;
 
+fn openrouter_compatible_extra_body(extra_body: Option<&Value>) -> Option<Value> {
+    let Some(Value::Object(map)) = extra_body else {
+        return extra_body.cloned();
+    };
+
+    let mut cleaned = map.clone();
+    cleaned.remove("strict_tool_calls");
+    cleaned.remove("strict_api");
+    cleaned.remove("provider_strict");
+
+    // Nous' inference API is OpenRouter-compatible. Use the documented
+    // cross-provider reasoning object instead of leaking provider-specific or
+    // Hermes-local control keys into the request body.
+    if !cleaned.contains_key("reasoning") {
+        if let Some(effort) = cleaned.remove("reasoning_effort") {
+            cleaned.insert(
+                "reasoning".to_string(),
+                serde_json::json!({ "effort": effort }),
+            );
+        }
+    } else {
+        cleaned.remove("reasoning_effort");
+    }
+
+    Some(Value::Object(cleaned))
+}
+
 // ---------------------------------------------------------------------------
 // QwenProvider — Alibaba Tongyi Qianwen (通义千问)
 // ---------------------------------------------------------------------------
@@ -273,8 +300,16 @@ impl LlmProvider for NousProvider {
         model: Option<&str>,
         extra_body: Option<&Value>,
     ) -> Result<LlmResponse, AgentError> {
+        let extra_body = openrouter_compatible_extra_body(extra_body);
         self.inner
-            .chat_completion(messages, tools, max_tokens, temperature, model, extra_body)
+            .chat_completion(
+                messages,
+                tools,
+                max_tokens,
+                temperature,
+                model,
+                extra_body.as_ref(),
+            )
             .await
     }
 
@@ -287,13 +322,14 @@ impl LlmProvider for NousProvider {
         model: Option<&str>,
         extra_body: Option<&Value>,
     ) -> BoxStream<'static, Result<StreamChunk, AgentError>> {
+        let extra_body = openrouter_compatible_extra_body(extra_body);
         self.inner.chat_completion_stream(
             messages,
             tools,
             max_tokens,
             temperature,
             model,
-            extra_body,
+            extra_body.as_ref(),
         )
     }
 }
@@ -418,6 +454,22 @@ mod tests {
             "https://inference-api.nousresearch.com/v1"
         );
         assert_eq!(p.inner.model, "hermes-3-llama-3.1-405b");
+    }
+
+    #[test]
+    fn nous_extra_body_uses_openrouter_reasoning_shape_and_strips_local_controls() {
+        let extra = serde_json::json!({
+            "strict_api": true,
+            "provider_strict": true,
+            "reasoning_effort": "xhigh",
+            "temperature": 0.1
+        });
+        let cleaned = openrouter_compatible_extra_body(Some(&extra)).expect("cleaned body");
+        assert!(cleaned.get("strict_api").is_none());
+        assert!(cleaned.get("provider_strict").is_none());
+        assert!(cleaned.get("reasoning_effort").is_none());
+        assert_eq!(cleaned["reasoning"]["effort"], "xhigh");
+        assert_eq!(cleaned["temperature"], 0.1);
     }
 
     #[test]

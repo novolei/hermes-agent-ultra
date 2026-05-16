@@ -37,10 +37,15 @@ const CURATED_PROVIDER_MODELS: &[(&str, &[&str])] = &[
     (
         "nous",
         &[
+            "openai/gpt-5.5-pro",
+            "openai/gpt-5.5",
+            "anthropic/claude-opus-4.7",
+            "qwen/qwen3.6-max-preview",
+            "deepseek/deepseek-v4-pro",
+            "moonshotai/kimi-k2.6",
             "nousresearch/hermes-3-llama-3.1-405b",
             "nousresearch/hermes-4-405b",
             "nousresearch/hermes-4-70b",
-            "moonshotai/kimi-k2.6",
             "xiaomi/mimo-v2.5-pro",
             "anthropic/claude-sonnet-4.5",
         ],
@@ -406,13 +411,29 @@ fn persist_provider_catalog_cache(provider: &str, models: &[String]) {
 }
 
 pub fn normalize_provider_model(input: &str) -> Result<String, AgentError> {
-    if input.trim().is_empty() {
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
         return Err(AgentError::Config("Model cannot be empty".to_string()));
     }
-    if input.contains(':') {
-        Ok(input.to_string())
+    if trimmed.eq_ignore_ascii_case("list") || trimmed.eq_ignore_ascii_case("ls") {
+        return Err(AgentError::Config(
+            "`hermes model list` is not a model setter. Run `hermes model` to list providers."
+                .to_string(),
+        ));
+    }
+    if !trimmed.contains(':')
+        && curated_provider_slugs()
+            .iter()
+            .any(|provider| provider.eq_ignore_ascii_case(trimmed))
+    {
+        return Err(AgentError::Config(format!(
+            "`{trimmed}` is a provider, not a model. Use `{trimmed}:<model-id>`."
+        )));
+    }
+    if trimmed.contains(':') {
+        Ok(trimmed.to_string())
     } else {
-        Ok(format!("openai:{input}"))
+        Ok(format!("openai:{trimmed}"))
     }
 }
 
@@ -572,7 +593,10 @@ async fn fetch_openai_compatible_live_models(base_url: &str, api_key: Option<&st
     if cfg!(test) {
         return Vec::new();
     }
-    let url = format!("{}/models", base_url.trim_end_matches('/'));
+    let url = format!(
+        "{}/models?output_modalities=all",
+        base_url.trim_end_matches('/')
+    );
     let client = reqwest::Client::new();
     let mut request = client.get(url);
     if let Some(key) = api_key.map(str::trim).filter(|v| !v.is_empty()) {
@@ -876,9 +900,10 @@ mod tests {
 
     use super::{
         cached_provider_catalog_status, is_models_dev_preferred_provider,
-        load_provider_catalog_cache, merge_with_models_dev, persist_provider_catalog_cache,
-        provider_catalog_cache_path, provider_catalog_entries, provider_curated_models,
-        provider_model_ids_with_client, resolve_huggingface_catalog_endpoint_and_token,
+        load_provider_catalog_cache, merge_with_models_dev, normalize_provider_model,
+        persist_provider_catalog_cache, provider_catalog_cache_path, provider_catalog_entries,
+        provider_curated_models, provider_model_ids_with_client,
+        resolve_huggingface_catalog_endpoint_and_token,
     };
 
     fn env_guard() -> std::sync::MutexGuard<'static, ()> {
@@ -897,6 +922,20 @@ mod tests {
         let client = ModelsDevClient::new("http://127.0.0.1:9/unreachable", cache_path("seeded"));
         client.seed_cache(seed);
         client
+    }
+
+    #[test]
+    fn normalize_provider_model_rejects_list_and_bare_provider_names() {
+        assert!(normalize_provider_model("list").is_err());
+        assert!(normalize_provider_model("nous").is_err());
+        assert_eq!(
+            normalize_provider_model("nous:openai/gpt-5.5-pro").expect("valid provider model"),
+            "nous:openai/gpt-5.5-pro"
+        );
+        assert_eq!(
+            normalize_provider_model("gpt-4o").expect("bare OpenAI model"),
+            "openai:gpt-4o"
+        );
     }
 
     #[test]
@@ -1087,10 +1126,15 @@ mod tests {
         let out = provider_model_ids_with_client("nous", &client).await;
         assert!(
             out.starts_with(&[
+                "openai/gpt-5.5-pro".to_string(),
+                "openai/gpt-5.5".to_string(),
+                "anthropic/claude-opus-4.7".to_string(),
+                "qwen/qwen3.6-max-preview".to_string(),
+                "deepseek/deepseek-v4-pro".to_string(),
+                "moonshotai/kimi-k2.6".to_string(),
                 "nousresearch/hermes-3-llama-3.1-405b".to_string(),
                 "nousresearch/hermes-4-405b".to_string(),
                 "nousresearch/hermes-4-70b".to_string(),
-                "moonshotai/kimi-k2.6".to_string(),
                 "xiaomi/mimo-v2.5-pro".to_string(),
                 "anthropic/claude-sonnet-4.5".to_string()
             ]),
