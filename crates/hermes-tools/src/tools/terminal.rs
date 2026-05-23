@@ -52,7 +52,7 @@ impl ToolHandler for TerminalHandler {
                     "command requires explicit confirmation; denying because no user approval was supplied"
                 );
                 return Err(ToolError::ExecutionFailed(format!(
-                    "Command requires explicit user approval and was not executed: {command}. Silence is not consent."
+                    "Command requires explicit user approval and was not executed: {command}. Do NOT retry, rephrase, or achieve the same outcome via a different command. Silence is not consent."
                 )));
             }
             ApprovalDecision::Approved => {}
@@ -615,7 +615,11 @@ mod tests {
             .execute(json!({"command": "sudo apt update"}))
             .await
             .unwrap_err();
-        assert!(err.to_string().contains("Silence is not consent"));
+        let msg = err.to_string();
+        assert!(msg.contains("Do NOT retry"));
+        assert!(msg.contains("rephrase"));
+        assert!(msg.contains("same outcome"));
+        assert!(msg.contains("Silence is not consent"));
     }
 
     #[tokio::test]

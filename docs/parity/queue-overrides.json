@@ -479,6 +479,10 @@
     "c1eb2dcda7d7": {
       "disposition": "superseded",
       "notes": "python runtime path delta superseded by rust-native implementation for corresponding product surface"
+    },
+    "7f1b2b456953": {
+      "disposition": "ported",
+      "notes": "Rust terminal approval path denies confirmation-required commands without consent and now pins the same no-retry/no-rephrase/no-same-outcome 'Silence is not consent' contract in crates/hermes-tools/src/tools/terminal.rs."
     }
   },
   "subject_patterns": [
