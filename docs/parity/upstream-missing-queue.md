@@ -13,12 +13,11 @@ Generated: `2026-05-23T13:52:22.956458+00:00`
 | Disposition | Commit Count |
 | --- | ---: |
 | mirrored | 1 |
-| ported | 3 |
-| superseded | 3 |
+| ported | 5 |
+| superseded | 1 |
 
 ## First 100 Pending Commits
 
 | SHA | Ticket | Subject |
 | --- | ---: | --- |
 | _(none)_ | - | - |
-

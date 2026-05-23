@@ -88,14 +88,14 @@
       "target_ticket_name": "GPAR-06 packaging/docs/install parity"
     },
     {
-      "classification_rule": "prior_state",
-      "disposition": "superseded",
+      "classification_rule": "sha_override",
+      "disposition": "ported",
       "files_sample": [
         "hermes_cli/kanban_db.py",
         "tests/hermes_cli/test_kanban_db.py"
       ],
       "files_touched": 2,
-      "notes": "rust-primary parity policy: upstream Python runtime surface commit is covered by Rust-native architecture and tracked via Rust gates",
+      "notes": "Rust kanban store loading now refuses malformed or semantically empty existing boards.json state, preserves the original bytes, and writes a same-directory boards.json.corrupt.<timestamp> backup before returning an error.",
       "owner": "",
       "rust_only_guard": {
         "allow_python_test_surfaces": false,
@@ -129,13 +129,13 @@
       "target_ticket_name": "GPAR-07 upstream queue backfill"
     },
     {
-      "classification_rule": "prior_state",
-      "disposition": "superseded",
+      "classification_rule": "sha_override",
+      "disposition": "ported",
       "files_sample": [
         "hermes_cli/kanban_db.py"
       ],
       "files_touched": 1,
-      "notes": "rust-primary parity policy: upstream Python runtime surface commit is covered by Rust-native architecture and tracked via Rust gates",
+      "notes": "Rust corrupt-store backup derives the backup filename from the canonical store basename and writes only within the original store parent directory, matching the upstream path-injection hardening intent.",
       "owner": "",
       "rust_only_guard": {
         "allow_python_test_surfaces": false,
@@ -178,8 +178,8 @@
   "summary": {
     "by_disposition": {
       "mirrored": 1,
-      "ported": 3,
-      "superseded": 3
+      "ported": 5,
+      "superseded": 1
     },
     "by_target_ticket": {
       "20": 3,

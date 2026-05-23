@@ -488,6 +488,14 @@
       "disposition": "ported",
       "notes": "Rust config loading now normalizes Python-style fallback_providers plus legacy fallback_model into a merged fallback_models chain, preserves fallback provider metadata in llm_providers, and forwards that chain into AgentConfig unless HERMES_FALLBACK_MODEL(S) overrides it."
     },
+    "39fe4ecee3d0": {
+      "disposition": "ported",
+      "notes": "Rust kanban store loading now refuses malformed or semantically empty existing boards.json state, preserves the original bytes, and writes a same-directory boards.json.corrupt.<timestamp> backup before returning an error."
+    },
+    "c4b8f5efee8c": {
+      "disposition": "ported",
+      "notes": "Rust corrupt-store backup derives the backup filename from the canonical store basename and writes only within the original store parent directory, matching the upstream path-injection hardening intent."
+    },
     "e97a4c8f3795": {
       "disposition": "ported",
       "notes": "README.md and local Chinese README now include the upstream Nous Portal setup/status section adapted to hermes-agent-ultra command names."
