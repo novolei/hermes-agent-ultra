@@ -509,16 +509,16 @@ async fn main() {
             port,
             once,
         } => {
-            hermes_cli::systems::handle_cli_systems(
-                cli.config_dir.clone(),
+            hermes_cli::systems::handle_cli_systems(hermes_cli::systems::SystemsCliOptions {
+                config_dir: cli.config_dir.clone(),
                 action,
                 topic,
-                json,
+                json_only: json,
                 output,
                 host,
                 port,
                 once,
-            )
+            })
             .await
         }
         CliCommand::VerifyProvenance {

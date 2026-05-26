@@ -125,6 +125,18 @@ pub struct ProvenanceReport {
     pub commands: Vec<String>,
 }
 
+#[derive(Debug, Clone)]
+pub struct SystemsCliOptions {
+    pub config_dir: Option<String>,
+    pub action: Option<String>,
+    pub topic: Option<String>,
+    pub json_only: bool,
+    pub output: Option<String>,
+    pub host: String,
+    pub port: u16,
+    pub once: bool,
+}
+
 fn now_rfc3339() -> String {
     Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true)
 }
@@ -239,64 +251,57 @@ fn print_human_matrix(value: &Value) {
     }
 }
 
-pub async fn handle_cli_systems(
-    config_dir: Option<String>,
-    action: Option<String>,
-    topic: Option<String>,
-    json_only: bool,
-    output: Option<String>,
-    host: String,
-    port: u16,
-    once: bool,
-) -> Result<(), AgentError> {
-    let action = action
+pub async fn handle_cli_systems(options: SystemsCliOptions) -> Result<(), AgentError> {
+    let action = options
+        .action
         .as_deref()
         .map(str::trim)
         .filter(|action| !action.is_empty())
         .unwrap_or("status")
         .to_ascii_lowercase();
-    let topic = topic
+    let topic = options
+        .topic
         .as_deref()
         .map(str::trim)
         .filter(|topic| !topic.is_empty())
         .unwrap_or("")
         .to_ascii_lowercase();
-    let output_ref = output.as_deref();
-    let state = state_root(config_dir.as_deref());
+    let output_ref = options.output.as_deref();
+    let state = state_root(options.config_dir.as_deref());
 
     match action.as_str() {
         "status" | "all" => {
             let report = build_status_report(&state);
             let value = serde_json::to_value(&report)
                 .map_err(|err| AgentError::Config(format!("encode systems status: {err}")))?;
-            if !json_only {
+            if !options.json_only {
                 print_human_status(&report);
             }
-            report_output(&value, json_only, output_ref)
+            report_output(&value, options.json_only, output_ref)
         }
         "release" | "gate" | "eval" => {
             let report = build_release_gate_report();
             let value = serde_json::to_value(&report)
                 .map_err(|err| AgentError::Config(format!("encode release gate: {err}")))?;
-            if !json_only {
+            if !options.json_only {
                 print_human_release(&report);
             }
-            report_output(&value, json_only, output_ref)
+            report_output(&value, options.json_only, output_ref)
         }
         "replay" | "recorder" => {
             let report = build_replay_report(&state)?;
             let value = serde_json::to_value(&report)
                 .map_err(|err| AgentError::Config(format!("encode replay report: {err}")))?;
-            if !json_only {
+            if !options.json_only {
                 print_human_replay(&report);
             }
-            report_output(&value, json_only, output_ref)
+            report_output(&value, options.json_only, output_ref)
         }
         "agent-card" | "card" | "a2a" => match topic.as_str() {
-            "serve" | "server" => serve_agent_card(&host, port, once),
+            "serve" | "server" => serve_agent_card(&options.host, options.port, options.once),
             "card" | "show" | "" => {
                 let value = build_agent_card();
-                if !json_only {
+                if !options.json_only {
                     println!("Hermes agent card");
                     println!(
                         "{}",
@@ -305,7 +310,7 @@ pub async fn handle_cli_systems(
                         })?
                     );
                 }
-                report_output(&value, json_only, output_ref)
+                report_output(&value, options.json_only, output_ref)
             }
             other => Err(AgentError::Config(format!(
                 "unknown agent-card action '{other}' (use card or serve)"
@@ -320,10 +325,10 @@ pub async fn handle_cli_systems(
             let report = build_mcp_conformance_report().await;
             let value = serde_json::to_value(&report)
                 .map_err(|err| AgentError::Config(format!("encode MCP report: {err}")))?;
-            if !json_only {
+            if !options.json_only {
                 print_human_conformance(&report);
             }
-            report_output(&value, json_only, output_ref)
+            report_output(&value, options.json_only, output_ref)
         }
         "acp" => {
             if !matches!(topic.as_str(), "conformance" | "doctor" | "show" | "") {
@@ -334,17 +339,17 @@ pub async fn handle_cli_systems(
             let report = build_acp_conformance_report().await;
             let value = serde_json::to_value(&report)
                 .map_err(|err| AgentError::Config(format!("encode ACP report: {err}")))?;
-            if !json_only {
+            if !options.json_only {
                 print_human_conformance(&report);
             }
-            report_output(&value, json_only, output_ref)
+            report_output(&value, options.json_only, output_ref)
         }
         "capabilities" | "capability" | "providers" | "matrix" => {
             let value = build_capability_matrix();
-            if !json_only {
+            if !options.json_only {
                 print_human_matrix(&value);
             }
-            report_output(&value, json_only, output_ref)
+            report_output(&value, options.json_only, output_ref)
         }
         "handoff" | "handoffs" | "contract" | "contracts" => {
             let value = match topic.as_str() {
@@ -357,14 +362,14 @@ pub async fn handle_cli_systems(
                     )));
                 }
             };
-            if !json_only {
+            if !options.json_only {
                 println!(
                     "{}",
                     serde_json::to_string_pretty(&value)
                         .map_err(|err| AgentError::Config(format!("encode handoff: {err}")))?
                 );
             }
-            report_output(&value, json_only, output_ref)
+            report_output(&value, options.json_only, output_ref)
         }
         "provenance" => {
             if !matches!(topic.as_str(), "status" | "show" | "") {
@@ -375,7 +380,7 @@ pub async fn handle_cli_systems(
             let report = build_provenance_report(&state);
             let value = serde_json::to_value(&report)
                 .map_err(|err| AgentError::Config(format!("encode provenance report: {err}")))?;
-            if !json_only {
+            if !options.json_only {
                 println!(
                     "{}",
                     serde_json::to_string_pretty(&value).map_err(|err| {
@@ -383,7 +388,7 @@ pub async fn handle_cli_systems(
                     })?
                 );
             }
-            report_output(&value, json_only, output_ref)
+            report_output(&value, options.json_only, output_ref)
         }
         other => Err(AgentError::Config(format!(
             "unknown systems action '{other}' (use status, release, replay, mcp, acp, providers, handoff, provenance, or agent-card)"
