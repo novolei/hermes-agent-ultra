@@ -65,6 +65,34 @@
       ]
     },
     {
+      "id": "rust-gateway-platform-plugin-parity",
+      "status": "approved",
+      "workstream": "WS3",
+      "summary": "Keep platform adapter parity in the Rust gateway instead of vendoring upstream Python platform-plugin trees.",
+      "owner": "sheawinkler",
+      "ticket": 7,
+      "last_reviewed": "2026-05-26",
+      "review_date": "2026-08-26",
+      "rationale": "Mattermost platform behavior is represented by the Rust-native gateway adapter and adapter matrix; upstream Python plugin files are not vendored into the Rust runtime tree.",
+      "path_prefixes": [
+        "plugins/platforms/mattermost/"
+      ]
+    },
+    {
+      "id": "upstream-s6-plan-doc-archive",
+      "status": "approved",
+      "workstream": "WS7",
+      "summary": "Do not import upstream implementation-plan archive documents unless they change local runtime or release behavior.",
+      "owner": "sheawinkler",
+      "ticket": 26,
+      "last_reviewed": "2026-05-26",
+      "review_date": "2026-08-26",
+      "rationale": "The upstream s6-overlay plan is a post-implementation reference document for upstream Docker/Python service-management history; Hermes Ultra tracks relevant runtime parity through local Docker, gateway, and release gates.",
+      "path_prefixes": [
+        "docs/plans/2026-05-07-s6-overlay-dynamic-subagent-gateways.md"
+      ]
+    },
+    {
       "id": "rust-cli-tui-primary-ux-surface",
       "status": "approved",
       "workstream": "WS5",
