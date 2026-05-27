@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { appBridge } from "../lib/bridge";
-import type { AppInfo } from "../lib/bridge/app";
-import { Button } from "../shared/ui/button";
+import { appBridge, type AppInfo } from "@/lib/bridge";
+import { Button } from "@/shared/ui/button";
 
 export function App() {
   const [info, setInfo] = useState<AppInfo | null>(null);
@@ -18,7 +17,9 @@ export function App() {
       </h1>
       {info && <p className="text-muted-foreground">platform: {info.platform}</p>}
       {error && <p className="text-red-500">{error}</p>}
-      <Button onClick={() => appBridge.appInfo().then(setInfo)}>Refresh</Button>
+      <Button onClick={() => appBridge.appInfo().then(setInfo).catch((e) => setError(String(e)))}>
+        Refresh
+      </Button>
     </main>
   );
 }
