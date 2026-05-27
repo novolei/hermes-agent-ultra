@@ -20,3 +20,6 @@ artifacts/quorum/
 
 # Generated PR infographics live in PR bodies, not in-tree.
 infographic/
+
+# desktop/src-tauri is a workspace member; root Cargo.lock is authoritative.
+/desktop/src-tauri/Cargo.lock
