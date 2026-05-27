@@ -15,10 +15,6 @@ pub struct AppInfo {
 pub struct AppService;
 
 impl AppService {
-    pub fn new() -> Self {
-        Self
-    }
-
     pub fn info(&self) -> AppInfo {
         AppInfo {
             name: "Hermes Agent Ultra".to_string(),
@@ -34,7 +30,7 @@ mod tests {
 
     #[test]
     fn info_reports_name_version_and_platform() {
-        let info = AppService::new().info();
+        let info = AppService::default().info();
         assert_eq!(info.name, "Hermes Agent Ultra");
         assert_eq!(info.version, env!("CARGO_PKG_VERSION"));
         assert_eq!(info.platform, std::env::consts::OS);
