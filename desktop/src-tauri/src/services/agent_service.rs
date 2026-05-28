@@ -51,9 +51,11 @@ pub fn translate_chunk(session_id: &str, chunk: &StreamChunk) -> Vec<TranslatedE
     if let Some(usage) = chunk.usage.as_ref() {
         out.push(TranslatedEvent::Usage(UsageEvent {
             session_id: sid.clone(),
-            prompt_tokens: usage.prompt_tokens,
-            completion_tokens: usage.completion_tokens,
-            total_tokens: usage.total_tokens,
+            // Saturating cast: UsageStats uses u64 but token counts fit in u32 for any
+            // foreseeable LLM response; clamp rather than panic or wrap.
+            prompt_tokens: usage.prompt_tokens.min(u32::MAX as u64) as u32,
+            completion_tokens: usage.completion_tokens.min(u32::MAX as u64) as u32,
+            total_tokens: usage.total_tokens.min(u32::MAX as u64) as u32,
             estimated_cost: usage.estimated_cost,
         }));
     }

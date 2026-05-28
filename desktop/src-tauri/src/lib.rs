@@ -4,7 +4,8 @@ mod services;
 mod state;
 
 use state::AppState;
-use tauri_specta::{collect_commands, Builder};
+use tauri_specta::{collect_commands, collect_events, Builder};
+use events::{TextDeltaEvent, ToolCallDeltaEvent, UsageEvent, DoneEvent, ErrorEvent};
 
 fn make_builder() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new()
@@ -12,6 +13,13 @@ fn make_builder() -> Builder<tauri::Wry> {
             commands::app::app_info,
             commands::agent::agent_send_message,
             commands::session::session_load,
+        ])
+        .events(collect_events![
+            TextDeltaEvent,
+            ToolCallDeltaEvent,
+            UsageEvent,
+            DoneEvent,
+            ErrorEvent,
         ])
 }
 

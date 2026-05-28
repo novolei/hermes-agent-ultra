@@ -4,13 +4,13 @@
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
-#[derive(Debug, Clone, Serialize, PartialEq, specta::Type)]
+#[derive(Debug, Clone, Serialize, PartialEq, specta::Type, tauri_specta::Event)]
 pub struct TextDeltaEvent {
     pub session_id: String,
     pub text: String,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, specta::Type)]
+#[derive(Debug, Clone, Serialize, PartialEq, specta::Type, tauri_specta::Event)]
 pub struct ToolCallDeltaEvent {
     pub session_id: String,
     pub index: u32,
@@ -22,24 +22,26 @@ pub struct ToolCallDeltaEvent {
     pub call_id: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, specta::Type)]
+#[derive(Debug, Clone, Serialize, PartialEq, specta::Type, tauri_specta::Event)]
 pub struct UsageEvent {
     pub session_id: String,
-    pub prompt_tokens: u64,
-    pub completion_tokens: u64,
-    pub total_tokens: u64,
+    /// Token counts are capped at u32 for frontend JSON-number safety (u64 exceeds
+    /// JS Number precision; LLM responses comfortably fit in ~4 B tokens).
+    pub prompt_tokens: u32,
+    pub completion_tokens: u32,
+    pub total_tokens: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub estimated_cost: Option<f64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, specta::Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, specta::Type, tauri_specta::Event)]
 pub struct DoneEvent {
     pub session_id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, specta::Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, specta::Type, tauri_specta::Event)]
 pub struct ErrorEvent {
     pub session_id: String,
     pub message: String,
