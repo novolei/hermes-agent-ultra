@@ -10,6 +10,7 @@
 import { atom } from 'jotai'
 import type { Channel } from './chat-types'
 import type { MinimapItem } from '@/features/chat-agent/components/ai-elements/scroll-minimap'
+import type { InvocableSkill, WorkspaceFileMatch } from './types'
 
 // ---- Minimal type shapes (mirrors uclaw agent-atoms.ts stubs) ---------------
 
@@ -124,4 +125,36 @@ export async function openExternal(_url: string): Promise<void> {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function recordSkillCited(_skillName: string): Promise<void> {
   return
+}
+
+// ---- Composer autocomplete bridge stubs ------------------------------------
+// Plan 2b.2.c.2 — stubs for composer mention controller's Tauri IPC calls.
+// Real implementations land when the skill registry + workspace file search
+// backends are wired (Plan 3+). Until then the popup opens empty but
+// doesn't crash.
+
+/**
+ * uclaw: @/lib/tauri-bridge → listInvocableSkills.
+ * Lists skills available for `/`-autocomplete in the composer.
+ * Returns empty array until the real Tauri backend is wired.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function listInvocableSkills(_spaceId?: string): Promise<InvocableSkill[]> {
+  return []
+}
+
+/**
+ * uclaw: @/lib/tauri-bridge → searchWorkspaceFilesForMention.
+ * Searches workspace files for `@`-autocomplete in the composer.
+ * Returns empty array until the real Tauri backend is wired.
+ */
+export async function searchWorkspaceFilesForMention(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _sessionId: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _query: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _limit?: number,
+): Promise<WorkspaceFileMatch[]> {
+  return []
 }
