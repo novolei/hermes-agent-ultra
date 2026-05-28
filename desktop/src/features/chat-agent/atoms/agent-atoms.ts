@@ -962,6 +962,10 @@ export interface BackgroundTask {
   intent?: string
 }
 
+// Desktop port adaptation: TS strict-mode (`noUnusedParameters: true`) requires
+// renaming the unused arg to `_sessionId`. The atomFamily keys on the original
+// session id; this only affects the closure-arg name, not behavior. Plan 2c+
+// may upstream a comment to uclaw if their atomFamily ever shrinks the arg.
 export const backgroundTasksAtomFamily = atomFamily((_sessionId: string) =>
   atom<BackgroundTask[]>([])
 )

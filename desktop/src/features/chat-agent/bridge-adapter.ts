@@ -55,11 +55,11 @@ export function createBridgeAdapter(): BridgeAdapter {
         }
         case "agent:done": {
           const p = payload as DoneEvent;
-          return { type: "complete", sessionId: p.session_id, ...({ reason: p.reason } as Record<string, unknown>) } as AgentEvent;
+          return { type: "complete", sessionId: p.session_id, reason: p.reason ?? undefined };
         }
         case "agent:error": {
           const p = payload as ErrorEvent;
-          return { type: "error", sessionId: p.session_id, ...({ message: p.message } as Record<string, unknown>) } as AgentEvent;
+          return { type: "error", sessionId: p.session_id, message: p.message };
         }
         case "agent:usage": {
           const p = payload as UsageEvent;
@@ -121,7 +121,7 @@ export function createBridgeAdapter(): BridgeAdapter {
             }
             return "status";
           })();
-          return { type: t, sessionId: p.session_id, ...({ message: p.message } as Record<string, unknown>) } as AgentEvent;
+          return { type: t, sessionId: p.session_id, message: p.message };
         }
         default: {
           // Exhaustiveness guard — TypeScript will flag if any AgentEventMap key is missed.
