@@ -5,7 +5,10 @@ mod state;
 
 use state::AppState;
 use tauri_specta::{collect_commands, collect_events, Builder};
-use events::{TextDeltaEvent, ToolCallDeltaEvent, UsageEvent, DoneEvent, ErrorEvent};
+use events::{
+    TextDeltaEvent, ToolCallDeltaEvent, UsageEvent, DoneEvent, ErrorEvent,
+    ToolStartEvent, ToolResultEvent, ThinkingDeltaEvent, StatusEvent,
+};
 
 fn make_builder() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new()
@@ -20,6 +23,10 @@ fn make_builder() -> Builder<tauri::Wry> {
             UsageEvent,
             DoneEvent,
             ErrorEvent,
+            ToolStartEvent,
+            ToolResultEvent,
+            ThinkingDeltaEvent,
+            StatusEvent,
         ])
 }
 

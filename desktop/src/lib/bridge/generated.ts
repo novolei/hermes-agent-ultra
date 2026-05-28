@@ -25,8 +25,12 @@ export const commands = {
 export const events = {
 	doneEvent: makeEvent<DoneEvent_Deserialize>("done-event"),
 	errorEvent: makeEvent<ErrorEvent>("error-event"),
+	statusEvent: makeEvent<StatusEvent>("status-event"),
 	textDeltaEvent: makeEvent<TextDeltaEvent>("text-delta-event"),
+	thinkingDeltaEvent: makeEvent<ThinkingDeltaEvent>("thinking-delta-event"),
 	toolCallDeltaEvent: makeEvent<ToolCallDeltaEvent_Deserialize>("tool-call-delta-event"),
+	toolResultEvent: makeEvent<ToolResultEvent>("tool-result-event"),
+	toolStartEvent: makeEvent<ToolStartEvent>("tool-start-event"),
 	usageEvent: makeEvent<UsageEvent_Deserialize>("usage-event"),
 };
 
@@ -87,9 +91,25 @@ export type SessionMessage_Serialize = {
 	content?: string | null,
 };
 
+export type StatusEvent = {
+	session_id: string,
+	/**
+	 *  Free-form event_type from hermes-agent's status_callback. Observed today:
+	 *  `"lifecycle"` (retries, compacting, context pressure). Future values are
+	 *  possible — frontend should treat as opaque tag.
+	 */
+	event_type: string,
+	message: string,
+};
+
 export type TextDeltaEvent = {
 	session_id: string,
 	text: string,
+};
+
+export type ThinkingDeltaEvent = {
+	session_id: string,
+	token: string,
 };
 
 export type ToolCallDeltaEvent = ToolCallDeltaEvent_Serialize | ToolCallDeltaEvent_Deserialize;
@@ -108,6 +128,23 @@ export type ToolCallDeltaEvent_Serialize = {
 	function_name?: string | null,
 	arguments_chunk?: string | null,
 	call_id?: string | null,
+};
+
+export type ToolResultEvent = {
+	session_id: string,
+	tool: string,
+	result: string,
+};
+
+export type ToolStartEvent = {
+	session_id: string,
+	tool: string,
+	/**
+	 *  JSON-encoded tool arguments. Frontend may `JSON.parse` if it needs the
+	 *  structured form; we keep the wire format as a string so specta exports
+	 *  a plain TS `string` (avoids `serde_json::Value` → `unknown` widening).
+	 */
+	arguments_json: string,
 };
 
 export type UsageEvent = UsageEvent_Serialize | UsageEvent_Deserialize;
