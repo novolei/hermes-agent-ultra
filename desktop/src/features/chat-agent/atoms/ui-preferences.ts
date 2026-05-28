@@ -74,7 +74,11 @@ export async function initializeUiPreferences(
 // ===== 持久化更新 =====
 
 /**
- * 更新悬浮置顶条开关并持久化
+ * Plan 2b.2.c.3 — the Rust `set_sticky_user_message_enabled` command has not
+ * been implemented yet (settings UI lands in Plan 3.5). For MVP we persist to
+ * localStorage directly so the atom is usable from the React side without
+ * blocking on a backend that hasn't shipped. When the real Rust command lands,
+ * this function becomes the thin Tauri-invoke wrapper it was in uclaw.
  */
 export async function updateStickyUserMessageEnabled(enabled: boolean): Promise<void> {
   // 使用 localStorage 缓存用户偏好设置

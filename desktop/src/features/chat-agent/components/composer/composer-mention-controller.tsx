@@ -9,7 +9,7 @@
  *   - `@/atoms/workspace` → `@/features/chat-agent/atoms/tab-atoms`
  *   - `@/lib/tauri-bridge` → `@/features/chat-agent/lib/peripheral-stubs`
  *   - `@/lib/types` → `@/features/chat-agent/lib/types`
- *   - `@/hooks/useEditorMentionTrigger` → `@/features/chat-agent/lib/composer/hooks/use-editor-mention-trigger`
+ *   - `@/hooks/useEditorMentionTrigger` → `@/features/chat-agent/lib/composer/use-editor-mention-trigger`
  *   - `@/lib/utils` → `@/shared/lib/cn`
  *
  * Inline stub additions:
@@ -30,7 +30,7 @@ import {
   searchWorkspaceFilesForMention,
 } from '@/features/chat-agent/lib/peripheral-stubs'
 import type { InvocableSkill, WorkspaceFileMatch } from '@/features/chat-agent/lib/types'
-import { useEditorMentionTrigger } from '@/features/chat-agent/lib/composer/hooks/use-editor-mention-trigger'
+import { useEditorMentionTrigger } from '@/features/chat-agent/lib/composer/use-editor-mention-trigger'
 import { ComposerMentionPopup } from './composer-mention-popup'
 import type { MentionChipKind } from '@/features/chat-agent/lib/composer/mention-chip-node'
 import { Sparkles, FileText, AlertTriangle, Layers } from 'lucide-react'

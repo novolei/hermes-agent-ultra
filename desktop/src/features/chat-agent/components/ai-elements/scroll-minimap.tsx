@@ -91,10 +91,7 @@ function ScrollMinimapInner({ items, scrollRef }: InnerProps): React.ReactElemen
   const [hovered, setHovered] = React.useState(false)
   const [isLeaving, setIsLeaving] = React.useState(false)
   const [visibleIds, setVisibleIds] = React.useState<Set<string>>(new Set())
-  const [canScroll, setCanScroll] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState('')
-  const [isDragging, setIsDragging] = React.useState(false)
-  const [scrollMetrics, setScrollMetrics] = React.useState({ scrollTop: 0, scrollHeight: 1, clientHeight: 1 })
   const closeTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined)
   const fadeTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined)
   const searchInputRef = React.useRef<HTMLInputElement>(null)
@@ -143,8 +140,6 @@ function ScrollMinimapInner({ items, scrollRef }: InnerProps): React.ReactElemen
 
     const update = (): void => {
       const { scrollTop, scrollHeight, clientHeight } = el
-      setCanScroll(scrollHeight > clientHeight + 10)
-      setScrollMetrics({ scrollTop, scrollHeight, clientHeight })
       if (scrollHeight <= 0) return
 
       const nodes = el.querySelectorAll<HTMLElement>('[data-message-id]')
@@ -263,74 +258,15 @@ function ScrollMinimapInner({ items, scrollRef }: InnerProps): React.ReactElemen
     return items.filter((item) => item.preview.toLowerCase().includes(q))
   }, [items, searchQuery])
 
-  const handleThumbMouseDown = React.useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    const el = scrollRef.current
-    const track = trackRef.current
-    if (!el || !track) return
-
-    setIsDragging(true)
-    const startY = e.clientY
-    const startScrollTop = el.scrollTop
-    const trackHeight = track.clientHeight
-    const { scrollHeight, clientHeight } = el
-    const scrollRange = scrollHeight - clientHeight
-    const thumbHeight = Math.max(trackHeight * 0.1, (clientHeight / scrollHeight) * trackHeight)
-    const scrollableTrack = trackHeight - thumbHeight
-
-    const onMouseMove = (ev: MouseEvent): void => {
-      ev.preventDefault()
-      const delta = ev.clientY - startY
-      const scrollDelta = scrollableTrack > 0 ? (delta / scrollableTrack) * scrollRange : 0
-      el.scrollTop = Math.max(0, Math.min(scrollRange, startScrollTop + scrollDelta))
-    }
-
-    const onMouseUp = (): void => {
-      setIsDragging(false)
-      document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseup', onMouseUp)
-      document.body.style.userSelect = ''
-      document.body.style.cursor = ''
-    }
-
-    document.body.style.userSelect = 'none'
-    document.body.style.cursor = 'grabbing'
-    document.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseup', onMouseUp)
-  }, [scrollRef])
-
-  const handleTrackMouseDown = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target !== e.currentTarget) return
-
-    const track = trackRef.current
-    const el = scrollRef.current
-    if (!track || !el) return
-
-    const rect = track.getBoundingClientRect()
-    const clickRatio = (e.clientY - rect.top) / rect.height
-    const { scrollHeight, clientHeight } = el
-    const targetTop = clickRatio * (scrollHeight - clientHeight)
-    el.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' })
-  }, [scrollRef])
-  // Suppress noUnusedLocals: these state values and handlers are wired in future sub-tasks.
-  void canScroll
-  void isDragging
-  void handleThumbMouseDown
-  void handleTrackMouseDown
+  // Plan 2b.2.c.3 (2b.2.b.1 #3) — dead handlers in uclaw upstream removed.
+  // `canScroll`, `isDragging`, `handleThumbMouseDown`, `handleTrackMouseDown`,
+  // `thumbTopPct` were declared but never wired into JSX. If uclaw resurrects
+  // them later, sync via the standard port methodology.
 
   // 仅当无消息时隐藏；不再要求容器可滚动 — 即便消息很少也保留导航入口
   if (items.length < MIN_ITEMS) return null
 
   const barCount = Math.min(items.length, MAX_BARS)
-
-  const { scrollTop, scrollHeight, clientHeight } = scrollMetrics
-  const scrollRange = scrollHeight - clientHeight
-  const thumbRatio = scrollHeight > 0 ? Math.min(clientHeight / scrollHeight, 1) : 1
-  const thumbHeightPct = Math.max(10, thumbRatio * 100)
-  const thumbTopPct = scrollRange > 0 ? (scrollTop / scrollRange) * (100 - thumbHeightPct) : 0
-  void thumbTopPct
 
   return (
     <div
