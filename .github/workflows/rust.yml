@@ -16,6 +16,21 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Install Tauri Linux system deps (GTK/WebKit2/libsoup)
+      # hermes-desktop is a Tauri v2 app; the Linux backend pulls these in
+      # transitively via webkit2gtk-sys + soup3-sys. Without them, `cargo build
+      # --verbose` (which builds the whole workspace) fails at link time with
+      # `glib-2.0.pc not found`. See the official Tauri v2 prerequisites:
+      # https://tauri.app/start/prerequisites/#system-dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libwebkit2gtk-4.1-dev \
+          libgtk-3-dev \
+          libayatana-appindicator3-dev \
+          librsvg2-dev \
+          libsoup-3.0-dev \
+          libjavascriptcoregtk-4.1-dev
     - name: Build
       run: cargo build --verbose
     - name: Run tests

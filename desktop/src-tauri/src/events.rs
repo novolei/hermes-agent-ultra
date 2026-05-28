@@ -153,7 +153,8 @@ mod tests {
         let json = serde_json::to_value(TextDeltaEvent {
             session_id: "s1".into(),
             text: "hi".into(),
-        }).unwrap();
+        })
+        .unwrap();
         assert_eq!(json["session_id"], "s1");
         assert_eq!(json["text"], "hi");
     }
@@ -166,7 +167,8 @@ mod tests {
             completion_tokens: 20,
             total_tokens: 30,
             estimated_cost: Some(0.0001),
-        }).unwrap();
+        })
+        .unwrap();
         assert_eq!(json["prompt_tokens"], 10);
         assert_eq!(json["completion_tokens"], 20);
         assert_eq!(json["total_tokens"], 30);
@@ -178,7 +180,8 @@ mod tests {
         let json = serde_json::to_value(DoneEvent {
             session_id: "s1".into(),
             reason: None,
-        }).unwrap();
+        })
+        .unwrap();
         assert_eq!(json["session_id"], "s1");
         assert!(json.get("reason").map(|v| v.is_null()).unwrap_or(true));
     }
@@ -191,11 +194,18 @@ mod tests {
             function_name: None,
             arguments_chunk: None,
             call_id: None,
-        }).unwrap();
+        })
+        .unwrap();
         assert_eq!(json["session_id"], "s1");
         assert_eq!(json["index"], 0);
-        assert!(json.get("function_name").is_none(), "None should be skipped");
-        assert!(json.get("arguments_chunk").is_none(), "None should be skipped");
+        assert!(
+            json.get("function_name").is_none(),
+            "None should be skipped"
+        );
+        assert!(
+            json.get("arguments_chunk").is_none(),
+            "None should be skipped"
+        );
         assert!(json.get("call_id").is_none(), "None should be skipped");
     }
 
@@ -204,7 +214,8 @@ mod tests {
         let json = serde_json::to_value(ErrorEvent {
             session_id: "s1".into(),
             message: "boom".into(),
-        }).unwrap();
+        })
+        .unwrap();
         assert_eq!(json["session_id"], "s1");
         assert_eq!(json["message"], "boom");
     }
@@ -215,7 +226,8 @@ mod tests {
             session_id: "s1".into(),
             tool: "shell".into(),
             arguments_json: r#"{"cmd":"ls"}"#.into(),
-        }).unwrap();
+        })
+        .unwrap();
         assert_eq!(json["session_id"], "s1");
         assert_eq!(json["tool"], "shell");
         assert_eq!(json["arguments_json"], r#"{"cmd":"ls"}"#);
@@ -227,7 +239,8 @@ mod tests {
             session_id: "s1".into(),
             tool: "shell".into(),
             result: "hello\n".into(),
-        }).unwrap();
+        })
+        .unwrap();
         assert_eq!(json["tool"], "shell");
         assert_eq!(json["result"], "hello\n");
     }
@@ -237,7 +250,8 @@ mod tests {
         let json = serde_json::to_value(ThinkingDeltaEvent {
             session_id: "s1".into(),
             token: "Let me think...".into(),
-        }).unwrap();
+        })
+        .unwrap();
         assert_eq!(json["token"], "Let me think...");
     }
 
@@ -247,7 +261,8 @@ mod tests {
             session_id: "s1".into(),
             event_type: "lifecycle".into(),
             message: "Retrying API call (attempt 2/3)".into(),
-        }).unwrap();
+        })
+        .unwrap();
         assert_eq!(json["event_type"], "lifecycle");
         assert_eq!(json["message"], "Retrying API call (attempt 2/3)");
     }

@@ -2,6 +2,6 @@
 //! As domains grow, add `pub mod <domain>;` here and reference fns in `lib.rs`'s
 //! `collect_commands!` list — never collapse them into one file.
 
-pub mod app;
 pub mod agent;
+pub mod app;
 pub mod session;

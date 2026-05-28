@@ -41,5 +41,7 @@ pub fn session_load(
                 })
                 .collect()
         })
-        .map_err(|e| SessionLoadError { message: e.to_string() })
+        .map_err(|e| SessionLoadError {
+            message: e.to_string(),
+        })
 }

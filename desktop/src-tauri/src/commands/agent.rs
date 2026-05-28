@@ -21,5 +21,7 @@ pub async fn agent_send_message(
         .agent
         .send_message_streaming(app, &state.session, session_id, text)
         .await
-        .map_err(|e| AgentSendError { message: e.to_string() })
+        .map_err(|e| AgentSendError {
+            message: e.to_string(),
+        })
 }

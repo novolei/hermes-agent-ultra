@@ -89,41 +89,55 @@ fn build_desktop_callbacks(app: tauri::AppHandle, session_id: String) -> AgentCa
     // on_tool_start(name, args)
     let (app_ts, sid_ts) = (app.clone(), session_id.clone());
     cb.on_tool_start = Some(Box::new(move |name: &str, args: &serde_json::Value| {
-        events::emit_tool_start(&app_ts, events::ToolStartEvent {
-            session_id: sid_ts.clone(),
-            tool: name.to_string(),
-            arguments_json: args.to_string(),
-        });
+        events::emit_tool_start(
+            &app_ts,
+            events::ToolStartEvent {
+                session_id: sid_ts.clone(),
+                tool: name.to_string(),
+                arguments_json: args.to_string(),
+            },
+        );
     }));
 
     // on_tool_complete(name, result_content)
     let (app_tc, sid_tc) = (app.clone(), session_id.clone());
     cb.on_tool_complete = Some(Box::new(move |name: &str, result: &str| {
-        events::emit_tool_result(&app_tc, events::ToolResultEvent {
-            session_id: sid_tc.clone(),
-            tool: name.to_string(),
-            result: result.to_string(),
-        });
+        events::emit_tool_result(
+            &app_tc,
+            events::ToolResultEvent {
+                session_id: sid_tc.clone(),
+                tool: name.to_string(),
+                result: result.to_string(),
+            },
+        );
     }));
 
     // on_thinking(reasoning_token)
     let (app_th, sid_th) = (app.clone(), session_id.clone());
     cb.on_thinking = Some(Box::new(move |token: &str| {
-        events::emit_thinking_delta(&app_th, events::ThinkingDeltaEvent {
-            session_id: sid_th.clone(),
-            token: token.to_string(),
-        });
+        events::emit_thinking_delta(
+            &app_th,
+            events::ThinkingDeltaEvent {
+                session_id: sid_th.clone(),
+                token: token.to_string(),
+            },
+        );
     }));
 
     // status_callback(event_type, message)
     let (app_st, sid_st) = (app, session_id);
-    cb.status_callback = Some(std::sync::Arc::new(move |event_type: &str, message: &str| {
-        events::emit_status(&app_st, events::StatusEvent {
-            session_id: sid_st.clone(),
-            event_type: event_type.to_string(),
-            message: message.to_string(),
-        });
-    }));
+    cb.status_callback = Some(std::sync::Arc::new(
+        move |event_type: &str, message: &str| {
+            events::emit_status(
+                &app_st,
+                events::StatusEvent {
+                    session_id: sid_st.clone(),
+                    event_type: event_type.to_string(),
+                    message: message.to_string(),
+                },
+            );
+        },
+    ));
 
     cb
 }
@@ -138,11 +152,15 @@ pub struct AgentService {
 
 impl AgentService {
     pub fn new() -> Self {
-        Self { cached: tokio::sync::Mutex::new(None) }
+        Self {
+            cached: tokio::sync::Mutex::new(None),
+        }
     }
 
     /// Returns (or initialises) the (provider, model) pair.
-    async fn get_or_init_provider(&self) -> Result<(std::sync::Arc<dyn LlmProvider>, String), AgentError> {
+    async fn get_or_init_provider(
+        &self,
+    ) -> Result<(std::sync::Arc<dyn LlmProvider>, String), AgentError> {
         let mut guard = self.cached.lock().await;
         if let Some((p, m)) = guard.as_ref() {
             return Ok((p.clone(), m.clone()));
@@ -192,11 +210,17 @@ impl AgentService {
         let mut history = match session.load(&session_id) {
             Ok(h) => h,
             Err(e) => {
-                tracing::warn!(target = "agent_service", "session.load({session_id}) failed: {e}; using empty history");
-                events::emit_error(&app, events::ErrorEvent {
-                    session_id: session_id.clone(),
-                    message: format!("session.load failed (using empty history): {e}"),
-                });
+                tracing::warn!(
+                    target = "agent_service",
+                    "session.load({session_id}) failed: {e}; using empty history"
+                );
+                events::emit_error(
+                    &app,
+                    events::ErrorEvent {
+                        session_id: session_id.clone(),
+                        message: format!("session.load failed (using empty history): {e}"),
+                    },
+                );
                 Vec::new()
             }
         };
@@ -213,31 +237,40 @@ impl AgentService {
         // Stream callback: translate StreamChunks → agent:text-delta / agent:tool-call-delta / agent:usage.
         let app_for_cb = app.clone();
         let session_for_cb = session_id.clone();
-        let on_chunk: Box<dyn Fn(hermes_core::StreamChunk) + Send + Sync> = Box::new(move |chunk| {
-            for tev in translate_chunk(&session_for_cb, &chunk) {
-                match tev {
-                    TranslatedEvent::TextDelta(e)     => events::emit_text_delta(&app_for_cb, e),
-                    TranslatedEvent::ToolCallDelta(e) => events::emit_tool_call_delta(&app_for_cb, e),
-                    TranslatedEvent::Usage(e)         => events::emit_usage(&app_for_cb, e),
+        let on_chunk: Box<dyn Fn(hermes_core::StreamChunk) + Send + Sync> =
+            Box::new(move |chunk| {
+                for tev in translate_chunk(&session_for_cb, &chunk) {
+                    match tev {
+                        TranslatedEvent::TextDelta(e) => events::emit_text_delta(&app_for_cb, e),
+                        TranslatedEvent::ToolCallDelta(e) => {
+                            events::emit_tool_call_delta(&app_for_cb, e)
+                        }
+                        TranslatedEvent::Usage(e) => events::emit_usage(&app_for_cb, e),
+                    }
                 }
-            }
-        });
+            });
 
         // Drive the loop.
         let result = match agent.run_stream(history, None, Some(on_chunk)).await {
             Ok(r) => r,
             Err(e) => {
-                events::emit_error(&app, events::ErrorEvent {
-                    session_id: session_id.clone(),
-                    message: e.to_string(),
-                });
+                events::emit_error(
+                    &app,
+                    events::ErrorEvent {
+                        session_id: session_id.clone(),
+                        message: e.to_string(),
+                    },
+                );
                 return Err(e);
             }
         };
 
         // Persist updated history.
         if let Err(e) = session.save(&session_id, &result.messages, None) {
-            tracing::warn!(target = "agent_service", "session.save({session_id}) failed: {e}");
+            tracing::warn!(
+                target = "agent_service",
+                "session.save({session_id}) failed: {e}"
+            );
         }
 
         // Extract last assistant reply.
@@ -257,16 +290,21 @@ impl AgentService {
         } else {
             "max_turns"
         };
-        events::emit_done(&app, events::DoneEvent {
-            session_id: session_id.clone(),
-            reason: Some(reason.into()),
-        });
+        events::emit_done(
+            &app,
+            events::DoneEvent {
+                session_id: session_id.clone(),
+                reason: Some(reason.into()),
+            },
+        );
         Ok(reply)
     }
 }
 
 impl Default for AgentService {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 /// MVP provider selection. Reads `OPENAI_API_KEY` (or `ANTHROPIC_API_KEY` as a
@@ -275,8 +313,8 @@ impl Default for AgentService {
 /// expects (e.g. "openai:gpt-4o-mini").
 fn build_provider_from_env() -> Result<(Arc<dyn LlmProvider>, String), AgentError> {
     if let Ok(key) = std::env::var("OPENAI_API_KEY") {
-        let model = std::env::var("HERMES_DESKTOP_MODEL")
-            .unwrap_or_else(|_| "gpt-4o-mini".to_string());
+        let model =
+            std::env::var("HERMES_DESKTOP_MODEL").unwrap_or_else(|_| "gpt-4o-mini".to_string());
         let model = model.splitn(2, ':').last().unwrap_or(&model).to_string();
         let provider: Arc<dyn LlmProvider> =
             Arc::new(OpenAiProvider::new(key).with_model(model.clone()));
@@ -363,7 +401,11 @@ mod tests {
 
     #[test]
     fn empty_chunk_emits_nothing() {
-        let chunk = StreamChunk { delta: None, finish_reason: None, usage: None };
+        let chunk = StreamChunk {
+            delta: None,
+            finish_reason: None,
+            usage: None,
+        };
         assert!(translate_chunk("s1", &chunk).is_empty());
     }
 
@@ -466,6 +508,7 @@ mod tests {
         // on AgentCallbacks fields, etc.) fails to compile. A fuller
         // integration test would require a Tauri runtime fixture
         // (Plan 2b.2 / 2c territory).
-        let _f: fn(tauri::AppHandle, String) -> hermes_agent::AgentCallbacks = build_desktop_callbacks;
+        let _f: fn(tauri::AppHandle, String) -> hermes_agent::AgentCallbacks =
+            build_desktop_callbacks;
     }
 }

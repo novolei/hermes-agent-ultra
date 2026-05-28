@@ -39,7 +39,8 @@ impl SessionService {
         messages: &[Message],
         model: Option<&str>,
     ) -> Result<(), AgentError> {
-        self.inner.persist_session(session_id, messages, model, Some("desktop"), None, None)
+        self.inner
+            .persist_session(session_id, messages, model, Some("desktop"), None, None)
     }
 }
 
