@@ -11,14 +11,14 @@ import type { ContentBlock } from '../lib/chat-types'
 //   - MessageResponse comes from `./ai-elements/message`
 //     It also takes children, not a `content` prop.
 //   - ChatToolBlock is defined inline in native-block-renderer.tsx
-//   - ThinkingBlock lives in `./stubs/content-block`.
+//   - ThinkingBlock lives in `./content-block` (real impl, Task 11).
 vi.mock('./ai-elements/message', () => ({
   MessageResponse: ({ children }: { children?: React.ReactNode }) => (
     <div data-testid="text-block">{children}</div>
   ),
 }))
 
-vi.mock('./stubs/content-block', () => ({
+vi.mock('./content-block', () => ({
   ThinkingBlock: ({ block }: { block: { thinking: string } }) => (
     <div data-testid="thinking-block">{block.thinking}</div>
   ),
