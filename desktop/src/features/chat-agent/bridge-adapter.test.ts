@@ -41,10 +41,9 @@ describe("bridgeEventToAgentEvent", () => {
       type: "usage_update",
       sessionId: "s1",
       usage: {
-        input_tokens: 10,
-        output_tokens: 20,
-        total_tokens: 30,
-        estimated_cost_usd: 0.0001,
+        inputTokens: 10,
+        outputTokens: 20,
+        costUsd: 0.0001,
       },
     });
   });

@@ -610,6 +610,13 @@ export function applyAgentEvent(
     case 'text_complete':
       return { ...prev, content: event.text! }
 
+    case 'thinking_delta':
+      // Desktop port addition: uclaw upstream lacks this case; the desktop's
+      // `agent:thinking-delta` Tauri event (extended thinking from Anthropic
+      // models) needs to accumulate into `reasoning`. Plan 2c+ should upstream
+      // this back to uclaw.
+      return { ...prev, reasoning: (prev.reasoning ?? '') + ((event as { text?: string }).text ?? '') }
+
     case 'tool_start': {
       const existing = prev.toolActivities.find((t) => t.toolUseId === event.toolUseId)
       if (existing) {

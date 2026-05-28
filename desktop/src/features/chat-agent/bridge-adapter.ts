@@ -67,10 +67,9 @@ export function createBridgeAdapter(): BridgeAdapter {
             type: "usage_update",
             sessionId: p.session_id,
             usage: {
-              input_tokens: p.prompt_tokens,
-              output_tokens: p.completion_tokens,
-              total_tokens: p.total_tokens,
-              estimated_cost_usd: p.estimated_cost,
+              inputTokens: p.prompt_tokens,
+              outputTokens: p.completion_tokens,
+              costUsd: p.estimated_cost,
             },
           } as AgentEvent;
         }
