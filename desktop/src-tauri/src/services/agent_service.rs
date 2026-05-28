@@ -78,6 +78,15 @@ pub struct AgentService {
     inner: Mutex<Option<Arc<AgentLoop>>>,
 }
 
+// TODO(plan-2b-or-3): Currently a single AgentLoop is reused across all
+// sessions, so `AgentConfig.session_id` is unset and hermes-agent's
+// internal session tracking (replay recorder, memory sync, hook contexts)
+// all use "". Harmless in MVP because we set skip_memory + no replay/hooks,
+// but once those land, refactor to either:
+//   (a) construct AgentLoop per call (canonical hermes-http pattern), or
+//   (b) cache the provider only and rebuild AgentLoop per send.
+// Tracked alongside the per-session concurrency lock that the same refactor
+// should introduce.
 impl AgentService {
     pub fn new() -> Self {
         Self { inner: Mutex::new(None) }
@@ -114,7 +123,18 @@ impl AgentService {
         let agent = self.get_or_init().await?;
 
         // Load prior history (empty for new sessions) and append the new user turn.
-        let mut history = session.load(&session_id).unwrap_or_default();
+        let mut history = match session.load(&session_id) {
+            Ok(h) => h,
+            Err(e) => {
+                tracing::warn!(target = "agent_service", "session.load({session_id}) failed: {e}; using empty history");
+                // Emit a non-fatal error event so the UI can surface a banner if it wants.
+                events::emit_error(&app, events::ErrorEvent {
+                    session_id: session_id.clone(),
+                    message: format!("session.load failed (using empty history): {e}"),
+                });
+                Vec::new()
+            }
+        };
         history.push(Message {
             role: MessageRole::User,
             content: Some(user_text),
@@ -141,7 +161,7 @@ impl AgentService {
         });
 
         // Drive the loop.
-        let result = match agent.run_stream(history.clone(), None, Some(on_chunk)).await {
+        let result = match agent.run_stream(history, None, Some(on_chunk)).await {
             Ok(r) => r,
             Err(e) => {
                 events::emit_error(&app, events::ErrorEvent {
@@ -153,7 +173,9 @@ impl AgentService {
         };
 
         // Persist updated history + return the last assistant reply.
-        let _ = session.save(&session_id, &result.messages, None);
+        if let Err(e) = session.save(&session_id, &result.messages, None) {
+            tracing::warn!(target = "agent_service", "session.save({session_id}) failed: {e}");
+        }
         let reply = result
             .messages
             .iter()
@@ -162,9 +184,16 @@ impl AgentService {
             .and_then(|m| m.content.clone())
             .unwrap_or_default();
 
+        let reason = if result.interrupted {
+            "interrupted"
+        } else if result.finished_naturally {
+            "stop"
+        } else {
+            "max_turns"
+        };
         events::emit_done(&app, events::DoneEvent {
             session_id: session_id.clone(),
-            reason: Some("stop".into()),
+            reason: Some(reason.into()),
         });
         Ok(reply)
     }
@@ -182,6 +211,7 @@ fn build_provider_from_env() -> Result<(Arc<dyn LlmProvider>, String), AgentErro
     if let Ok(key) = std::env::var("OPENAI_API_KEY") {
         let model = std::env::var("HERMES_DESKTOP_MODEL")
             .unwrap_or_else(|_| "gpt-4o-mini".to_string());
+        let model = model.splitn(2, ':').last().unwrap_or(&model).to_string();
         let provider: Arc<dyn LlmProvider> =
             Arc::new(OpenAiProvider::new(key).with_model(model.clone()));
         return Ok((provider, format!("openai:{}", model)));
@@ -189,6 +219,7 @@ fn build_provider_from_env() -> Result<(Arc<dyn LlmProvider>, String), AgentErro
     if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
         let model = std::env::var("HERMES_DESKTOP_MODEL")
             .unwrap_or_else(|_| "claude-3-5-sonnet-20241022".to_string());
+        let model = model.splitn(2, ':').last().unwrap_or(&model).to_string();
         // AnthropicProvider::with_model exists (confirmed at provider.rs:919) —
         // chain it to honour HERMES_DESKTOP_MODEL.
         let provider: Arc<dyn LlmProvider> =
