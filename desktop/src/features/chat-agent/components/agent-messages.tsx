@@ -908,6 +908,13 @@ export function AgentMessages({ sessionId, sessionModelId, messages, messagesLoa
   return (
     <Conversation resize={ready && !transitioning ? 'smooth' : 'instant'} className={ready ? 'opacity-100 transition-opacity duration-200' : 'opacity-0'}>
       <ScrollPositionManager id={sessionId} ready={ready} />
+      {/* Plan 2b.2.c.3 (2b.2.c-B) — error banner hoisted out of the empty/content
+          branch so first-turn errors are always visible. */}
+      {streamState?.error && (
+        <div role="alert" className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded my-2 mx-auto max-w-2xl">
+          {streamState.error}
+        </div>
+      )}
       <ConversationContent>
         {!hasContent && !streaming ? (
           <EmptyState />
@@ -1014,13 +1021,6 @@ export function AgentMessages({ sessionId, sessionModelId, messages, messagesLoa
                   </div>
                 )}
               </Message>
-            )}
-
-            {/* Plan 2b.2.b.2 — surfaces event.message via streamState.error (closes 2b.2.b.1 follow-up #2) */}
-            {streamState?.error && (
-              <div role="alert" className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded my-2 mx-auto max-w-2xl">
-                {streamState.error}
-              </div>
             )}
 
             {/* 压缩中指示器：由 isCompacting flag 驱动 */}
