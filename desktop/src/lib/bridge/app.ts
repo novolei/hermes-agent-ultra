@@ -1,11 +1,7 @@
 import { call } from "./client";
+import type { AppInfo } from "./generated";
 
-/** Mirrors `services::app_service::AppInfo` (Rust). Generated via tauri-specta in Plan 2. */
-export interface AppInfo {
-  name: string;
-  version: string;
-  platform: string;
-}
+export type { AppInfo };
 
 export function appInfo(): Promise<AppInfo> {
   return call<AppInfo>("app_info");

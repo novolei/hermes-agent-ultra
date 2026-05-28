@@ -5,6 +5,7 @@ use crate::state::AppState;
 use tauri::State;
 
 #[tauri::command]
+#[specta::specta]
 pub fn app_info(state: State<'_, AppState>) -> AppInfo {
     state.app.info()
 }

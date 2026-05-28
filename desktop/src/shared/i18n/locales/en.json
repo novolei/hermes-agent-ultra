@@ -3,5 +3,12 @@
     "loading": "Loading…",
     "refresh": "Refresh",
     "platform": "platform: {{platform}}"
+  },
+  "chat": {
+    "placeholder": "Say hi to the agent…",
+    "send": "Send",
+    "sending": "Sending…",
+    "empty": "Type a message to start.",
+    "error_prefix": "error: {{message}}"
   }
 }

@@ -3,5 +3,12 @@
     "loading": "加载中…",
     "refresh": "刷新",
     "platform": "平台：{{platform}}"
+  },
+  "chat": {
+    "placeholder": "和 Agent 打个招呼…",
+    "send": "发送",
+    "sending": "发送中…",
+    "empty": "输入一条消息开始对话。",
+    "error_prefix": "错误：{{message}}"
   }
 }
