@@ -91,8 +91,9 @@ describe("applyAgentEvent accepts every adapter output", () => {
     const adapter = createBridgeAdapter();
     const ev = adapter.translate("agent:error", { session_id: "s1", message: "boom" })!;
     const next = applyAgentEvent(emptyState(), ev);
-    // Reducer case 'error': return { ...prev, running: false }
+    // Reducer case 'error': return { ...prev, running: false, error: event.message }
     expect(next.running).toBe(false);
+    expect(next.error).toBe("boom");
   });
 
   it("thinking_delta accumulates reasoning text", () => {
