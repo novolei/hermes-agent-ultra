@@ -55,6 +55,7 @@ pub fn run() {
         .expect("failed to export specta bindings");
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(AppState::init())
         .invoke_handler(builder.invoke_handler())
