@@ -4,7 +4,6 @@ import { Bot, FileText, FileImage, AlertTriangle, RotateCw, ChevronDown, Chevron
 import { ImageLightbox } from '@/shared/ui/image-lightbox'
 import { Spinner } from '@/shared/ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
-import { Button } from '@/shared/ui/button'
 import { cn } from '@/shared/lib/cn'
 import { getModelLogo, resolveModelDisplayName } from '@/features/chat-agent/lib/model-logo'
 import { userProfileAtom } from '@/features/chat-agent/atoms/user-profile'
@@ -38,7 +37,7 @@ import {
   type AttachedFileRef,
 } from '@/features/chat-agent/lib/agent-messages-utils'
 import { formatMessageTime } from '@/features/chat-agent/lib/format-message-time'
-import { ToolActivityList, ChatToolActivityIndicator } from '@/features/chat-agent/components/stubs/tool-activity-list'
+import { ChatToolActivityIndicator } from '@/features/chat-agent/components/stubs/tool-activity-list'
 import { ThinkingBlock, NativeBlockRenderer } from '@/features/chat-agent/components/stubs/content-block'
 import { SkillCitationChips, SkillRecallChips } from '@/features/chat-agent/components/stubs/skill-chips'
 import { ProactiveLearningChip, MemoryRecallChip } from '@/features/chat-agent/components/stubs/learning-chips'
@@ -54,6 +53,12 @@ import {
   UserMessageContent,
   MessageResponse,
 } from '@/features/chat-agent/components/ai-elements/message'
+import {
+  Conversation,
+  ConversationContent,
+  ConversationScrollButton,
+} from '@/features/chat-agent/components/ai-elements/conversation'
+import type { MinimapItem } from '@/features/chat-agent/components/ai-elements/scroll-minimap'
 
 // ---- Small private helpers (Task 11) --------------------------------------
 
@@ -697,75 +702,402 @@ function AgentMessageItem({ message, sessionPath: _sessionPath, attachedDirs: _a
   return null
 }
 
-// ---- Forward-reference placeholder (Tasks 11-12) ---------------------------
-//
-// All helpers and every import needed by Tasks 13-15 are referenced here so
-// the TS strict `noUnusedLocals` check passes before the full component body
-// is added. Tasks 13-15 will wire the symbols into the real AgentMessages
-// component and remove this export.
-//
-const _forwardImports = {
-  // jotai hooks (Task 13-15 message loop)
-  useAtomValue,
-  useSetAtom,
-  // shared UI (Task 13-15)
-  Button,
-  // model display (Task 13 header)
-  resolveModelDisplayName,
-  // atoms (Task 14-15)
-  userProfileAtom,
-  channelsAtom,
-  tabMinimapCacheAtom,
-  proactiveLearningEventsAtom,
-  memoryRecallEventAtom,
-  skillRecallsMapAtom,
-  agentDisplayNameForAtom,
-  stickyUserMessageEnabledAtom,
-  // shared lib (Task 13-15)
-  useSmoothStream,
-  normalizeAgentMarkdown,
-  parseSkillCitations,
-  // scroll / layout components (Task 14-15)
-  ScrollMinimap,
-  StickyUserMessage,
-  // user/copy UI (Task 13)
-  UserAvatar,
-  CopyButton,
-  // utils (Task 13-15)
-  parseAttachedFiles,
-  extractToolActivities,
-  agentActivitiesToChatActivities,
-  formatMessageTime,
-  // tool/content components (Task 13)
-  ToolActivityList,
-  ChatToolActivityIndicator,
-  ThinkingBlock,
-  NativeBlockRenderer,
-  // chip components (Task 13-14)
-  SkillCitationChips,
-  SkillRecallChips,
-  ProactiveLearningChip,
-  MemoryRecallChip,
-  // SDK renderer (Task 14)
-  CompactingIndicator,
-  CompactBoundaryDivider,
-  // scroll position (Task 15)
-  ScrollPositionManager,
-} as const
+/** AgentMessages props (mirrors uclaw verbatim). */
+export interface AgentMessagesProps {
+  sessionId: string
+  sessionModelId?: string
+  messages: AgentMessage[]
+  messagesLoaded?: boolean
+  streaming: boolean
+  streamState?: AgentStreamState
+  liveMessages?: unknown[]
+  sessionPath?: string | null
+  attachedDirs?: string[]
+  stoppedByUser?: boolean
+  onRetry?: () => void
+  onRetryInNewSession?: () => void
+  onFork?: (upToMessageUuid: string) => void
+  onRewind?: (assistantMessageUuid: string) => void
+  onCompact?: () => void
+}
 
-// Hoist references so strict-mode noUnusedLocals doesn't flag the private
-// helpers (Task 14 & 15 will reference them all properly).
-export const __INTERNAL_FORWARD_REFS = {
-  _forwardImports,
-  EmptyState,
-  AssistantLogo,
-  InlineImage,
-  ToolResultInlineImages,
-  AttachedFileChip,
-  MessageMetaBar,
-  CompactionFoldCard,
-  RetryingNotice,
-  RetryAttemptItem,
-  AgentRunningIndicator,
-  AgentMessageItem,
-} satisfies Record<string, unknown>
+export function AgentMessages({ sessionId, sessionModelId, messages, messagesLoaded, streaming, streamState, liveMessages, sessionPath, attachedDirs, stoppedByUser: _stoppedByUser, onRetry: _onRetry, onRetryInNewSession: _onRetryInNewSession, onFork: _onFork, onRewind: _onRewind, onCompact: _onCompact }: AgentMessagesProps): React.ReactElement {
+  const userProfile = useAtomValue(userProfileAtom)
+  const setMinimapCache = useSetAtom(tabMinimapCacheAtom)
+  const channels = useAtomValue(channelsAtom)
+  const proactiveLearningEvents = useAtomValue(proactiveLearningEventsAtom)
+  const memoryRecallMap = useAtomValue(memoryRecallEventAtom)
+  const skillRecallsMap = useAtomValue(skillRecallsMapAtom)
+  const stickyUserMessageEnabled = useAtomValue(stickyUserMessageEnabledAtom)
+  const agentNameLookupOuter = useAtomValue(agentDisplayNameForAtom)
+
+  const visibleMessages = React.useMemo(() => {
+    return messages.filter((m) => {
+      if (m.role === 'user') {
+        const { files, text } = parseAttachedFiles(m.content ?? '')
+        return files.length > 0 || !!text.trim()
+      }
+      return true
+    })
+  }, [messages])
+  /** 淡入控制：切换会话时先隐藏，等布局完成后再显示。 */
+  const [ready, setReady] = React.useState(false)
+  const prevSessionIdRef = React.useRef<string | null>(null)
+
+  React.useEffect(() => {
+    if (sessionId !== prevSessionIdRef.current) {
+      prevSessionIdRef.current = sessionId
+      setReady(false)
+    }
+  }, [sessionId])
+
+  React.useEffect(() => {
+    if (ready) return
+
+    // 必须等消息加载完成，否则 messages=[] 会被误判为空对话
+    if (messagesLoaded === false) return
+
+    // 流式进行中且有实时内容 → 跳过 fade 直接显示
+    if (streaming && liveMessages && liveMessages.length > 0) {
+      setReady(true)
+      return
+    }
+
+    if (visibleMessages.length === 0 && !streaming) {
+      setReady(true)
+      return
+    }
+    let cancelled = false
+    requestAnimationFrame(() => {
+      if (!cancelled) setReady(true)
+    })
+    return () => { cancelled = true }
+  }, [visibleMessages, streaming, liveMessages, messagesLoaded])
+
+  // 从 streamState 属性中计算派生值
+  const streamingContent = streamState?.content ?? ''
+  // streamState.model 在 SDK 首事件前未填充；此时回退到会话当前选用模型，避免 caption 空缺 + Bot 默认图标
+  const streamingModelId = streamState?.model ?? sessionModelId
+  const agentStreamingModel = streamingModelId ? resolveModelDisplayName(streamingModelId, channels) : undefined
+  const retrying = streamState?.retrying
+  const startedAt = streamState?.startedAt
+
+  const { displayedContent: rawSmoothContent } = useSmoothStream({
+    content: streamingContent,
+    isStreaming: streaming,
+  })
+
+  // 防闪屏守卫：useSmoothStream 通过 useEffect 重置 displayedContent，比 render 晚一帧。
+  // 当 streamingContent 已清空但 smoothContent 仍持有旧值时，
+  // 会导致 fallback 气泡与持久化消息同时渲染一帧（重复内容闪烁）。
+  // 用原始 streamingContent 作为守卫：内容已清空且不在流式中，立即归零。
+  const smoothContent = (streaming || streamingContent) ? rawSmoothContent : ''
+
+  /**
+   * 流式完成过渡：streaming 结束到持久化消息加载完成之间，
+   * 强制 resize="instant" 避免中间高度变化触发平滑滚动动画。
+   *
+   * 使用 render-phase 计算避免 useEffect 延迟一帧的问题：
+   * - streaming 变 false 的第一帧就能立即切到 instant，防止闪动
+   * - 后续通过 ref+timeout 延迟 150ms 才允许切回 smooth
+   */
+  const [transitioningCooldown, setTransitioningCooldown] = React.useState(false)
+  const wasStreamingRef = React.useRef(streaming)
+
+  // render-phase 判断：是否处于需要 instant resize 的过渡期
+  // liveMessages 非空说明持久化消息还没加载完（加载完后会清空 liveMessages）
+  const needsInstant = !streaming && (!!streamingContent || !!smoothContent || (liveMessages != null && liveMessages.length > 0))
+
+  React.useEffect(() => {
+    // 刚从 streaming → not-streaming：启动 cooldown
+    if (wasStreamingRef.current && !streaming) {
+      setTransitioningCooldown(true)
+    }
+    wasStreamingRef.current = streaming
+  }, [streaming])
+
+  React.useEffect(() => {
+    if (needsInstant) return
+    // 过渡完成后延迟 150ms 才关闭 cooldown，给 StickToBottom 时间稳定
+    const timer = setTimeout(() => setTransitioningCooldown(false), 150)
+    return () => clearTimeout(timer)
+  }, [needsInstant])
+
+  const transitioning = needsInstant || transitioningCooldown
+
+  const hasContent = visibleMessages.length > 0
+
+  // 压缩流程进行中（含收尾窗口：compact_boundary 已到但 result 未到）
+  // → 一律抑制 AgentRunningIndicator，避免压缩分隔符切换期间闪烁。
+  // compactInFlight 从点击压缩 / SDK compacting 事件开始为 true，
+  // 直到整个 stream 结束（stream state 被删除）才消失。
+  const suppressAgentRunning = streamState?.isCompacting || streamState?.compactInFlight
+
+  // 迷你地图数据 — 跳过 compacted 消息以减少噪音
+  // model 字段持久化前的历史 assistant 消息（DB 未填 model 列）回退到会话当前模型，
+  // 否则 ItemIcon 拿不到 model 就不渲染 logo。
+  const minimapItems: MinimapItem[] = React.useMemo(
+    () => {
+      return visibleMessages
+        .filter((m) => !m.compacted)
+        .map((m, i) => ({
+        id: m.id || `msg-${i}`,
+        role: m.role === 'status' ? 'status' as const : m.role as MinimapItem['role'],
+        preview: (m.content ?? '').replace(/<attached_files>[\s\S]*?<\/attached_files>\n*/, '').slice(0, 200),
+        avatar: m.role === 'user' ? userProfile.avatar : undefined,
+        model: m.role === 'assistant' ? (m.model ?? sessionModelId) : m.model,
+      }))
+    },
+    [visibleMessages, userProfile.avatar, sessionModelId]
+  )
+
+  // 将 liveMessages 中的 compact_boundary 按时间戳插入到消息列表的正确位置，
+  // 使其随旧消息自然向上滚动，而不是永远粘在底部。
+  const displayItems = React.useMemo(() => {
+    const boundaries = (liveMessages ?? []).filter(
+      (item: any) => item.type === 'system' && item.subtype === 'compact_boundary'
+    )
+    if (boundaries.length === 0) {
+      return visibleMessages.map(m => ({ kind: 'message' as const, message: m }))
+    }
+
+    const items: Array<
+      | { kind: 'message'; message: AgentMessage }
+      | { kind: 'boundary'; boundary: any }
+    > = [
+      ...visibleMessages.map(m => ({ kind: 'message' as const, message: m })),
+      ...boundaries.map(b => ({ kind: 'boundary' as const, boundary: b })),
+    ]
+
+    items.sort((a, b) => {
+      const aTime = a.kind === 'message' ? a.message.createdAt : a.boundary._createdAt
+      const bTime = b.kind === 'message' ? b.message.createdAt : b.boundary._createdAt
+      return aTime - bTime
+    })
+
+    return items
+  }, [visibleMessages, liveMessages])
+
+  // 同步 minimap 缓存到 Tab 级别（供 Tab hover 预览使用）
+  React.useEffect(() => {
+    if (minimapItems.length > 0) {
+      setMinimapCache((prev) => {
+        const next = new Map(prev)
+        next.set(sessionId, minimapItems.map(item => ({ ...item, avatar: item.avatar ?? undefined })))
+        return next
+      })
+    }
+  }, [sessionId, minimapItems, setMinimapCache])
+
+  // 所有用户消息的数据 — 供 StickyUserMessage 使用
+  const allUserMessagesData = React.useMemo(() => {
+    return visibleMessages
+      .filter((m) => m.role === 'user')
+      .map((m) => {
+        const { files, text } = parseAttachedFiles(m.content ?? '')
+        return {
+          id: m.id ?? null,
+          text,
+          attachments: files.map((f) => ({ filename: f.filename, isImage: isImageFile(f.filename) })),
+        }
+      })
+  }, [visibleMessages])
+
+  return (
+    <Conversation resize={ready && !transitioning ? 'smooth' : 'instant'} className={ready ? 'opacity-100 transition-opacity duration-200' : 'opacity-0'}>
+      <ScrollPositionManager id={sessionId} ready={ready} />
+      <ConversationContent>
+        {!hasContent && !streaming ? (
+          <EmptyState />
+        ) : (
+          <>
+            {/* 消息渲染 — AgentMessageItem + compact_boundary 分隔线 */}
+            {displayItems.map((item) => {
+              if (item.kind === 'boundary') {
+                return (
+                  <div key={item.boundary.uuid} data-live-marker="compact-boundary">
+                    <CompactBoundaryDivider removed={item.boundary.removed} remaining={item.boundary.remaining} />
+                  </div>
+                )
+              }
+              const msg = item.message
+              return (
+                <div key={msg.id} data-message-id={msg.id} data-message-role={msg.role === 'user' ? 'user' : undefined}>
+                  <AgentMessageItem
+                    message={msg}
+                    sessionPath={sessionPath}
+                    attachedDirs={attachedDirs}
+                    sessionId={sessionId}
+                    sessionModelId={sessionModelId}
+                  />
+                </div>
+              )
+            })}
+
+            {/* 流式气泡（含头像/名称/时间） */}
+            {!suppressAgentRunning && (streaming || smoothContent || retrying || (streamState?.toolActivities?.length ?? 0) > 0 || streamState?.reasoning) && (
+              <Message from="assistant">
+                <MessageHeader
+                  name={agentNameLookupOuter(sessionId)}
+                  model={agentStreamingModel}
+                  time={formatMessageTime(Date.now())}
+                  logo={<AssistantLogo model={streamingModelId} />}
+                />
+                <MessageContent>
+                  {retrying && <RetryingNotice retrying={retrying} />}
+                  {(streamState?.reasoning) && (
+                    <div className="mb-3">
+                      <ThinkingBlock block={{ type: 'thinking', thinking: streamState.reasoning } as any} dimmed={!!smoothContent} sessionId={sessionId ?? null} />
+                    </div>
+                  )}
+                  {(streamState?.toolActivities?.length ?? 0) > 0 && (
+                    <div className="mb-3">
+                      {/* 流式工具调用 — 转成 ChatToolActivity 后用 ChatToolActivityIndicator 渲染，
+                          视觉与历史消息保持一致（ChatToolBlock 的 🔧 toolName + 折叠结果卡片样式） */}
+                      <ChatToolActivityIndicator
+                        activities={agentActivitiesToChatActivities(streamState!.toolActivities)}
+                        isStreaming={streaming}
+                      />
+                    </div>
+                  )}
+                  {smoothContent ? (() => {
+                    const { cleanedContent: streamCleanedContent, citations: streamCitations } = parseSkillCitations(normalizeAgentMarkdown(smoothContent))
+                    return (
+                      <>
+                        <MessageResponse sessionId={sessionId ?? null}>{streamCleanedContent}</MessageResponse>
+                        {/* Once the citation block has fully streamed in, render
+                            the chip(s) — the dedupe key uses the session id so
+                            the streaming chip and the post-finalization chip
+                            don't both bump cited_count. */}
+                        <SkillCitationChips
+                          citations={streamCitations}
+                          messageKey={`stream-${sessionId}`}
+                        />
+                        {streaming && (
+                          <AgentRunningIndicator
+                            startedAt={startedAt}
+                            toolCount={streamState?.toolActivities?.length}
+                            inputTokens={streamState?.inputTokens}
+                            outputTokens={streamState?.outputTokens}
+                          />
+                        )}
+                      </>
+                    )
+                  })() : (
+                    streaming && (
+                      <AgentRunningIndicator
+                        startedAt={startedAt}
+                        toolCount={streamState?.toolActivities?.length}
+                        inputTokens={streamState?.inputTokens}
+                        outputTokens={streamState?.outputTokens}
+                      />
+                    )
+                  )}
+                </MessageContent>
+                {/* 流式完成后显示 token 用量 */}
+                {!streaming && smoothContent && streamState?.inputTokens != null && (
+                  <MessageActions className="pl-[46px] mt-0.5 justify-start gap-2.5">
+                    <MessageMetaBar usage={{
+                      inputTokens: streamState.inputTokens,
+                      outputTokens: streamState.outputTokens,
+                      costUsd: streamState.costUsd,
+                    }} />
+                  </MessageActions>
+                )}
+                {/* 截断提示：任一 LLM 调用被 token 限制截断 */}
+                {!streaming && streamState?.truncated && (
+                  <div className="pl-[46px] mt-1 flex items-center gap-1.5 text-[12px] text-amber-500/80">
+                    <AlertTriangle className="size-3 shrink-0" />
+                    <span>部分内容因 token 限制被截断，Agent 已自动继续输出</span>
+                  </div>
+                )}
+              </Message>
+            )}
+
+            {/* Plan 2b.2.b.2 — surfaces event.message via streamState.error (closes 2b.2.b.1 follow-up #2) */}
+            {streamState?.error && (
+              <div role="alert" className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded my-2 mx-auto max-w-2xl">
+                {streamState.error}
+              </div>
+            )}
+
+            {/* 压缩中指示器：由 isCompacting flag 驱动 */}
+            {streamState?.isCompacting && <CompactingIndicator />}
+
+            {/* liveMessages 尾部渲染：handleCompact 注入的 /compact 用户气泡 +
+                compacting 压缩中指示器（compact_boundary 已提升到 displayItems
+                按时间戳插入消息列表正确位置，不在此处渲染）。 */}
+            {liveMessages?.map((item: any) => {
+              const key = item.uuid ?? `live-${item._createdAt}`
+              // compact_boundary is now interleaved into displayItems above — skip here
+              if (item.type === 'system' && item.subtype === 'compact_boundary') {
+                return null
+              }
+              if (item.type === 'system' && item.subtype === 'compacting') {
+                // Bundle 14-A — dedupe with the streamState-driven indicator
+                // at line ~1173. Both fire concurrently when handleCompact
+                // sets `isCompacting: true` AND inserts a `compacting`
+                // marker into liveMessages, producing TWO pills. The
+                // streamState-driven indicator is the primary (it tracks
+                // backend state); the liveMessages marker is the
+                // optimistic-fallback for the React batch race the
+                // comment in handleCompact mentions. So: only render the
+                // liveMessages version when streamState.isCompacting is
+                // NOT already true. The two signals are now mutually
+                // exclusive, never both visible at once.
+                if (streamState?.isCompacting) return null
+                return <div key={key} data-live-marker="compacting"><CompactingIndicator /></div>
+              }
+              if (item.type === 'user') {
+                const text = item.message?.content?.[0]?.text ?? ''
+                if (!text) return null
+                return (
+                  <div key={key} data-live-marker="user-synthetic" className="flex justify-end my-2 px-1">
+                    <span className="text-[12px] text-muted-foreground px-3 py-1 rounded-full border border-border/40 bg-muted/30">
+                      {text}
+                    </span>
+                  </div>
+                )
+              }
+              return null
+            })}
+
+          </>
+        )}
+      </ConversationContent>
+      {/* 统一徽章行：技能召回 + 主动学习 + 记忆召回
+          — 按 sessionId 隔离；null sessionId/conversationId 事件 fallback 到当前 session（启动边缘情况 / Debug 测试用） */}
+      {(() => {
+        const skillRecalls = skillRecallsMap.get(sessionId) ?? []
+        const sessionProactiveEvents = proactiveLearningEvents.filter(
+          (ev) => ev.sessionId === sessionId || ev.sessionId == null
+        )
+        const memoryRecallEvent = memoryRecallMap.get(sessionId) ?? memoryRecallMap.get('__global__') ?? null
+
+        const hasAny =
+          skillRecalls.length > 0 ||
+          sessionProactiveEvents.length > 0 ||
+          (memoryRecallEvent != null && memoryRecallEvent.totalCandidates > 0)
+
+        if (!hasAny) return null
+
+        return (
+          <div className="flex flex-wrap items-center gap-1.5 pl-[46px] pr-4 pb-2 mt-2">
+            <SkillRecallChips sessionId={sessionId} className="mt-0 pl-0" />
+            {sessionProactiveEvents.slice(0, 3).map((ev) => (
+              <ProactiveLearningChip key={ev.timestamp} event={ev} />
+            ))}
+            {memoryRecallEvent != null && memoryRecallEvent.totalCandidates > 0 && (
+              <MemoryRecallChip event={memoryRecallEvent} inline />
+            )}
+          </div>
+        )
+      })()}
+      <ScrollMinimap items={minimapItems} />
+      <ConversationScrollButton />
+      {stickyUserMessageEnabled && allUserMessagesData.length > 0 && (
+        <StickyUserMessage userMessages={allUserMessagesData} />
+      )}
+    </Conversation>
+  )
+}

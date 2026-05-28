@@ -9,23 +9,50 @@
  */
 import { atom } from 'jotai'
 import type { Channel } from './chat-types'
+import type { MinimapItem } from '@/features/chat-agent/components/ai-elements/scroll-minimap'
+
+// ---- Minimal type shapes (mirrors uclaw agent-atoms.ts stubs) ---------------
+
+/** Matches uclaw ProactiveLearningEvent — only the fields AgentMessages accesses. */
+export interface ProactiveLearningEvent {
+  scenario: string
+  items_extracted: number
+  categories: string[]
+  timestamp: string
+  summary: string
+  sessionId?: string | null
+}
+
+/** Matches uclaw MemoryRecallEvent — only the fields AgentMessages accesses. */
+export interface MemoryRecallEvent {
+  totalCandidates: number
+  skillsCount: number
+  bootCount: number
+  triggeredCount: number
+  relevantCount: number
+  expandedCount: number
+  recentCount: number
+  items: Array<{ nodeId: string; title: string; kind: string; source: string }>
+  conversationId: string | null
+  timestamp: string
+}
 
 // ---- Side-feature atoms ----------------------------------------------------
 
 /** uclaw: channels for chat-mode model selection. Empty in agent-mode MVP. */
 export const channelsAtom = atom<Channel[]>([])
 
-/** uclaw: per-tab minimap scroll position cache. */
-export const tabMinimapCacheAtom = atom<Record<string, { scrollTop: number }>>({})
+/** uclaw: per-tab minimap scroll position cache. Map keyed by sessionId. */
+export const tabMinimapCacheAtom = atom<Map<string, MinimapItem[]>>(new Map())
 
 /** uclaw: events emitted when the agent proactively recalls a learning. */
-export const proactiveLearningEventsAtom = atom<unknown[]>([])
+export const proactiveLearningEventsAtom = atom<ProactiveLearningEvent[]>([])
 
-/** uclaw: per-message memory recall events keyed by message id. */
-export const memoryRecallEventAtom = atom<Record<string, unknown>>({})
+/** uclaw: per-session memory recall events keyed by sessionId / conversationId. */
+export const memoryRecallEventAtom = atom<Map<string, MemoryRecallEvent>>(new Map())
 
-/** uclaw: per-message skill recall events keyed by message id. */
-export const skillRecallsMapAtom = atom<Record<string, unknown>>({})
+/** uclaw: per-session skill recall events keyed by sessionId. */
+export const skillRecallsMapAtom = atom<Map<string, unknown[]>>(new Map())
 
 /** uclaw: returns a function that resolves agent id → display name. */
 export const agentDisplayNameForAtom = atom<(agentId: string | undefined) => string | undefined>(
