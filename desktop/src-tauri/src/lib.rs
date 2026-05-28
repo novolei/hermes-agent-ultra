@@ -20,6 +20,8 @@ fn make_builder() -> Builder<tauri::Wry> {
             // screenshot-result via the frontend bridge/files.ts wrapper.
             commands::files::read_attachment,
             commands::files::save_image_as,
+            // Plan 3.2 — folder picker for WorkspaceCreateDialog.
+            commands::files::open_folder_dialog,
             // Plan 3.2 — workspace CRUD commands consumed by lib/bridge/workspaces.ts
             commands::workspaces::workspace_list,
             commands::workspaces::workspace_create,
