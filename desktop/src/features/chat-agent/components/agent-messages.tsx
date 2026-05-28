@@ -44,7 +44,7 @@ import { SkillRecallChips } from '@/features/chat-agent/components/skill-recall-
 import { ProactiveLearningChip } from '@/features/chat-agent/components/proactive-learning-chip'
 import { MemoryRecallChip } from '@/features/chat-agent/components/memory-recall-chip'
 import { CompactingIndicator, CompactBoundaryDivider } from '@/features/chat-agent/components/sdk-message-renderer'
-import { ScrollPositionManager } from '@/features/chat-agent/components/stubs/scroll-position-manager'
+import { ScrollPositionManager } from '@/features/chat-agent/hooks/use-scroll-position-memory'
 import type { AgentMessage, AgentEventUsage, ToolActivity, RetryAttempt } from '@/features/chat-agent/lib/agent-types'
 import type { AgentStreamState } from '@/features/chat-agent/atoms/agent-atoms'
 import {
