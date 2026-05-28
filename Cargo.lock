@@ -2715,6 +2715,9 @@ dependencies = [
 name = "hermes-desktop"
 version = "0.14.2"
 dependencies = [
+ "async-trait",
+ "hermes-agent",
+ "hermes-core",
  "serde",
  "serde_json",
  "specta",
@@ -2723,6 +2726,9 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-opener",
  "tauri-specta",
+ "tempfile",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
