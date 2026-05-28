@@ -169,6 +169,27 @@ export interface AgentEventUsage {
   costUsd?: number
 }
 
+/** 工具活动（流式 agent 运行期状态） */
+export interface ToolActivity {
+  toolUseId: string
+  toolName: string
+  input: Record<string, unknown>
+  intent?: string
+  displayName?: string
+  result?: string
+  isError?: boolean
+  done: boolean
+  parentToolUseId?: string
+  elapsedSeconds?: number
+  taskId?: string
+  shellId?: string
+  isBackground?: boolean
+  /** MCP 工具返回的图片附件 */
+  imageAttachments?: Array<{ localPath: string; filename: string; mediaType: string }>
+  /** 流式工具的实时输出窗口(有界 256KB);done 后由持久化 result 接管 */
+  liveOutput?: { segments: { stream: 'stdout' | 'stderr'; text: string }[]; bytes: number; droppedHead: boolean }
+}
+
 /** 模型选择选项（简版，Agent 模块使用） */
 export interface SelectedModelOption {
   channelId: string
