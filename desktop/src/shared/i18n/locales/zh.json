@@ -1,0 +1,7 @@
+{
+  "app": {
+    "loading": "加载中…",
+    "refresh": "刷新",
+    "platform": "平台：{{platform}}"
+  }
+}

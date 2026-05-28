@@ -12,6 +12,7 @@ vout-endianness-analysis.md
 __pycache__/
 **/__pycache__/
 *.pyc
+.worktrees/
 
 # Local quorum/model run captures can include private prompts, trading research,
 # and provider error details. Keep them off public main.
@@ -19,3 +20,6 @@ artifacts/quorum/
 
 # Generated PR infographics live in PR bodies, not in-tree.
 infographic/
+
+# desktop/src-tauri is a workspace member; root Cargo.lock is authoritative.
+/desktop/src-tauri/Cargo.lock

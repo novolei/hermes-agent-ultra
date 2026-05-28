@@ -1,0 +1,20 @@
+[package]
+name = "hermes-desktop"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+description = "Hermes Agent Ultra cross-platform desktop app (Tauri v2)"
+
+[lib]
+name = "hermes_desktop_lib"
+crate-type = ["rlib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { workspace = true }
+serde_json = { workspace = true }

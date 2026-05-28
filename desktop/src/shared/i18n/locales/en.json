@@ -1,0 +1,7 @@
+{
+  "app": {
+    "loading": "Loading…",
+    "refresh": "Refresh",
+    "platform": "platform: {{platform}}"
+  }
+}
