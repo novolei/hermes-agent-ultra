@@ -5,9 +5,23 @@ import type {
   UsageEvent_Serialize as UsageEvent,
   DoneEvent_Serialize as DoneEvent,
   ErrorEvent,
+  ToolStartEvent,
+  ToolResultEvent,
+  ThinkingDeltaEvent,
+  StatusEvent,
 } from "./generated";
 
-export type { TextDeltaEvent, ToolCallDeltaEvent, UsageEvent, DoneEvent, ErrorEvent };
+export type {
+  TextDeltaEvent,
+  ToolCallDeltaEvent,
+  UsageEvent,
+  DoneEvent,
+  ErrorEvent,
+  ToolStartEvent,
+  ToolResultEvent,
+  ThinkingDeltaEvent,
+  StatusEvent,
+};
 
 export type AgentEventMap = {
   "agent:text-delta": TextDeltaEvent;
@@ -15,6 +29,10 @@ export type AgentEventMap = {
   "agent:usage": UsageEvent;
   "agent:done": DoneEvent;
   "agent:error": ErrorEvent;
+  "agent:tool-start": ToolStartEvent;
+  "agent:tool-result": ToolResultEvent;
+  "agent:thinking-delta": ThinkingDeltaEvent;
+  "agent:status": StatusEvent;
 };
 
 /** Subscribe to one of the `agent:*` events. The callback receives the
