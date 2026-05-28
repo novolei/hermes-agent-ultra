@@ -4,13 +4,13 @@
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
-#[derive(Debug, Clone, Serialize, specta::Type)]
+#[derive(Debug, Clone, Serialize, PartialEq, specta::Type)]
 pub struct TextDeltaEvent {
     pub session_id: String,
     pub text: String,
 }
 
-#[derive(Debug, Clone, Serialize, specta::Type)]
+#[derive(Debug, Clone, Serialize, PartialEq, specta::Type)]
 pub struct ToolCallDeltaEvent {
     pub session_id: String,
     pub index: u32,
@@ -22,7 +22,7 @@ pub struct ToolCallDeltaEvent {
     pub call_id: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, specta::Type)]
+#[derive(Debug, Clone, Serialize, PartialEq, specta::Type)]
 pub struct UsageEvent {
     pub session_id: String,
     pub prompt_tokens: u64,
