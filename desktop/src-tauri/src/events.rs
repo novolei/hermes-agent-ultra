@@ -32,14 +32,14 @@ pub struct UsageEvent {
     pub estimated_cost: Option<f64>,
 }
 
-#[derive(Debug, Clone, Serialize, specta::Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, specta::Type)]
 pub struct DoneEvent {
     pub session_id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, specta::Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, specta::Type)]
 pub struct ErrorEvent {
     pub session_id: String,
     pub message: String,
