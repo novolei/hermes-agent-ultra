@@ -20,6 +20,14 @@ fn make_builder() -> Builder<tauri::Wry> {
             // screenshot-result via the frontend bridge/files.ts wrapper.
             commands::files::read_attachment,
             commands::files::save_image_as,
+            // Plan 3.2 — workspace CRUD commands consumed by lib/bridge/workspaces.ts
+            commands::workspaces::workspace_list,
+            commands::workspaces::workspace_create,
+            commands::workspaces::workspace_update,
+            commands::workspaces::workspace_delete,
+            commands::workspaces::workspace_reorder,
+            commands::workspaces::workspace_get_active,
+            commands::workspaces::workspace_set_active,
         ])
         .events(collect_events![
             TextDeltaEvent,

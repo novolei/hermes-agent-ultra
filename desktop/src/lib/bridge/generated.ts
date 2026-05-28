@@ -31,6 +31,13 @@ export const commands = {
 	 *  succeeded; `false` if the user cancelled.
 	 */
 	saveImageAs: (args: SaveImageArgs) => typedError<boolean, string>(__TAURI_INVOKE("save_image_as", { args })),
+	workspaceList: () => typedError<WorkspaceInfo[], WorkspaceError>(__TAURI_INVOKE("workspace_list")),
+	workspaceCreate: (args: CreateWorkspaceArgs) => typedError<WorkspaceInfo, WorkspaceError>(__TAURI_INVOKE("workspace_create", { args })),
+	workspaceUpdate: (args: UpdateWorkspaceArgs) => typedError<null, WorkspaceError>(__TAURI_INVOKE("workspace_update", { args })),
+	workspaceDelete: (id: string) => typedError<null, WorkspaceError>(__TAURI_INVOKE("workspace_delete", { id })),
+	workspaceReorder: (orderedIds: string[]) => typedError<null, WorkspaceError>(__TAURI_INVOKE("workspace_reorder", { orderedIds })),
+	workspaceGetActive: () => typedError<string | null, WorkspaceError>(__TAURI_INVOKE("workspace_get_active")),
+	workspaceSetActive: (id: string | null) => typedError<null, WorkspaceError>(__TAURI_INVOKE("workspace_set_active", { id })),
 };
 
 /** Events */
@@ -56,6 +63,14 @@ export type AppInfo = {
 	name: string,
 	version: string,
 	platform: string,
+};
+
+export type CreateWorkspaceArgs = {
+	id: string,
+	name: string,
+	icon: string | null,
+	cwd: string | null,
+	color: string | null,
 };
 
 export type DoneEvent = DoneEvent_Serialize | DoneEvent_Deserialize;
@@ -169,6 +184,14 @@ export type ToolStartEvent = {
 	arguments_json: string,
 };
 
+export type UpdateWorkspaceArgs = {
+	id: string,
+	name: string | null,
+	icon: string | null,
+	cwd: string | null,
+	color: string | null,
+};
+
 export type UsageEvent = UsageEvent_Serialize | UsageEvent_Deserialize;
 
 export type UsageEvent_Deserialize = {
@@ -193,6 +216,26 @@ export type UsageEvent_Serialize = {
 	completion_tokens: number,
 	total_tokens: number,
 	estimated_cost?: number | null,
+};
+
+export type WorkspaceError = {
+	message: string,
+};
+
+export type WorkspaceInfo = {
+	id: string,
+	name: string,
+	icon: string | null,
+	cwd: string | null,
+	color: string | null,
+	/**  Sort order within the workspace list (TypeScript `number`). */
+	position: number,
+	/**
+	 *  Unix timestamp (seconds). Represented as `number` in TypeScript; f64 covers
+	 *  all epoch-second values exactly within JS safe-integer range.
+	 */
+	created_at: number | null,
+	updated_at: number | null,
 };
 
 /* Tauri Specta runtime */

@@ -6,12 +6,14 @@ use std::sync::Arc;
 use crate::services::agent_service::AgentService;
 use crate::services::app_service::AppService;
 use crate::services::session_service::SessionService;
+use crate::services::workspace_service::WorkspaceService;
 
 #[derive(Clone)]
 pub struct AppState {
     pub app: AppService,
     pub session: Arc<SessionService>,
     pub agent: Arc<AgentService>,
+    pub workspace: Arc<WorkspaceService>,
 }
 
 impl AppState {
@@ -20,10 +22,13 @@ impl AppState {
         let hermes_home = default_hermes_home();
         let session = SessionService::open(&hermes_home)
             .expect("failed to initialise SessionService at hermes_home");
+        let workspace = WorkspaceService::open(&hermes_home)
+            .expect("failed to initialise WorkspaceService at hermes_home");
         Self {
             app: AppService,
             session: Arc::new(session),
             agent: Arc::new(AgentService::new()),
+            workspace: Arc::new(workspace),
         }
     }
 }
