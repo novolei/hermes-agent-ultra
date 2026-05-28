@@ -21,6 +21,7 @@ serde_json = { workspace = true }
 specta = "=2.0.0-rc.25"
 specta-typescript = "=0.0.12"
 tauri-specta = { version = "=2.0.0-rc.25", features = ["derive", "typescript"] }
+dirs = "6"
 hermes-core = { workspace = true }
 hermes-agent = { workspace = true }
 async-trait = { workspace = true }

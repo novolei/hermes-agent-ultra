@@ -10,7 +10,6 @@ use crate::services::session_service::SessionService;
 pub struct AppState {
     pub app: AppService,
     pub session: Arc<SessionService>,
-    pub hermes_home: PathBuf,
 }
 
 impl AppState {
@@ -22,16 +21,32 @@ impl AppState {
         Self {
             app: AppService,
             session: Arc::new(session),
-            hermes_home,
         }
     }
 }
 
-/// Resolves the hermes_home path: `$HERMES_HOME` if set, else `~/.hermes-agent-ultra`.
+/// Resolves the hermes_home path, mirroring `SessionPersistence::default_home()`:
+/// `HERMES_HOME` → `HERMES_AGENT_ULTRA_HOME` → `~/.hermes-agent-ultra` (with
+/// legacy fallback to `~/.hermes` when only that directory exists).
 fn default_hermes_home() -> PathBuf {
-    if let Ok(p) = std::env::var("HERMES_HOME") {
-        return PathBuf::from(p);
+    if let Ok(home) = std::env::var("HERMES_HOME") {
+        let home = home.trim().to_string();
+        if !home.is_empty() {
+            return PathBuf::from(home);
+        }
     }
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-    PathBuf::from(home).join(".hermes-agent-ultra")
+    if let Ok(home) = std::env::var("HERMES_AGENT_ULTRA_HOME") {
+        let home = home.trim().to_string();
+        if !home.is_empty() {
+            return PathBuf::from(home);
+        }
+    }
+    let base = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+    let primary = base.join(".hermes-agent-ultra");
+    let legacy = base.join(".hermes");
+    if primary.exists() || !legacy.exists() {
+        primary
+    } else {
+        legacy
+    }
 }

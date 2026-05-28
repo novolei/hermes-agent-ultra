@@ -2,14 +2,12 @@
 //! Owns the SQLite session store rooted at the desktop's data directory.
 
 use std::path::Path;
-use std::sync::Arc;
 
 use hermes_agent::SessionPersistence;
 use hermes_core::{AgentError, Message};
 
-#[derive(Clone)]
 pub struct SessionService {
-    inner: Arc<SessionPersistence>,
+    inner: SessionPersistence,
 }
 
 impl SessionService {
@@ -22,7 +20,7 @@ impl SessionService {
             .map_err(|e| AgentError::Io(format!("create hermes_home: {e}")))?;
         let persistence = SessionPersistence::new(&path);
         persistence.ensure_db()?;
-        Ok(Self { inner: Arc::new(persistence) })
+        Ok(Self { inner: persistence })
     }
 
     /// Load the message history for a session. Returns an empty vector if the
@@ -31,6 +29,9 @@ impl SessionService {
         self.inner.load_session(session_id)
     }
 
+    // NOTE: hermes_agent::SessionPersistence::persist_session does not clean up
+    // `messages_fts` rows on rewrite (pre-existing bug in hermes-agent). FTS search
+    // over rewritten sessions may return stale results. Tracked separately.
     /// Persist (replace) the message history for a session.
     pub fn save(
         &self,
