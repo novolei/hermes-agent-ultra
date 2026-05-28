@@ -13,7 +13,7 @@ interface UseSmoothStreamResult {
   displayedContent: string
 }
 
-export function useSmoothStream({ content, isStreaming }: UseSmoothStreamOptions): UseSmoothStreamResult {
+export function useSmoothStream({ content, isStreaming: _isStreaming }: UseSmoothStreamOptions): UseSmoothStreamResult {
   // 简化实现：直接返回原始内容
   const [displayedContent, setDisplayedContent] = useState(content)
 

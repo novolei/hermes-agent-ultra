@@ -3,7 +3,7 @@
  * Provides reusable ToolActivity and ChatToolActivity fixtures with various states
  */
 
-import type { ToolActivity, LiveOutput } from '../atoms/agent-atoms'
+import type { ToolActivity } from '../atoms/agent-atoms'
 import type { ChatToolActivity } from '../lib/chat-types'
 
 // ─────────────────────────────────────────────────────────

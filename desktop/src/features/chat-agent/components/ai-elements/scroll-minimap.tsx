@@ -95,8 +95,8 @@ function ScrollMinimapInner({ items, scrollRef }: InnerProps): React.ReactElemen
   const [searchQuery, setSearchQuery] = React.useState('')
   const [isDragging, setIsDragging] = React.useState(false)
   const [scrollMetrics, setScrollMetrics] = React.useState({ scrollTop: 0, scrollHeight: 1, clientHeight: 1 })
-  const closeTimerRef = React.useRef<ReturnType<typeof setTimeout>>()
-  const fadeTimerRef = React.useRef<ReturnType<typeof setTimeout>>()
+  const closeTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined)
+  const fadeTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined)
   const searchInputRef = React.useRef<HTMLInputElement>(null)
   const trackRef = React.useRef<HTMLDivElement>(null)
   const panelRef = React.useRef<HTMLDivElement>(null)
@@ -314,6 +314,11 @@ function ScrollMinimapInner({ items, scrollRef }: InnerProps): React.ReactElemen
     const targetTop = clickRatio * (scrollHeight - clientHeight)
     el.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' })
   }, [scrollRef])
+  // Suppress noUnusedLocals: these state values and handlers are wired in future sub-tasks.
+  void canScroll
+  void isDragging
+  void handleThumbMouseDown
+  void handleTrackMouseDown
 
   // 仅当无消息时隐藏；不再要求容器可滚动 — 即便消息很少也保留导航入口
   if (items.length < MIN_ITEMS) return null
@@ -325,6 +330,7 @@ function ScrollMinimapInner({ items, scrollRef }: InnerProps): React.ReactElemen
   const thumbRatio = scrollHeight > 0 ? Math.min(clientHeight / scrollHeight, 1) : 1
   const thumbHeightPct = Math.max(10, thumbRatio * 100)
   const thumbTopPct = scrollRange > 0 ? (scrollTop / scrollRange) * (100 - thumbHeightPct) : 0
+  void thumbTopPct
 
   return (
     <div

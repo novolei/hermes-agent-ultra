@@ -35,6 +35,9 @@ importers:
       '@tiptap/starter-kit':
         specifier: 3.23.2
         version: 3.23.2
+      '@types/mdast':
+        specifier: ^4.0.4
+        version: 4.0.4
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -80,6 +83,9 @@ importers:
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0
+      unified:
+        specifier: ^11.0.5
+        version: 11.0.5
     devDependencies:
       '@tauri-apps/cli':
         specifier: ^2

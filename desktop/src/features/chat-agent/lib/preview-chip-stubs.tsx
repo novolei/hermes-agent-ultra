@@ -20,7 +20,7 @@ import type { Root } from 'mdast'
 // File-path tokens are rendered as ordinary text/code by react-markdown.
 // --------------------------------------------------------------------------
 export const markdownFileChipPlugin: Plugin<[], Root> = function plugin() {
-  return (tree) => tree
+  return (tree: Root) => tree
 }
 
 // --------------------------------------------------------------------------

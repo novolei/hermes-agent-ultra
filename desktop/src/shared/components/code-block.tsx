@@ -45,7 +45,7 @@ export function CodeBlock({
 }: CodeBlockProps) {
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
-  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   // 检测系统主题
   const resolvedTheme = theme ?? (
@@ -221,7 +221,7 @@ export function MarkdownCodeBlock({ children }: MarkdownCodeBlockProps): React.R
 
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
-  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   // 跟随 <html> 上的主题类变化重新高亮（不传 theme 参数 → highlightCode 内部
   // 调用 getShikiThemeForCurrentApp 按当前 app 主题自动选择 Shiki 主题）

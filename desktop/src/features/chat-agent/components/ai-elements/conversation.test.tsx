@@ -1,13 +1,12 @@
 import { render } from '@testing-library/react'
 import { describe, it, expect, beforeAll } from 'vitest'
 import { Conversation, ConversationContent, ConversationScrollButton, useConversationContext } from './conversation'
-import * as React from 'react'
 
 // jsdom does not implement ResizeObserver — provide a no-op stub so that
 // Conversation's useEffect (which wires up a ResizeObserver) doesn't throw.
 beforeAll(() => {
-  if (typeof global.ResizeObserver === 'undefined') {
-    global.ResizeObserver = class ResizeObserver {
+  if (typeof globalThis.ResizeObserver === 'undefined') {
+    globalThis.ResizeObserver = class ResizeObserver {
       observe() {}
       unobserve() {}
       disconnect() {}
@@ -61,7 +60,7 @@ describe('ConversationScrollButton', () => {
 
 describe('useConversationContext', () => {
   it('returns null when used outside ConversationContext', () => {
-    let contextValue: ReturnType<typeof useConversationContext> = undefined as never
+    let contextValue: ReturnType<typeof useConversationContext> = null
     function TestComponent() {
       contextValue = useConversationContext()
       return null
@@ -71,7 +70,7 @@ describe('useConversationContext', () => {
   })
 
   it('exposes scrollRef, viewportEl, scrollToBottom, scrollToMessage inside Conversation', () => {
-    let contextValue: ReturnType<typeof useConversationContext> = undefined as never
+    let contextValue: ReturnType<typeof useConversationContext> = null
     function TestConsumer() {
       contextValue = useConversationContext()
       return null
