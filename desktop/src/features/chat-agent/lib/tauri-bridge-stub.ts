@@ -102,3 +102,21 @@ export type SymphonyNodeUpdateEvent = {
 export async function listChatSessionsForSpec(_specId: string): Promise<ChatSessionSummary[]> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: listChatSessionsForSpec')
 }
+
+// ─── Plan 3.3 C2: git stubs for SidebarGitActions ─────────────────────────
+
+/**
+ * Probe if the workspace directory is a git repository.
+ * Plan 3.3 C2 stub.
+ */
+export async function gitIsRepo(_cwd: string): Promise<boolean> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: gitIsRepo')
+}
+
+/**
+ * Get the current branch name for a git repository.
+ * Plan 3.3 C2 stub.
+ */
+export async function gitCurrentBranch(_cwd: string): Promise<string> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: gitCurrentBranch')
+}
