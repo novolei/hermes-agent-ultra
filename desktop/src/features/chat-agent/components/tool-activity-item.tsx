@@ -45,7 +45,7 @@ import {
   isActivityGroup,
 } from '@/features/chat-agent/atoms/agent-atoms'
 import { TaskProgressCard, TASK_TOOL_NAMES } from './task-progress-card'
-import { readAttachment, saveImageAs } from '@/features/chat-agent/lib/peripheral-stubs'
+import { readAttachment, saveImageAs } from '@/lib/bridge'
 import { BashStreamView } from './tool-renderers/bash-stream-view'
 import { openPreviewTabAction } from '@/features/chat-agent/atoms/preview-panel-atoms'
 

@@ -24,7 +24,7 @@ import {
 } from '@/features/chat-agent/atoms/agent-atoms'
 import { agentDisplayNameForAtom } from '@/features/chat-agent/atoms/agent-display-name'
 import { stickyUserMessageEnabledAtom } from '@/features/chat-agent/atoms/ui-preferences'
-import { saveImageAs, readAttachment } from '@/features/chat-agent/lib/peripheral-stubs'
+import { saveImageAs, readAttachment } from '@/lib/bridge'
 import {
   formatDuration,
   buildUsageTooltip,
