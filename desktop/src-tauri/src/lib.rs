@@ -16,6 +16,10 @@ fn make_builder() -> Builder<tauri::Wry> {
             commands::app::app_info,
             commands::agent::agent_send_message,
             commands::session::session_load,
+            // Plan 2b.2.c.3 — file-attachment Tauri commands consumed by InlineImage +
+            // screenshot-result via the frontend bridge/files.ts wrapper.
+            commands::files::read_attachment,
+            commands::files::save_image_as,
         ])
         .events(collect_events![
             TextDeltaEvent,
