@@ -29,12 +29,12 @@ import {
   workingDoneSessionIdsAtom,
 } from './agent-atoms'
 import type { SessionIndicatorStatus } from './agent-atoms'
+import { activeWorkspaceIdAtom } from './workspace'
 
-// uclaw: ./workspace → activeWorkspaceIdAtom
-// Plan 3 will replace this stub with the real workspace-atoms module.
-// Kept local here so the derived atoms (visibleTabsAtom, activeTabIdAtom)
-// compile without the full workspace module.
-export const activeWorkspaceIdAtom = atom<string | null>(null)
+// Plan 2b.2.c.3 — workspace atoms extracted to ./workspace so Plan 3's real
+// module ports are import-name-compatible. Re-exporting preserves any
+// back-compat consumers that still import from './tab-atoms'.
+export { activeWorkspaceIdAtom }
 
 // ===== 类型定义 =====
 
