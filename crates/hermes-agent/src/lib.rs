@@ -29,6 +29,7 @@ pub mod rate_limit;
 pub mod reasoning;
 pub mod session_persistence;
 pub mod skill_orchestrator;
+pub mod workspace_persistence;
 pub mod smart_model_routing;
 pub mod sub_agent_orchestrator;
 pub mod subdirectory_hints;
@@ -82,6 +83,9 @@ pub use skill_orchestrator::SkillOrchestrator;
 
 // Re-export session persistence
 pub use session_persistence::{leading_system_prompt_for_persist, SessionPersistence};
+
+// Re-export workspace persistence
+pub use workspace_persistence::{WorkspacePersistence, WorkspaceRow};
 
 // Re-export context files
 pub use code_index::{CodeIndex, CodeIndexConfig, IndexStats, ReferenceHit, SymbolInfo};
