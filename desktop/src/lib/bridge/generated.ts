@@ -31,6 +31,11 @@ export const commands = {
 	 *  succeeded; `false` if the user cancelled.
 	 */
 	saveImageAs: (args: SaveImageArgs) => typedError<boolean, string>(__TAURI_INVOKE("save_image_as", { args })),
+	/**
+	 *  Open a folder-picker dialog and return the chosen directory path, or
+	 *  `None` if the user cancelled.
+	 */
+	openFolderDialog: () => typedError<string | null, string>(__TAURI_INVOKE("open_folder_dialog")),
 	workspaceList: () => typedError<WorkspaceInfo[], WorkspaceError>(__TAURI_INVOKE("workspace_list")),
 	workspaceCreate: (args: CreateWorkspaceArgs) => typedError<WorkspaceInfo, WorkspaceError>(__TAURI_INVOKE("workspace_create", { args })),
 	workspaceUpdate: (args: UpdateWorkspaceArgs) => typedError<null, WorkspaceError>(__TAURI_INVOKE("workspace_update", { args })),
