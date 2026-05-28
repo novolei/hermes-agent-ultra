@@ -8,6 +8,7 @@
 import { atom } from 'jotai'
 import { atomFamily } from 'jotai/utils'
 import type { AgentSessionMeta, AgentMessage, AgentEvent, AgentWorkspace, AgentPendingFile, RetryAttempt, PermissionRequest, AskUserRequest, ExitPlanModeRequest, ThinkingConfig, AgentEffort, TaskUsage } from '../lib/agent-types'
+import type { ProactiveLearningEvent } from '../lib/types'
 
 /** 活动状态 */
 export type ActivityStatus = 'pending' | 'running' | 'completed' | 'error' | 'backgrounded'
@@ -980,18 +981,9 @@ export const stoppedByUserSessionsAtom = atom<Set<string>>(new Set<string>())
 
 // ===== 记忆捕捉事件 =====
 
-export interface ProactiveLearningEvent {
-  scenario: 'conversation_learning' | 'skill_extraction' | 'multimodal_context'
-  items_extracted: number
-  categories: string[]
-  timestamp: string
-  summary: string
-  /** Session ID that most recently sourced messages into the proactive
-   *  context window when this extraction fired. Used by AgentMessages to
-   *  scope the chip to that single session. May be null if the
-   *  extraction ran before any user message in this app session. */
-  sessionId?: string | null
-}
+// ProactiveLearningEvent is now the canonical export from lib/types.ts.
+// Re-exported here so existing consumers of agent-atoms.ts continue to work.
+export { type ProactiveLearningEvent } from '../lib/types'
 
 /** 最近的记忆捕捉事件（最多保留 10 条，新的在前） */
 export const proactiveLearningEventsAtom = atom<ProactiveLearningEvent[]>([])
