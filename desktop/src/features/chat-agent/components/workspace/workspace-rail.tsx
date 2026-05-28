@@ -12,14 +12,14 @@
  * WorkspaceHeader (top) and WorkspaceSwitcherBar (bottom).
  *
  * Import retargets applied:
- *   @/atoms/workspace         → @/features/chat-agent/atoms/workspace
- *   @/atoms/agent-atoms       → @/features/chat-agent/atoms/agent-atoms
- *   @/atoms/tab-atoms         → @/features/chat-agent/atoms/tab-atoms
- *   @/lib/agent-types         → @/features/chat-agent/lib/agent-types
- *   @/lib/tauri-bridge (CRUD) → @/features/chat-agent/lib/tauri-bridge-stub
- *   ./SessionItem             → ./session-item
- *   @/components/agent/MoveSessionDialog → inline null-render stub
- *     (MoveSessionDialog not yet ported; placeholder renders nothing)
+ *   @/atoms/workspace                                    → @/features/chat-agent/atoms/workspace
+ *   @/atoms/agent-atoms                                  → @/features/chat-agent/atoms/agent-atoms
+ *   @/atoms/tab-atoms                                    → @/features/chat-agent/atoms/tab-atoms
+ *   @/lib/agent-types                                    → @/features/chat-agent/lib/agent-types
+ *   @/lib/tauri-bridge (CRUD)                            → @/features/chat-agent/lib/tauri-bridge-stub
+ *   ./SessionItem                                        → ./session-item
+ *   @/components/agent/MoveSessionDialog                 → @/features/chat-agent/components/sidebar/move-session-dialog
+ *     (ported in Plan 3.3 C3; wired with state management)
  * API adaptation:
  *   WorkspaceInfo shape: desktop uses cwd/icon/position/created_at/updated_at
  *   instead of uclaw's path/icon/sortOrder/createdAt/updatedAt — mapping
@@ -35,6 +35,7 @@ import {
   refreshWorkspacesAtom,
 } from '@/features/chat-agent/atoms/workspace'
 import { SessionItem } from './session-item'
+import { MoveSessionDialog } from '@/features/chat-agent/components/sidebar/move-session-dialog'
 import {
   agentSessionsAtom,
   agentSessionIndicatorMapAtom,
@@ -337,9 +338,18 @@ export function WorkspaceRail({
           )}
         </div>
       )}
-      {/* MoveSessionDialog not yet ported (Plan 3.2+); placeholder renders nothing. */}
-      {moveTargetSession && agentWorkspaces.length > 0 && (
-        <>{/* TODO: <MoveSessionDialog> when ported */}</>
+      {moveTargetSession && (
+        <MoveSessionDialog
+          open={moveTargetSessionId !== null}
+          onOpenChange={(open) => { if (!open) setMoveTargetSessionId(null) }}
+          sessionId={moveTargetSession.id}
+          currentWorkspaceId={moveTargetSession.workspaceId}
+          workspaces={agentWorkspaces}
+          onMoved={() => {
+            setMoveTargetSessionId(null)
+            void refreshWorkspaces()
+          }}
+        />
       )}
     </>
   )

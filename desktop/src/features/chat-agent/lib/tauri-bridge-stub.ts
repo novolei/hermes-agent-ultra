@@ -120,3 +120,16 @@ export async function gitIsRepo(_cwd: string): Promise<boolean> {
 export async function gitCurrentBranch(_cwd: string): Promise<string> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: gitCurrentBranch')
 }
+
+// ─── Plan 3.3 C3: session move stub for MoveSessionDialog ──────────────────
+
+/**
+ * Move an agent session to a different workspace.
+ * Plan 3.3 C3 stub.
+ */
+export async function moveAgentSessionToWorkspace(_params: {
+  sessionId: string
+  targetWorkspaceId: string
+}): Promise<any> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: moveAgentSessionToWorkspace')
+}
