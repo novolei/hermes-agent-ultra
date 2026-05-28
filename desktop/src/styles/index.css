@@ -1,3 +1,5 @@
+@import './themes.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -38,6 +40,11 @@
     --danger-bg: 0 80% 96%;
   }
 
+  /* Plan 3.1 — `.dark` selector added so the verbatim uclaw applyThemeToDOM
+     (which toggles a `.dark` class on <html>) hits these tokens. Original
+     `[data-theme="dark"]` selector kept for backward compatibility with any
+     consumer that sets the data attribute directly. */
+  .dark,
   [data-theme="dark"] {
     --background: 0 0% 7%;
     --foreground: 0 0% 98%;

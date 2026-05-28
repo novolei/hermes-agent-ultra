@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { Provider, createStore } from 'jotai'
 import * as React from 'react'
-import { themeAtom } from '@/features/chat-agent/atoms/theme-atoms'
+import { themeModeAtom, systemIsDarkAtom } from '@/features/chat-agent/atoms/theme'
 import { WriteResultRenderer } from './write-result'
 
 // Mock Pierre — we don't need its real rendering, just verify props pass through.
@@ -16,7 +16,10 @@ vi.mock('@pierre/diffs/react', () => ({
 
 function renderWithTheme(theme: 'light' | 'dark', el: React.ReactElement) {
   const store = createStore()
-  store.set(themeAtom, theme)
+  // Plan 3.1 — resolvedThemeAtom is derived from themeModeAtom + systemIsDarkAtom.
+  // Setting these two drives pierre-theme's resolution path.
+  store.set(themeModeAtom, theme)
+  store.set(systemIsDarkAtom, theme === 'dark')
   return render(<Provider store={store}>{el}</Provider>)
 }
 
