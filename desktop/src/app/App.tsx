@@ -13,35 +13,51 @@ export function App() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const streamRef = useRef("");
+  const scrollRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [history, streaming]);
 
   // Subscribe to streaming events for the current session.
   useEffect(() => {
+    let cancelled = false;
     let unlistenDelta: (() => void) | undefined;
     let unlistenDone: (() => void) | undefined;
     let unlistenError: (() => void) | undefined;
 
     void (async () => {
-      unlistenDelta = await listenAgent("agent:text-delta", (e) => {
+      const d = await listenAgent("agent:text-delta", (e) => {
         if (e.session_id !== SESSION_ID) return;
         streamRef.current += e.text;
         setStreaming(streamRef.current);
       });
-      unlistenDone = await listenAgent("agent:done", (e) => {
+      if (cancelled) { d(); return; }
+      unlistenDelta = d;
+
+      const o = await listenAgent("agent:done", (e) => {
         if (e.session_id !== SESSION_ID) return;
         const finalText = streamRef.current;
         streamRef.current = "";
         setStreaming("");
         if (finalText) setHistory((h) => [...h, { role: "assistant", text: finalText }]);
       });
-      unlistenError = await listenAgent("agent:error", (e) => {
+      if (cancelled) { o(); return; }
+      unlistenDone = o;
+
+      const er = await listenAgent("agent:error", (e) => {
         if (e.session_id !== SESSION_ID) return;
         setError(e.message);
         streamRef.current = "";
         setStreaming("");
       });
+      if (cancelled) { er(); return; }
+      unlistenError = er;
     })();
 
     return () => {
+      cancelled = true;
       unlistenDelta?.();
       unlistenDone?.();
       unlistenError?.();
@@ -67,10 +83,10 @@ export function App() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col gap-4 p-6">
+    <main className="flex h-screen flex-col gap-4 p-6">
       <h1 className="text-2xl font-semibold">Hermes Agent Ultra</h1>
 
-      <section className="flex flex-1 flex-col gap-3 overflow-y-auto rounded-md border border-border p-4">
+      <section ref={scrollRef} className="flex flex-1 flex-col gap-3 overflow-y-auto rounded-md border border-border p-4">
         {history.length === 0 && !streaming && (
           <p className="text-muted-foreground">{t("chat.empty")}</p>
         )}
