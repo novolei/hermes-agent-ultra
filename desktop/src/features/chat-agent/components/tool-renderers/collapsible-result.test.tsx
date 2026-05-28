@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import * as React from 'react'
 import { CollapsibleResult } from './collapsible-result'
 
 const SHORT = 'short content'

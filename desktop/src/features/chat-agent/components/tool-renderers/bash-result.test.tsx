@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import * as React from 'react'
 import { BashResultRenderer } from './bash-result'
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
