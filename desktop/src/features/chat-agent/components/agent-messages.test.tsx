@@ -13,7 +13,6 @@ import {
 import {
   emptyStreaming,
   partialStreaming,
-  streamingWithError,
   completedStreaming,
   partialStreaming as streamingWithTools,
 } from '../__fixtures__/streaming-fixture'
