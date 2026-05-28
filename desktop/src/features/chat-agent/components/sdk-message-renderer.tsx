@@ -38,8 +38,8 @@ import { Badge } from '@/shared/ui/badge'
 import { formatMessageTime } from '@/features/chat-agent/lib/format-message-time'
 import { getModelLogo, resolveModelDisplayName } from '@/features/chat-agent/lib/model-logo'
 import { userProfileAtom } from '@/features/chat-agent/atoms/user-profile'
+import { channelsAtom } from '@/features/chat-agent/atoms/chat-atoms'
 import {
-  channelsAtom,
   environmentCheckDialogOpenAtom,
   settingsOpenAtom,
   settingsTabAtom,

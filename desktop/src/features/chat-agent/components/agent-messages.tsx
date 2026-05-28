@@ -15,17 +15,16 @@ import { ScrollMinimap } from '@/features/chat-agent/components/ai-elements/scro
 import { StickyUserMessage } from '@/features/chat-agent/components/ai-elements/sticky-user-message'
 import { UserAvatar } from '@/features/chat-agent/components/user-avatar'
 import { CopyButton } from '@/features/chat-agent/components/copy-button'
+import { channelsAtom } from '@/features/chat-agent/atoms/chat-atoms'
+import { tabMinimapCacheAtom } from '@/features/chat-agent/atoms/tab-atoms'
 import {
-  channelsAtom,
-  tabMinimapCacheAtom,
   proactiveLearningEventsAtom,
   memoryRecallEventAtom,
   skillRecallsMapAtom,
-  agentDisplayNameForAtom,
-  stickyUserMessageEnabledAtom,
-  saveImageAs,
-  readAttachment,
-} from '@/features/chat-agent/lib/peripheral-stubs'
+} from '@/features/chat-agent/atoms/agent-atoms'
+import { agentDisplayNameForAtom } from '@/features/chat-agent/atoms/agent-display-name'
+import { stickyUserMessageEnabledAtom } from '@/features/chat-agent/atoms/ui-preferences'
+import { saveImageAs, readAttachment } from '@/features/chat-agent/lib/peripheral-stubs'
 import {
   formatDuration,
   buildUsageTooltip,
@@ -37,11 +36,13 @@ import {
   type AttachedFileRef,
 } from '@/features/chat-agent/lib/agent-messages-utils'
 import { formatMessageTime } from '@/features/chat-agent/lib/format-message-time'
-import { ChatToolActivityIndicator } from '@/features/chat-agent/components/stubs/chat-tool-activity-indicator'
+import { ChatToolActivityIndicator } from '@/features/chat-agent/components/chat-tool-activity-indicator'
 import { ThinkingBlock } from '@/features/chat-agent/components/content-block'
 import { NativeBlockRenderer } from '@/features/chat-agent/components/native-block-renderer'
-import { SkillCitationChips, SkillRecallChips } from '@/features/chat-agent/components/stubs/skill-chips'
-import { ProactiveLearningChip, MemoryRecallChip } from '@/features/chat-agent/components/stubs/learning-chips'
+import { SkillCitationChips } from '@/features/chat-agent/components/skill-citation-chips'
+import { SkillRecallChips } from '@/features/chat-agent/components/skill-recall-chips'
+import { ProactiveLearningChip } from '@/features/chat-agent/components/proactive-learning-chip'
+import { MemoryRecallChip } from '@/features/chat-agent/components/memory-recall-chip'
 import { CompactingIndicator, CompactBoundaryDivider } from '@/features/chat-agent/components/sdk-message-renderer'
 import { ScrollPositionManager } from '@/features/chat-agent/components/stubs/scroll-position-manager'
 import type { AgentMessage, AgentEventUsage, ToolActivity, RetryAttempt } from '@/features/chat-agent/lib/agent-types'
