@@ -129,7 +129,7 @@ export function ModeSwitcher(): React.ReactElement {
   )
 
   return (
-    <div className="pt-2">
+    <div data-testid="mode-switcher" className="pt-2">
       <div className="relative flex rounded-xl bg-muted p-1">
         {/* 滑动背景指示器 — 三段宽度: each 33.333% minus 4px slider gap */}
         <div

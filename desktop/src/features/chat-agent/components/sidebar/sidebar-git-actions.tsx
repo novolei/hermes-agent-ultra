@@ -51,7 +51,7 @@ export function SidebarGitActions(): React.ReactElement | null {
   if (!cwd) return null
 
   return (
-    <>
+    <div data-testid="sidebar-git-actions" className="contents">
       {/* Hairline divider between MCP·Skills and 提交 sections. Lives
           inside this file so it vanishes together with the picker when
           cwd is missing — no orphan vertical line. */}
@@ -84,6 +84,6 @@ export function SidebarGitActions(): React.ReactElement | null {
         cwd={cwd}
         currentBranch={currentBranch}
       />
-    </>
+    </div>
   )
 }
