@@ -61,8 +61,8 @@ describe('ui-preferences atoms', () => {
       length: 0,
       key: vi.fn(() => null),
     }
-    const originalLocalStorage = global.localStorage
-    Object.defineProperty(global, 'localStorage', {
+    const originalLocalStorage = globalThis.localStorage
+    Object.defineProperty(globalThis, 'localStorage', {
       value: mockLocalStorage,
       writable: true,
     })
@@ -74,7 +74,7 @@ describe('ui-preferences atoms', () => {
       await updateStickyUserMessageEnabled(true)
       expect(mockLocalStorage.setItem).toHaveBeenCalledWith('hermes-sticky-user-message', 'true')
     } finally {
-      Object.defineProperty(global, 'localStorage', {
+      Object.defineProperty(globalThis, 'localStorage', {
         value: originalLocalStorage,
         writable: true,
       })
