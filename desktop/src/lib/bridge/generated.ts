@@ -10,13 +10,57 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 /** Commands */
 export const commands = {
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
+	agentSendMessage: (sessionId: string, text: string) => typedError<string, AgentSendError>(__TAURI_INVOKE("agent_send_message", { sessionId, text })),
+	sessionLoad: (sessionId: string) => typedError<SessionMessage_Serialize[], SessionLoadError>(__TAURI_INVOKE("session_load", { sessionId })),
 };
 
 /* Types */
+export type AgentSendError = {
+	message: string,
+};
+
 /**  Basic application metadata surfaced to the frontend. */
 export type AppInfo = {
 	name: string,
 	version: string,
 	platform: string,
 };
+
+export type SessionLoadError = {
+	message: string,
+};
+
+/**
+ *  Frontend-facing message shape. Mirrors `hermes_core::Message` but only
+ *  surfaces the fields the UI cares about for v1.
+ */
+export type SessionMessage = SessionMessage_Serialize | SessionMessage_Deserialize;
+
+/**
+ *  Frontend-facing message shape. Mirrors `hermes_core::Message` but only
+ *  surfaces the fields the UI cares about for v1.
+ */
+export type SessionMessage_Deserialize = {
+	role: string,
+	content: string | null,
+};
+
+/**
+ *  Frontend-facing message shape. Mirrors `hermes_core::Message` but only
+ *  surfaces the fields the UI cares about for v1.
+ */
+export type SessionMessage_Serialize = {
+	role: string,
+	content?: string | null,
+};
+
+/* Tauri Specta runtime */
+async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {
+    try {
+        return { status: "ok", data: await result };
+    } catch (e) {
+        if (e instanceof Error) throw e;
+        return { status: "error", error: e as any };
+    }
+}
 

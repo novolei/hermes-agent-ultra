@@ -8,7 +8,11 @@ use tauri_specta::{collect_commands, Builder};
 
 fn make_builder() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new()
-        .commands(collect_commands![commands::app::app_info])
+        .commands(collect_commands![
+            commands::app::app_info,
+            commands::agent::agent_send_message,
+            commands::session::session_load,
+        ])
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
