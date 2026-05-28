@@ -126,6 +126,10 @@ export interface AgentStreamState {
   waitingResume?: boolean
   /** Whether any LLM call in this turn was truncated (finish_reason=length). */
   truncated?: boolean
+  /** Set by the reducer when an `error` event is received. AgentMessages
+   *  surfaces this to the user as an error banner. Closes Plan 2b.2.b.1
+   *  follow-up #2. */
+  error?: string
 }
 
 /** 从 ToolActivity 派生状态 */
@@ -798,7 +802,7 @@ export function applyAgentEvent(
       return { ...prev, running: false, retrying: undefined }
 
     case 'error':
-      return { ...prev, running: false }
+      return { ...prev, running: false, error: event.message }
 
     case 'usage_update':
       return {
