@@ -63,55 +63,93 @@ pub fn translate_chunk(session_id: &str, chunk: &StreamChunk) -> Vec<TranslatedE
 }
 
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 use hermes_agent::agent_loop::ToolRegistry as AgentToolRegistry;
 use hermes_agent::provider::{AnthropicProvider, OpenAiProvider};
-use hermes_agent::{AgentConfig, AgentLoop};
+use hermes_agent::{AgentCallbacks, AgentConfig, AgentLoop};
 use hermes_core::{AgentError, LlmProvider, Message, MessageRole};
 use tauri::AppHandle;
 
 use crate::events;
 use crate::services::session_service::SessionService;
 
-/// Lazily-constructed AgentLoop wrapper. Holds the single LLM provider for
-/// the desktop session; constructed on first use from env vars (MVP).
-pub struct AgentService {
-    inner: Mutex<Option<Arc<AgentLoop>>>,
+/// Builds an `AgentCallbacks` value with the four desktop-facing callbacks
+/// wired to typed `agent:*` Tauri events. Each closure owns its own clone of
+/// `(AppHandle, session_id)` so the value is `Send + Sync + 'static`.
+///
+/// Callbacks NOT wired (intentionally, see Plan 2b.1):
+///   - on_stream_delta: text deltas are handled by run_stream's `on_chunk`
+///     callback (which fires per StreamChunk) — wiring this would double-emit.
+///   - on_step_complete: turn-boundary marker not yet consumed by the UI.
+///   - background_review_callback: runs on a spawned task; needs careful
+///     thread-model design (Plan 2c).
+fn build_desktop_callbacks(app: tauri::AppHandle, session_id: String) -> AgentCallbacks {
+    let mut cb = AgentCallbacks::default();
+
+    // on_tool_start(name, args)
+    let (app_ts, sid_ts) = (app.clone(), session_id.clone());
+    cb.on_tool_start = Some(Box::new(move |name: &str, args: &serde_json::Value| {
+        events::emit_tool_start(&app_ts, events::ToolStartEvent {
+            session_id: sid_ts.clone(),
+            tool: name.to_string(),
+            arguments_json: args.to_string(),
+        });
+    }));
+
+    // on_tool_complete(name, result_content)
+    let (app_tc, sid_tc) = (app.clone(), session_id.clone());
+    cb.on_tool_complete = Some(Box::new(move |name: &str, result: &str| {
+        events::emit_tool_result(&app_tc, events::ToolResultEvent {
+            session_id: sid_tc.clone(),
+            tool: name.to_string(),
+            result: result.to_string(),
+        });
+    }));
+
+    // on_thinking(reasoning_token)
+    let (app_th, sid_th) = (app.clone(), session_id.clone());
+    cb.on_thinking = Some(Box::new(move |token: &str| {
+        events::emit_thinking_delta(&app_th, events::ThinkingDeltaEvent {
+            session_id: sid_th.clone(),
+            token: token.to_string(),
+        });
+    }));
+
+    // status_callback(event_type, message)
+    let (app_st, sid_st) = (app, session_id);
+    cb.status_callback = Some(std::sync::Arc::new(move |event_type: &str, message: &str| {
+        events::emit_status(&app_st, events::StatusEvent {
+            session_id: sid_st.clone(),
+            event_type: event_type.to_string(),
+            message: message.to_string(),
+        });
+    }));
+
+    cb
 }
 
-// TODO(plan-2b-or-3): Currently a single AgentLoop is reused across all
-// sessions, so `AgentConfig.session_id` is unset and hermes-agent's
-// internal session tracking (replay recorder, memory sync, hook contexts)
-// all use "". Harmless in MVP because we set skip_memory + no replay/hooks,
-// but once those land, refactor to either:
-//   (a) construct AgentLoop per call (canonical hermes-http pattern), or
-//   (b) cache the provider only and rebuild AgentLoop per send.
-// Tracked alongside the per-session concurrency lock that the same refactor
-// should introduce.
+/// Lazily-cached LLM provider for the desktop session. `AgentLoop` itself is
+/// built per `send_message_streaming` call so `AgentConfig.session_id` matches
+/// the caller's session and callbacks can be wired per-session.
+pub struct AgentService {
+    /// Cached `(provider, model)` pair from env. None until first send.
+    cached: tokio::sync::Mutex<Option<(std::sync::Arc<dyn LlmProvider>, String)>>,
+}
+
 impl AgentService {
     pub fn new() -> Self {
-        Self { inner: Mutex::new(None) }
+        Self { cached: tokio::sync::Mutex::new(None) }
     }
 
-    /// Returns (or initialises) the underlying AgentLoop.
-    /// MVP: env-var driven. Plan 4.5's settings UI replaces this.
-    async fn get_or_init(&self) -> Result<Arc<AgentLoop>, AgentError> {
-        let mut guard = self.inner.lock().await;
-        if let Some(existing) = guard.as_ref() {
-            return Ok(existing.clone());
+    /// Returns (or initialises) the (provider, model) pair.
+    async fn get_or_init_provider(&self) -> Result<(std::sync::Arc<dyn LlmProvider>, String), AgentError> {
+        let mut guard = self.cached.lock().await;
+        if let Some((p, m)) = guard.as_ref() {
+            return Ok((p.clone(), m.clone()));
         }
         let (provider, model) = build_provider_from_env()?;
-        let config = AgentConfig {
-            model,
-            stream: true,
-            max_turns: 20,
-            ..AgentConfig::default()
-        };
-        let tools = Arc::new(AgentToolRegistry::new());
-        let agent = Arc::new(AgentLoop::new(config, tools, provider));
-        *guard = Some(agent.clone());
-        Ok(agent)
+        *guard = Some((provider.clone(), model.clone()));
+        Ok((provider, model))
     }
 
     /// Send a user message, stream chunks back to the frontend via Tauri
@@ -124,14 +162,37 @@ impl AgentService {
         session_id: String,
         user_text: String,
     ) -> Result<String, AgentError> {
-        let agent = self.get_or_init().await?;
+        // Cache only the provider; everything else is per-call.
+        let (provider, model) = self.get_or_init_provider().await?;
 
-        // Load prior history (empty for new sessions) and append the new user turn.
+        // Per-call AgentConfig: tie session_id to this session; disable the
+        // features that don't apply to a desktop session (no workspace project,
+        // no memory wired yet).
+        let config = AgentConfig {
+            model,
+            stream: true,
+            max_turns: 20,
+            session_id: Some(session_id.clone()),
+            skip_memory: true,
+            skip_context_files: true,
+            code_index_enabled: false,
+            ..AgentConfig::default()
+        };
+
+        // Empty tool registry for now; Plan 2c+ will register real tools.
+        let tools = std::sync::Arc::new(AgentToolRegistry::new());
+
+        // Wire the four desktop callbacks (tool/thinking/status).
+        let callbacks = build_desktop_callbacks(app.clone(), session_id.clone());
+
+        // Build and configure the agent.
+        let agent = AgentLoop::new(config, tools, provider).with_callbacks(callbacks);
+
+        // Load prior history (or emit a non-fatal error event and continue with empty).
         let mut history = match session.load(&session_id) {
             Ok(h) => h,
             Err(e) => {
                 tracing::warn!(target = "agent_service", "session.load({session_id}) failed: {e}; using empty history");
-                // Emit a non-fatal error event so the UI can surface a banner if it wants.
                 events::emit_error(&app, events::ErrorEvent {
                     session_id: session_id.clone(),
                     message: format!("session.load failed (using empty history): {e}"),
@@ -149,17 +210,15 @@ impl AgentService {
             cache_control: None,
         });
 
-        // Stream callback: translate chunks → emit Tauri events.
+        // Stream callback: translate StreamChunks → agent:text-delta / agent:tool-call-delta / agent:usage.
         let app_for_cb = app.clone();
         let session_for_cb = session_id.clone();
         let on_chunk: Box<dyn Fn(hermes_core::StreamChunk) + Send + Sync> = Box::new(move |chunk| {
             for tev in translate_chunk(&session_for_cb, &chunk) {
                 match tev {
-                    TranslatedEvent::TextDelta(e) =>
-                        events::emit_text_delta(&app_for_cb, e),
-                    TranslatedEvent::ToolCallDelta(e) =>
-                        events::emit_tool_call_delta(&app_for_cb, e),
-                    TranslatedEvent::Usage(e) => events::emit_usage(&app_for_cb, e),
+                    TranslatedEvent::TextDelta(e)     => events::emit_text_delta(&app_for_cb, e),
+                    TranslatedEvent::ToolCallDelta(e) => events::emit_tool_call_delta(&app_for_cb, e),
+                    TranslatedEvent::Usage(e)         => events::emit_usage(&app_for_cb, e),
                 }
             }
         });
@@ -176,10 +235,12 @@ impl AgentService {
             }
         };
 
-        // Persist updated history + return the last assistant reply.
+        // Persist updated history.
         if let Err(e) = session.save(&session_id, &result.messages, None) {
             tracing::warn!(target = "agent_service", "session.save({session_id}) failed: {e}");
         }
+
+        // Extract last assistant reply.
         let reply = result
             .messages
             .iter()
@@ -188,6 +249,7 @@ impl AgentService {
             .and_then(|m| m.content.clone())
             .unwrap_or_default();
 
+        // Done reason from AgentResult.
         let reason = if result.interrupted {
             "interrupted"
         } else if result.finished_naturally {
@@ -393,5 +455,17 @@ mod tests {
         assert_eq!(events.len(), 2, "expected text-delta then usage");
         assert!(matches!(events[0], TranslatedEvent::TextDelta(_)));
         assert!(matches!(events[1], TranslatedEvent::Usage(_)));
+    }
+
+    #[test]
+    fn desktop_callbacks_factory_wires_four_fields() {
+        // We can't construct an AppHandle without a Tauri runtime, so this
+        // test is build-time only: it forces `build_desktop_callbacks` into
+        // the test compilation graph so any signature/bound regression
+        // (Send + Sync + 'static violations on the closures, signature drift
+        // on AgentCallbacks fields, etc.) fails to compile. A fuller
+        // integration test would require a Tauri runtime fixture
+        // (Plan 2b.2 / 2c territory).
+        let _f: fn(tauri::AppHandle, String) -> hermes_agent::AgentCallbacks = build_desktop_callbacks;
     }
 }
