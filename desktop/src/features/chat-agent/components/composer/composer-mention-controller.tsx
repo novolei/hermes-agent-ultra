@@ -7,14 +7,14 @@
  *   - `./MentionChipNode` → `@/features/chat-agent/lib/composer/mention-chip-node`
  *   - `./ComposerMentionPopup` → `./composer-mention-popup`
  *   - `@/atoms/workspace` → `@/features/chat-agent/atoms/tab-atoms`
- *   - `@/lib/tauri-bridge` → `@/features/chat-agent/lib/peripheral-stubs`
+ *   - `@/lib/tauri-bridge` → `@/features/chat-agent/lib/settings-stubs`
  *   - `@/lib/types` → `@/features/chat-agent/lib/types`
  *   - `@/hooks/useEditorMentionTrigger` → `@/features/chat-agent/lib/composer/use-editor-mention-trigger`
  *   - `@/lib/utils` → `@/shared/lib/cn`
  *
  * Inline stub additions:
  *   - `listInvocableSkills` + `searchWorkspaceFilesForMention` are imported
- *     from `peripheral-stubs` (no-op until Plan 3+ wires the real Tauri IPC).
+ *     from `settings-stubs` (no-op until Plan 3+ wires the real Tauri IPC).
  *
  * 2026-05-13 TipTap port: editor-instance-driven instead of textarea-ref-
  * driven. The popup component (ComposerMentionPopup), data fetching, and
@@ -28,7 +28,7 @@ import { activeWorkspaceIdAtom } from '@/features/chat-agent/atoms/tab-atoms'
 import {
   listInvocableSkills,
   searchWorkspaceFilesForMention,
-} from '@/features/chat-agent/lib/peripheral-stubs'
+} from '@/features/chat-agent/lib/settings-stubs'
 import type { InvocableSkill, WorkspaceFileMatch } from '@/features/chat-agent/lib/types'
 import { useEditorMentionTrigger } from '@/features/chat-agent/lib/composer/use-editor-mention-trigger'
 import { ComposerMentionPopup } from './composer-mention-popup'

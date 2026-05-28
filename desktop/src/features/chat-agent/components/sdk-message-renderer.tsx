@@ -44,7 +44,7 @@ import {
   settingsOpenAtom,
   settingsTabAtom,
   openExternal,
-} from '@/features/chat-agent/lib/peripheral-stubs'
+} from '@/features/chat-agent/lib/settings-stubs'
 import { readAttachment, saveImageAs } from '@/lib/bridge'
 import type { AgentEventUsage, RecoveryAction } from '@/features/chat-agent/lib/agent-types'
 import type { ToolActivity } from '@/features/chat-agent/atoms/agent-atoms'

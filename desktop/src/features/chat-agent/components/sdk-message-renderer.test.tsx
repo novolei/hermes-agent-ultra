@@ -4,9 +4,9 @@
  * Ported from uclaw/ui/src/components/agent/SDKMessageRenderer.test.tsx
  * Retargets:
  *   ./SDKMessageRenderer               → ./sdk-message-renderer
- *   @/atoms/settings-tab               → @/features/chat-agent/lib/peripheral-stubs
+ *   @/atoms/settings-tab               → @/features/chat-agent/lib/settings-stubs
  *   @/test-utils/render renderWithProviders → local inline helper (jotai Provider + store)
- *   @/lib/tauri-bridge mock            → @/features/chat-agent/lib/peripheral-stubs mock
+ *   @/lib/tauri-bridge mock            → @/lib/bridge mock + @/features/chat-agent/lib/settings-stubs mock
  */
 
 import { describe, expect, it, vi, beforeAll } from 'vitest'
@@ -18,7 +18,7 @@ import { TooltipProvider } from '@/shared/ui/tooltip'
 import {
   settingsOpenAtom,
   settingsTabAtom,
-} from '@/features/chat-agent/lib/peripheral-stubs'
+} from '@/features/chat-agent/lib/settings-stubs'
 import {
   MessageGroupRenderer,
   SDKMessageRenderer,
@@ -41,12 +41,19 @@ vi.mock('@tauri-apps/api/event', () => ({
   listen: vi.fn().mockResolvedValue(() => {}),
 }))
 
-vi.mock('@/features/chat-agent/lib/peripheral-stubs', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@/features/chat-agent/lib/peripheral-stubs')>()
+vi.mock('@/lib/bridge', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/lib/bridge')>()
   return {
     ...original,
     readAttachment: vi.fn(),
     saveImageAs: vi.fn(),
+  }
+})
+
+vi.mock('@/features/chat-agent/lib/settings-stubs', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/features/chat-agent/lib/settings-stubs')>()
+  return {
+    ...original,
     openExternal: vi.fn(),
   }
 })

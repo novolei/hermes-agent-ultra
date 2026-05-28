@@ -7,8 +7,8 @@
  * Retargets:
  *   @/lib/utils            → @/shared/lib/cn
  *   @/lib/skill-citation   → @/shared/lib/skill-citation
- *   @/lib/tauri-bridge     → @/features/chat-agent/lib/peripheral-stubs
- *   @/atoms/settings-tab   → @/features/chat-agent/lib/peripheral-stubs
+ *   @/lib/tauri-bridge     → @/features/chat-agent/lib/settings-stubs
+ *   @/atoms/settings-tab   → @/features/chat-agent/lib/settings-stubs
  *
  * Behavior:
  *   - Hover shows the LLM's reason (one-line tooltip).
@@ -32,7 +32,7 @@ import {
   TooltipTrigger,
 } from '@/shared/ui/tooltip'
 import type { SkillCitation } from '@/shared/lib/skill-citation'
-import { recordSkillCited, settingsOpenAtom, settingsTabAtom } from '@/features/chat-agent/lib/peripheral-stubs'
+import { recordSkillCited, settingsOpenAtom, settingsTabAtom } from '@/features/chat-agent/lib/settings-stubs'
 
 interface SkillCitationChipsProps {
   citations: SkillCitation[]

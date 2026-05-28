@@ -10,7 +10,7 @@
  *   @/atoms/preview-panel-atoms         → @/features/chat-agent/atoms/preview-panel-atoms
  *   @/atoms/agent-atoms                 → @/features/chat-agent/atoms/agent-atoms
  *   @/test-utils/render renderWithProviders → local inline helper (jotai Provider + store)
- *   @/lib/tauri-bridge mock             → @/features/chat-agent/lib/peripheral-stubs mock
+ *   @/lib/tauri-bridge mock             → @/lib/bridge mock
  *   @/components/agent/tool-renderers mock → ./tool-renderers mock
  */
 
@@ -27,7 +27,7 @@ import type { ToolActivity } from '@/features/chat-agent/atoms/agent-atoms'
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
 vi.mock('@tauri-apps/api/event', () => ({ listen: vi.fn().mockResolvedValue(() => {}) }))
 
-vi.mock('@/features/chat-agent/lib/peripheral-stubs', () => ({
+vi.mock('@/lib/bridge', () => ({
   readAttachment: vi.fn(async () => null),
   saveImageAs: vi.fn(async () => false),
 }))

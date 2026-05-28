@@ -8,7 +8,7 @@
  * Retargets:
  *   @/lib/utils          → @/shared/lib/cn
  *   @/atoms/agent-atoms  → @/features/chat-agent/atoms/agent-atoms
- *   @/atoms/settings-tab → @/features/chat-agent/lib/peripheral-stubs
+ *   @/atoms/settings-tab → @/features/chat-agent/lib/settings-stubs
  *
  * Phase 4 (G13): When multiple skills from the same category appear in
  * search results, a ⚠️ conflict indicator is shown with a tooltip
@@ -27,7 +27,7 @@ import {
   TooltipTrigger,
 } from '@/shared/ui/tooltip'
 import { skillRecallsMapAtom, type SkillRecall } from '@/features/chat-agent/atoms/agent-atoms'
-import { settingsOpenAtom, settingsTabAtom } from '@/features/chat-agent/lib/peripheral-stubs'
+import { settingsOpenAtom, settingsTabAtom } from '@/features/chat-agent/lib/settings-stubs'
 
 interface SkillRecallChipsProps {
   sessionId: string
