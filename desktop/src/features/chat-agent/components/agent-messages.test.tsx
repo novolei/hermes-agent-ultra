@@ -186,4 +186,18 @@ describe('AgentMessages', () => {
     expect(typeof utils.formatDuration).toBe('function')
     expect(typeof utils.parseAttachedFiles).toBe('function')
   })
+
+  it('error banner is visible even when messages is empty (closes 2b.2.c-B)', () => {
+    const streamState = {
+      running: false,
+      content: '',
+      reasoning: '',
+      toolActivities: [],
+      teammates: [],
+      error: 'rate-limited',
+    } as Parameters<typeof AgentMessages>[0]['streamState']
+    renderAM({ messages: [], streaming: false, streamState })
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('rate-limited')
+  })
 })

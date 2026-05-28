@@ -19,6 +19,18 @@ export const commands = {
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
 	agentSendMessage: (sessionId: string, text: string) => typedError<string, AgentSendError>(__TAURI_INVOKE("agent_send_message", { sessionId, text })),
 	sessionLoad: (sessionId: string) => typedError<SessionMessage_Serialize[], SessionLoadError>(__TAURI_INVOKE("session_load", { sessionId })),
+	/**
+	 *  Read a file from disk and return its bytes as base64.
+	 *  Used by InlineImage / screenshot-result to render local attachments
+	 *  without a `file://` blob URL (which is blocked by Tauri's CSP).
+	 */
+	readAttachment: (path: string) => typedError<string, string>(__TAURI_INVOKE("read_attachment", { path })),
+	/**
+	 *  Open a save-as dialog for the user, then copy `local_path` to the chosen
+	 *  destination. Returns `true` if the user picked a destination + copy
+	 *  succeeded; `false` if the user cancelled.
+	 */
+	saveImageAs: (args: SaveImageArgs) => typedError<boolean, string>(__TAURI_INVOKE("save_image_as", { args })),
 };
 
 /** Events */
@@ -61,6 +73,16 @@ export type DoneEvent_Serialize = {
 export type ErrorEvent = {
 	session_id: string,
 	message: string,
+};
+
+export type SaveImageArgs = {
+	local_path: string,
+	filename: string,
+	/**
+	 *  MIME type forwarded from the frontend; reserved for future use
+	 *  (e.g. choosing the save-dialog filter dynamically).
+	 */
+	media_type: string,
 };
 
 export type SessionLoadError = {

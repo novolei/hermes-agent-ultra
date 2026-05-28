@@ -13,7 +13,7 @@
  *   @/lib/utils                          → @/shared/lib/cn
  *   @/atoms/agent-atoms                  → @/features/chat-agent/atoms/agent-atoms
  *   @/atoms/preview-panel-atoms          → @/features/chat-agent/atoms/preview-panel-atoms
- *   @/lib/tauri-bridge                   → @/features/chat-agent/lib/peripheral-stubs
+ *   @/lib/tauri-bridge                   → @/lib/bridge
  *                                          (call sites adapted: saveImageAs signature differs)
  *   ./tool-utils                         → @/features/chat-agent/lib/tool-utils
  *   ./tool-phrase                        → @/features/chat-agent/lib/tool-phrase
@@ -45,7 +45,7 @@ import {
   isActivityGroup,
 } from '@/features/chat-agent/atoms/agent-atoms'
 import { TaskProgressCard, TASK_TOOL_NAMES } from './task-progress-card'
-import { readAttachment, saveImageAs } from '@/features/chat-agent/lib/peripheral-stubs'
+import { readAttachment, saveImageAs } from '@/lib/bridge'
 import { BashStreamView } from './tool-renderers/bash-stream-view'
 import { openPreviewTabAction } from '@/features/chat-agent/atoms/preview-panel-atoms'
 
