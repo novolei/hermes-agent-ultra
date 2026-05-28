@@ -4,7 +4,7 @@
 
 import * as React from 'react'
 import { cn } from '@/shared/lib/cn'
-import { WORKSPACE_ICON_CATALOG } from '@/lib/workspace-icons'
+import { WORKSPACE_ICON_CATALOG } from '@/features/chat-agent/lib/workspace-icons'
 
 interface IconPickerProps {
   value: string
