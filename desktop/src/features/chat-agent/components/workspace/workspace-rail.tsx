@@ -43,10 +43,7 @@ import {
 } from '@/features/chat-agent/atoms/agent-atoms'
 import { tabsAtom } from '@/features/chat-agent/atoms/tab-atoms'
 import type { AgentWorkspace, AgentSessionMeta } from '@/features/chat-agent/lib/agent-types'
-import {
-  toggleArchiveAgentSession,
-  deleteAgentSession,
-} from '@/features/chat-agent/lib/tauri-bridge-stub'
+import { toggleArchiveAgentSession, deleteAgentSession } from '@/lib/bridge/session'
 import type { WorkspaceSession } from '@/features/chat-agent/atoms/workspace'
 import { Archive, ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
