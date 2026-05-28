@@ -62,6 +62,35 @@ export const agentDisplayNameForAtom = atom<(agentId: string | undefined) => str
 /** uclaw: user preference for the sticky-user-message indicator. */
 export const stickyUserMessageEnabledAtom = atom<boolean>(true)
 
+// ---- Settings / UI atoms (uclaw: @/atoms/settings-tab, @/atoms/environment) --
+// Stubs so SDKMessageRenderer's ErrorMessage recovery actions compile without
+// requiring the full settings panel (Plan 3+).
+
+export type SettingsTab =
+  | 'connectivity'
+  | 'intelligence'
+  | 'tools'
+  | 'memoryRecall'
+  | 'learnedProfile'
+  | 'imChannels'
+  | 'general'
+  | 'stt'
+  | 'shortcuts'
+  | 'pet'
+  | 'proxy'
+  | 'browserRuntime'
+  | 'system'
+  | 'about'
+
+/** uclaw: @/atoms/settings-tab → settingsTabAtom */
+export const settingsTabAtom = atom<SettingsTab>('connectivity')
+
+/** uclaw: @/atoms/settings-tab → settingsOpenAtom */
+export const settingsOpenAtom = atom(false)
+
+/** uclaw: @/atoms/environment → environmentCheckDialogOpenAtom */
+export const environmentCheckDialogOpenAtom = atom(false)
+
 // ---- Tauri bridge shims ----------------------------------------------------
 // Plan 3.5 ships the real file-preview window; until then no-ops.
 
@@ -79,4 +108,10 @@ export interface SaveImageArgs {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function saveImageAs(_args: SaveImageArgs): Promise<boolean> {
   return false
+}
+
+/** uclaw: @/lib/tauri-bridge → openExternal. Opens a URL in the system browser. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function openExternal(_url: string): Promise<void> {
+  // Plan 3+ wires this to the real Tauri shell:open command.
 }
