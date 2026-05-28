@@ -104,6 +104,11 @@ export interface AgentEvent {
   maxAttempts?: number
   attemptData?: RetryAttempt
   finalAttempt?: RetryAttempt
+  // Plan 2b.2.b.1 (Task 29) — Closing Plan 2b.2.a follow-up: surfaces
+  // these fields at the type level so the bridge adapter can drop its
+  // Record<string, unknown> casts without losing payload.
+  reason?: string
+  message?: string
 }
 
 /** Agent 工作区 */
