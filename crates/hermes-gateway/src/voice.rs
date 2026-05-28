@@ -1,23 +1,19 @@
 //! Voice mode management for the gateway.
 //!
 //! Handles voice message transcription (STT) and text-to-speech (TTS) responses.
+#![allow(clippy::field_reassign_with_default)]
 
 use hermes_core::AgentError;
 use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
 
 /// Voice mode state.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum VoiceState {
+    #[default]
     Disabled,
     ListenOnly,
     FullDuplex,
-}
-
-impl Default for VoiceState {
-    fn default() -> Self {
-        Self::Disabled
-    }
 }
 
 /// Voice mode configuration.
@@ -115,10 +111,8 @@ impl VoiceManager {
         }
 
         // Run voice activity detection if enabled
-        if self.config.auto_detect_voice {
-            if !self.detect_voice_activity(audio_data) {
-                return Ok(String::new());
-            }
+        if self.config.auto_detect_voice && !self.detect_voice_activity(audio_data) {
+            return Ok(String::new());
         }
 
         self.transcribe(audio_data, format).await
@@ -225,7 +219,7 @@ impl VoiceManager {
         }
 
         // Prefer 16-bit PCM RMS when byte alignment suggests PCM frames.
-        if audio_data.len() % 2 == 0 {
+        if audio_data.len().is_multiple_of(2) {
             let mut sum_sq = 0.0_f64;
             let mut n = 0usize;
             for frame in audio_data.chunks_exact(2) {

@@ -1,3 +1,5 @@
+#![allow(clippy::await_holding_lock)]
+
 use std::collections::HashSet;
 use std::io::Write;
 use std::path::PathBuf;

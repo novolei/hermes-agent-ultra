@@ -1,4 +1,5 @@
 //! Real file tool backends: patch (fuzzy match) and search (regex/glob).
+#![allow(clippy::too_many_arguments)]
 
 use async_trait::async_trait;
 use regex::Regex;

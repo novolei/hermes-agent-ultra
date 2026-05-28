@@ -4,6 +4,7 @@
 //! Supports sending/editing messages, file operations, long polling for
 //! receiving updates, voice/photo/video/sticker message handling with media
 //! caching, inline keyboards, callback queries, rate limiting, exponential
+#![allow(clippy::should_implement_trait)]
 //! backoff reconnection, and group chat support.
 
 use std::collections::HashMap;

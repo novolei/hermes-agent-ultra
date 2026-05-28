@@ -1,4 +1,5 @@
 //! Delegation tool: spawn sub-agents with isolated contexts
+#![allow(clippy::too_many_arguments)]
 
 use async_trait::async_trait;
 use indexmap::IndexMap;

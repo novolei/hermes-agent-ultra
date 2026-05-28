@@ -311,7 +311,7 @@ fn default_tools() -> Vec<String> {
 // ---------------------------------------------------------------------------
 
 /// Configuration for a named LLM provider endpoint.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct LlmProviderConfig {
     /// API key (or env-var reference like "${MY_API_KEY}").
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -366,26 +366,6 @@ pub struct LlmProviderConfig {
     /// When unset, falls back to provider-specific `HERMES_<PROVIDER>_OAUTH_CLIENT_ID`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub oauth_client_id: Option<String>,
-}
-
-impl Default for LlmProviderConfig {
-    fn default() -> Self {
-        Self {
-            api_key: None,
-            api_key_env: None,
-            base_url: None,
-            command: None,
-            args: Vec::new(),
-            model: None,
-            max_tokens: None,
-            temperature: None,
-            extra_body: None,
-            rate_limit: None,
-            credential_pool: Vec::new(),
-            oauth_token_url: None,
-            oauth_client_id: None,
-        }
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -454,19 +434,15 @@ fn default_max_simple_words() -> usize {
 /// Which backend to use for terminal/command execution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum TerminalBackendType {
+    #[default]
     Local,
     Docker,
     Ssh,
     Daytona,
     Modal,
     Singularity,
-}
-
-impl Default for TerminalBackendType {
-    fn default() -> Self {
-        Self::Local
-    }
 }
 
 /// Configuration for terminal/command-execution backends.
@@ -513,7 +489,7 @@ fn default_max_output_size() -> usize {
 // ---------------------------------------------------------------------------
 
 /// Approval / safety-gate settings for dangerous operations.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ApprovalConfig {
     /// Whether the approval gate is enabled.
     #[serde(default)]
@@ -532,19 +508,8 @@ pub struct ApprovalConfig {
     pub whitelist_commands: Vec<String>,
 }
 
-impl Default for ApprovalConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            dangerous_commands: Vec::new(),
-            require_approval: false,
-            whitelist_commands: Vec::new(),
-        }
-    }
-}
-
 /// Security toggles aligned with Python config shape.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct SecurityConfig {
     /// Allow private/internal URL resolution globally.
     ///
@@ -553,14 +518,6 @@ pub struct SecurityConfig {
     /// RFC1918/CGNAT/benchmark ranges.
     #[serde(default)]
     pub allow_private_urls: bool,
-}
-
-impl Default for SecurityConfig {
-    fn default() -> Self {
-        Self {
-            allow_private_urls: false,
-        }
-    }
 }
 
 /// Skills configuration.
@@ -610,7 +567,7 @@ pub struct ProfileConfig {
 // ---------------------------------------------------------------------------
 
 /// HTTP/SOCKS proxy settings.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ProxyConfig {
     /// HTTP proxy URL (e.g. "http://proxy:8080").
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -619,15 +576,6 @@ pub struct ProxyConfig {
     /// SOCKS5 proxy URL (e.g. "socks5://proxy:1080").
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub socks_proxy: Option<String>,
-}
-
-impl Default for ProxyConfig {
-    fn default() -> Self {
-        Self {
-            http_proxy: None,
-            socks_proxy: None,
-        }
-    }
 }
 
 // ---------------------------------------------------------------------------

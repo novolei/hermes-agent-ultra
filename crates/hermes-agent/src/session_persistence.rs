@@ -168,10 +168,7 @@ impl SessionPersistence {
             }
         }
         // Plan 3.3 F1 migration: add archived column (epoch-ms integer, NULL = not archived).
-        if let Err(e) = conn.execute(
-            "ALTER TABLE sessions ADD COLUMN archived INTEGER",
-            [],
-        ) {
+        if let Err(e) = conn.execute("ALTER TABLE sessions ADD COLUMN archived INTEGER", []) {
             let msg = e.to_string();
             if !msg.contains("duplicate column") {
                 return Err(AgentError::Io(format!(
@@ -549,14 +546,10 @@ impl SessionPersistence {
         ) {
             Ok(v) => v,
             Err(rusqlite::Error::QueryReturnedNoRows) => {
-                return Err(AgentError::Io(format!(
-                    "Session not found: {session_id}"
-                )));
+                return Err(AgentError::Io(format!("Session not found: {session_id}")));
             }
             Err(e) => {
-                return Err(AgentError::Io(format!(
-                    "Failed to read archived flag: {e}"
-                )));
+                return Err(AgentError::Io(format!("Failed to read archived flag: {e}")));
             }
         };
 
@@ -960,7 +953,10 @@ mod tests {
 
         // First call → archives, returns Some(epoch_ms).
         let first = sp.toggle_archive("session-f1").expect("first toggle");
-        assert!(first.is_some(), "first toggle should set archived timestamp");
+        assert!(
+            first.is_some(),
+            "first toggle should set archived timestamp"
+        );
         let ts = first.unwrap();
         assert!(ts > 0, "archived epoch-ms should be positive");
 
@@ -1012,7 +1008,10 @@ mod tests {
                 |r| r.get(0),
             )
             .unwrap();
-        assert_eq!(count, 0, "messages table should have no rows for deleted session");
+        assert_eq!(
+            count, 0,
+            "messages table should have no rows for deleted session"
+        );
     }
 
     #[test]

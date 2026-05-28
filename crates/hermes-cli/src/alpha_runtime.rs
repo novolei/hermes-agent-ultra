@@ -1,3 +1,5 @@
+#![allow(clippy::vec_init_then_push)]
+
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -2804,7 +2806,7 @@ fn collect_repo_drift(
 }
 
 fn collect_run_context_audit(project: &TradingProjectReport) -> RunContextAudit {
-    let required = vec![
+    let required = [
         "wallet_sol".to_string(),
         "pnl_sol".to_string(),
         "reject_rate".to_string(),
@@ -3827,7 +3829,7 @@ mod tests {
                 .expect("obj");
 
             let dag = build_objective_dag_from_contract().expect("build dag");
-            assert_eq!(dag.objective_id.starts_with("obj-"), true);
+            assert!(dag.objective_id.starts_with("obj-"));
             assert!(dag.nodes.len() >= 4);
             let loaded_dag = load_objective_dag().expect("load dag");
             assert_eq!(loaded_dag.nodes.len(), dag.nodes.len());

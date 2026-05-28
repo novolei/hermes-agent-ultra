@@ -2,6 +2,7 @@
 //!
 //! Uses raw TCP for SMTP (EHLO, AUTH LOGIN, MAIL FROM, RCPT TO, DATA)
 //! and TLS+TCP for IMAP polling (LOGIN, SELECT, SEARCH UNSEEN, FETCH).
+#![allow(clippy::too_many_arguments)]
 
 use std::sync::Arc;
 
@@ -296,7 +297,7 @@ fn smtp_send_raw(
     let _greeting = read_line(&stream)?;
 
     // EHLO
-    let _ehlo = send_cmd(&mut stream, &format!("EHLO hermes-agent"))?;
+    let _ehlo = send_cmd(&mut stream, "EHLO hermes-agent")?;
     // Drain multi-line EHLO response
     loop {
         let line = read_line(&stream)?;
@@ -524,7 +525,7 @@ fn imap_fetch_unseen(
 
 fn base64_encode_simple(data: &[u8]) -> String {
     const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut result = String::with_capacity((data.len() + 2) / 3 * 4);
+    let mut result = String::with_capacity(data.len().div_ceil(3) * 4);
     for chunk in data.chunks(3) {
         let b0 = chunk[0] as u32;
         let b1 = chunk.get(1).copied().unwrap_or(0) as u32;
@@ -548,7 +549,7 @@ fn base64_encode_simple(data: &[u8]) -> String {
 
 fn base64_encode_lines(data: &[u8]) -> String {
     const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut result = String::with_capacity((data.len() + 2) / 3 * 4 + data.len() / 57 * 2);
+    let mut result = String::with_capacity(data.len().div_ceil(3) * 4 + data.len() / 57 * 2);
     let mut col = 0;
     for chunk in data.chunks(3) {
         let b0 = chunk[0] as u32;

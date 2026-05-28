@@ -137,12 +137,16 @@ mod tests {
 
     #[test]
     fn merge_configs_combines() {
-        let mut json_cfg = GatewayConfig::default();
-        json_cfg.model = Some("gpt-3.5-turbo".into());
-        json_cfg.max_turns = 10;
+        let json_cfg = GatewayConfig {
+            model: Some("gpt-3.5-turbo".into()),
+            max_turns: 10,
+            ..GatewayConfig::default()
+        };
 
-        let mut yaml_cfg = GatewayConfig::default();
-        yaml_cfg.model = Some("gpt-4o".into());
+        let yaml_cfg = GatewayConfig {
+            model: Some("gpt-4o".into()),
+            ..GatewayConfig::default()
+        };
 
         let merged = merge_configs(&yaml_cfg, &json_cfg);
         // yaml wins for model

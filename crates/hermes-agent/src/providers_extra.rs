@@ -1,10 +1,11 @@
 //! Additional LLM provider implementations for non-standard APIs.
 //!
-//! - [`QwenProvider`]: Alibaba Tongyi Qianwen (通义千问)
-//! - [`KimiProvider`]: Moonshot AI (月之暗面)
-//! - [`MiniMaxProvider`]: MiniMax
-//! - [`NousProvider`]: Nous Research
-//! - [`CopilotProvider`]: GitHub Copilot ACP
+//! Implementations:
+//! - `QwenProvider`: Alibaba Tongyi Qianwen (通义千问)
+//! - `KimiProvider`: Moonshot AI (月之暗面)
+//! - `MiniMaxProvider`: MiniMax
+//! - `NousProvider`: Nous Research
+//! - `CopilotProvider`: GitHub Copilot ACP
 
 use async_trait::async_trait;
 use futures::stream::BoxStream;

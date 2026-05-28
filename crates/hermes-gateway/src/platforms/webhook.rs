@@ -143,7 +143,7 @@ impl WebhookAdapter {
 }
 
 fn decode_hex(input: &str) -> Option<Vec<u8>> {
-    if input.is_empty() || input.len() % 2 != 0 {
+    if input.is_empty() || !input.len().is_multiple_of(2) {
         return None;
     }
     let mut out = Vec::with_capacity(input.len() / 2);
@@ -327,7 +327,13 @@ async fn handle_webhook_request(
     let signature = request
         .lines()
         .find(|l| l.to_lowercase().starts_with("x-signature:"))
-        .map(|l| l.splitn(2, ':').nth(1).unwrap_or("").trim().to_string())
+        .map(|l| {
+            l.split_once(':')
+                .map(|x| x.1)
+                .unwrap_or("")
+                .trim()
+                .to_string()
+        })
         .unwrap_or_default();
 
     if method == "POST" && path == expected_path {

@@ -268,7 +268,7 @@ pub fn resolve_billing_route(
         };
     }
     if provider_name == "anthropic" {
-        let bare = model.split('/').last().unwrap_or(&model).to_string();
+        let bare = model.split('/').next_back().unwrap_or(&model).to_string();
         return BillingRoute {
             provider: "anthropic".into(),
             model: bare,
@@ -277,7 +277,7 @@ pub fn resolve_billing_route(
         };
     }
     if provider_name == "openai" {
-        let bare = model.split('/').last().unwrap_or(&model).to_string();
+        let bare = model.split('/').next_back().unwrap_or(&model).to_string();
         return BillingRoute {
             provider: "openai".into(),
             model: bare,
@@ -292,7 +292,7 @@ pub fn resolve_billing_route(
         } else {
             provider_name
         },
-        model: model.split('/').last().unwrap_or(&model).to_string(),
+        model: model.split('/').next_back().unwrap_or(&model).to_string(),
         base_url: base,
         billing_mode: BillingMode::Unknown,
     }
@@ -330,7 +330,7 @@ pub fn get_pricing_entry(
         .iter()
         .filter(|((p, m), _)| *p == route.provider.as_str() && model_lower.contains(*m))
         .collect();
-    candidates.sort_by(|a, b| b.0 .1.len().cmp(&a.0 .1.len()));
+    candidates.sort_by_key(|b| std::cmp::Reverse(b.0 .1.len()));
     candidates.first().map(|(_, entry)| (*entry).clone())
 }
 

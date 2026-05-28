@@ -1,6 +1,7 @@
 //! Sentence-boundary aware buffer used by the streaming TTS pipeline.
 //!
 //! Ported from the inline logic in Python's `stream_tts_to_speaker`:
+#![allow(clippy::field_reassign_with_default)]
 //!
 //! * Accumulate streamed text deltas into a `sentence_buf`.
 //! * Split on a sentence-boundary regex equivalent to
@@ -201,9 +202,7 @@ impl SentenceBuffer {
 /// Python: `cleaned.lower().rstrip(".!,")` is used as the dedup key.
 fn normalise_for_dedup(s: &str) -> String {
     let lower = s.to_lowercase();
-    lower
-        .trim_end_matches(|c: char| c == '.' || c == '!' || c == ',')
-        .to_string()
+    lower.trim_end_matches(['.', '!', ',']).to_string()
 }
 
 // ---------------------------------------------------------------------------

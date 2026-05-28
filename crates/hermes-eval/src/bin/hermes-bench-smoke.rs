@@ -23,10 +23,7 @@ async fn main() -> std::process::ExitCode {
 
     let runner = Runner::new(config);
     match runner
-        .run(
-            Arc::new(TbliteSmokeAdapter::default()),
-            Arc::new(NoopRollout),
-        )
+        .run(Arc::new(TbliteSmokeAdapter), Arc::new(NoopRollout))
         .await
     {
         Ok(record) => match serde_json::to_string_pretty(&record) {

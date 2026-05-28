@@ -29,10 +29,10 @@ pub mod rate_limit;
 pub mod reasoning;
 pub mod session_persistence;
 pub mod skill_orchestrator;
-pub mod workspace_persistence;
 pub mod smart_model_routing;
 pub mod sub_agent_orchestrator;
 pub mod subdirectory_hints;
+pub mod workspace_persistence;
 
 // Re-export primary agent types
 pub use agent_loop::{

@@ -4,6 +4,7 @@
 //!
 //! 1. **New session**: empty `stored_system_prompt`, fresh `build_system_prompt`, `on_session_start` may fire.
 //! 2. **Continue session**: `stored_system_prompt` from SQLite matches prior turn — stable Anthropic prefix cache.
+#![allow(clippy::collapsible_match)]
 //! 3. **Budget caution (70%)**: `_get_budget_warning` returns `[BUDGET: ...]` injected into last tool JSON as `_budget_warning`.
 //! 4. **Budget warning (90%)**: `[BUDGET WARNING: ...]` same injection path.
 //! 5. **History replay**: `_strip_budget_warnings_from_history` removes `_budget_warning` / `[BUDGET` tails from tool messages.

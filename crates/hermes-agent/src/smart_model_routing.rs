@@ -89,16 +89,12 @@ static PROMPT_INJECTION_HINTS: &[&str] = &[
 /// API mode — determines how requests are formatted for the LLM backend.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum ApiMode {
+    #[default]
     ChatCompletions,
     AnthropicMessages,
     CodexResponses,
-}
-
-impl Default for ApiMode {
-    fn default() -> Self {
-        Self::ChatCompletions
-    }
 }
 
 /// Cheap route target details for smart per-turn routing.

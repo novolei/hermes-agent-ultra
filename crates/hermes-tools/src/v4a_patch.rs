@@ -3,6 +3,7 @@
 //! Ported from Python `tools/patch_parser.py`.
 //!
 //! Parses the V4A patch format used by codex, cline, and other coding agents.
+#![allow(clippy::manual_strip)]
 //!
 //! V4A Format:
 //! ```text

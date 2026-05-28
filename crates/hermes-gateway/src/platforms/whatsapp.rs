@@ -348,41 +348,6 @@ fn build_link_media_body(
     })
 }
 
-#[cfg(test)]
-mod tests {
-    use super::build_link_media_body;
-
-    #[test]
-    fn build_link_media_body_with_caption() {
-        let body = build_link_media_body(
-            "15551234567",
-            "image",
-            "https://example.com/preview.png",
-            Some("Status update"),
-        );
-
-        assert_eq!(body["messaging_product"], "whatsapp");
-        assert_eq!(body["to"], "15551234567");
-        assert_eq!(body["type"], "image");
-        assert_eq!(body["image"]["link"], "https://example.com/preview.png");
-        assert_eq!(body["image"]["caption"], "Status update");
-    }
-
-    #[test]
-    fn build_link_media_body_omits_blank_caption() {
-        let body = build_link_media_body(
-            "15551234567",
-            "image",
-            "https://example.com/preview.png",
-            Some("   "),
-        );
-
-        assert_eq!(body["type"], "image");
-        assert_eq!(body["image"]["link"], "https://example.com/preview.png");
-        assert!(body["image"]["caption"].is_null());
-    }
-}
-
 #[async_trait]
 impl PlatformAdapter for WhatsAppAdapter {
     async fn start(&self) -> Result<(), GatewayError> {
@@ -528,5 +493,40 @@ impl PlatformAdapter for WhatsAppAdapter {
     }
     fn platform_name(&self) -> &str {
         "whatsapp"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_link_media_body;
+
+    #[test]
+    fn build_link_media_body_with_caption() {
+        let body = build_link_media_body(
+            "15551234567",
+            "image",
+            "https://example.com/preview.png",
+            Some("Status update"),
+        );
+
+        assert_eq!(body["messaging_product"], "whatsapp");
+        assert_eq!(body["to"], "15551234567");
+        assert_eq!(body["type"], "image");
+        assert_eq!(body["image"]["link"], "https://example.com/preview.png");
+        assert_eq!(body["image"]["caption"], "Status update");
+    }
+
+    #[test]
+    fn build_link_media_body_omits_blank_caption() {
+        let body = build_link_media_body(
+            "15551234567",
+            "image",
+            "https://example.com/preview.png",
+            Some("   "),
+        );
+
+        assert_eq!(body["type"], "image");
+        assert_eq!(body["image"]["link"], "https://example.com/preview.png");
+        assert!(body["image"]["caption"].is_null());
     }
 }

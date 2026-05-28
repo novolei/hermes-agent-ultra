@@ -2,6 +2,7 @@
 //!
 //! The Responses API (`POST /v1/responses`) is used by OpenAI Codex and similar
 //! models. It differs from chat completions in request/response format.
+#![allow(clippy::collapsible_match)]
 
 use async_trait::async_trait;
 use futures::stream::BoxStream;
@@ -207,15 +208,15 @@ impl CodexProvider {
             }
         }
 
-        let usage = json.get("usage").and_then(|u| {
+        let usage = json.get("usage").map(|u| {
             let input = u.get("input_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
             let output = u.get("output_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
-            Some(UsageStats {
+            UsageStats {
                 prompt_tokens: input,
                 completion_tokens: output,
                 total_tokens: input + output,
                 estimated_cost: None,
-            })
+            }
         });
 
         let model = json
@@ -472,15 +473,15 @@ impl LlmProvider for CodexProvider {
                             });
                         }
                         "response.completed" => {
-                            let usage = json.get("response").and_then(|r| r.get("usage")).and_then(|u| {
+                            let usage = json.get("response").and_then(|r| r.get("usage")).map(|u| {
                                 let input = u.get("input_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
                                 let output = u.get("output_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
-                                Some(UsageStats {
+                                UsageStats {
                                     prompt_tokens: input,
                                     completion_tokens: output,
                                     total_tokens: input + output,
                                     estimated_cost: None,
-                                })
+                                }
                             });
                             yield Ok(StreamChunk {
                                 delta: None,

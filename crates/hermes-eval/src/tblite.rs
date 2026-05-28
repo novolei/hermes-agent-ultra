@@ -125,10 +125,7 @@ mod tests {
             ..Default::default()
         });
         let record = runner
-            .run(
-                Arc::new(TbliteSmokeAdapter::default()),
-                Arc::new(NoopRollout),
-            )
+            .run(Arc::new(TbliteSmokeAdapter), Arc::new(NoopRollout))
             .await
             .expect("smoke run");
         assert_eq!(record.metrics.total, 2);

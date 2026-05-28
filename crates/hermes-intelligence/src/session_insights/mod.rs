@@ -38,6 +38,7 @@ mod tests {
         FIXED_NOW - days_ago * 86_400.0 + hours * 3600.0
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn session(
         id: &str,
         source: &str,
@@ -165,10 +166,7 @@ mod tests {
         assert!((o.avg_messages_per_session - 15.0).abs() < 1e-6);
         assert!(o.date_range_start.is_some());
         assert!(o.date_range_end.is_some());
-        assert_eq!(
-            o.date_range_start.unwrap() <= o.date_range_end.unwrap(),
-            true
-        );
+        assert!(o.date_range_start.unwrap() <= o.date_range_end.unwrap());
     }
 
     #[test]

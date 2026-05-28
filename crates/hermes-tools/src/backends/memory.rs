@@ -1,4 +1,5 @@
 //! Real memory backend: read/write MEMORY.md and USER.md in ~/.hermes/
+#![allow(clippy::manual_checked_ops)]
 
 use async_trait::async_trait;
 use regex::Regex;

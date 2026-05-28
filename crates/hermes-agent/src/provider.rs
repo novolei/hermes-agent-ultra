@@ -1245,15 +1245,15 @@ impl AnthropicProvider {
             }
         }
 
-        let usage = json.get("usage").and_then(|u| {
+        let usage = json.get("usage").map(|u| {
             let input = u.get("input_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
             let output = u.get("output_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
-            Some(UsageStats {
+            UsageStats {
                 prompt_tokens: input,
                 completion_tokens: output,
                 total_tokens: input + output,
                 estimated_cost: None,
-            })
+            }
         });
 
         let stop_reason = json
@@ -1557,14 +1557,14 @@ impl LlmProvider for AnthropicProvider {
                                     "tool_use" => "tool_calls".to_string(),
                                     other => other.to_string(),
                                 });
-                            let usage = json.get("usage").and_then(|u| {
+                            let usage = json.get("usage").map(|u| {
                                 let output = u.get("output_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
-                                Some(UsageStats {
+                                UsageStats {
                                     prompt_tokens: 0,
                                     completion_tokens: output,
                                     total_tokens: output,
                                     estimated_cost: None,
-                                })
+                                }
                             });
                             yield Ok(StreamChunk {
                                 delta: None,
@@ -1574,14 +1574,14 @@ impl LlmProvider for AnthropicProvider {
                         }
                         "message_start" => {
                             // Extract usage from the initial message
-                            let usage = json.get("message").and_then(|m| m.get("usage")).and_then(|u| {
+                            let usage = json.get("message").and_then(|m| m.get("usage")).map(|u| {
                                 let input = u.get("input_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
-                                Some(UsageStats {
+                                UsageStats {
                                     prompt_tokens: input,
                                     completion_tokens: 0,
                                     total_tokens: input,
                                     estimated_cost: None,
-                                })
+                                }
                             });
                             if let Some(u) = usage {
                                 yield Ok(StreamChunk {
@@ -2036,16 +2036,14 @@ fn parse_sse_chunk(json: &Value) -> Option<StreamChunk> {
         .map(|s| s.to_string());
 
     // Usage may appear in the final chunk
-    let usage = json.get("usage").and_then(|u| {
-        Some(UsageStats {
-            prompt_tokens: u.get("prompt_tokens").and_then(|v| v.as_u64()).unwrap_or(0),
-            completion_tokens: u
-                .get("completion_tokens")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0),
-            total_tokens: u.get("total_tokens").and_then(|v| v.as_u64()).unwrap_or(0),
-            estimated_cost: None,
-        })
+    let usage = json.get("usage").map(|u| UsageStats {
+        prompt_tokens: u.get("prompt_tokens").and_then(|v| v.as_u64()).unwrap_or(0),
+        completion_tokens: u
+            .get("completion_tokens")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0),
+        total_tokens: u.get("total_tokens").and_then(|v| v.as_u64()).unwrap_or(0),
+        estimated_cost: None,
     });
 
     Some(StreamChunk {
@@ -2118,9 +2116,9 @@ fn parse_openai_response(json: &Value) -> Result<LlmResponse, AgentError> {
     // Parse usage
     let usage = json.get("usage").and_then(|u| {
         Some(UsageStats {
-            prompt_tokens: u.get("prompt_tokens")?.as_u64()? as u64,
-            completion_tokens: u.get("completion_tokens")?.as_u64()? as u64,
-            total_tokens: u.get("total_tokens")?.as_u64()? as u64,
+            prompt_tokens: u.get("prompt_tokens")?.as_u64()?,
+            completion_tokens: u.get("completion_tokens")?.as_u64()?,
+            total_tokens: u.get("total_tokens")?.as_u64()?,
             estimated_cost: None,
         })
     });

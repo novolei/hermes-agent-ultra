@@ -1,6 +1,6 @@
 {
-  "divergence_file": "/Users/sheawinkler/Documents/Projects/hermes-agent-ultra/docs/parity/intentional-divergence.json",
-  "generated_at_utc": "2026-05-27T08:06:30.743577+00:00",
+  "divergence_file": "/Users/ryanliu/Documents/hermes-agent-ultra/.worktrees/desktop-appshell/docs/parity/intentional-divergence.json",
+  "generated_at_utc": "2026-05-28T19:41:18.149071+00:00",
   "items": [
     {
       "errors": [],
@@ -124,7 +124,7 @@
       "errors": [],
       "id": "rust-cli-tui-primary-ux-surface",
       "last_reviewed": "2026-04-21",
-      "matched_files": 1181,
+      "matched_files": 1185,
       "matched_sample": [
         "ui-tui/.gitignore",
         "ui-tui/.prettierrc",
@@ -158,10 +158,10 @@
   "summary": {
     "errors": 0,
     "items": 7,
-    "local_paths": 3275,
+    "local_paths": 3652,
     "review_overdue": 0,
     "unowned": 0,
-    "upstream_paths": 4095,
+    "upstream_paths": 4167,
     "warnings": 0
   }
 }

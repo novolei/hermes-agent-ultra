@@ -4,6 +4,7 @@
 //! 1. Platform adapter receives a message
 //! 2. Gateway looks up or creates a session via `SessionManager`
 //! 3. Gateway checks DM authorization via `DmManager`
+#![allow(clippy::await_holding_lock, clippy::field_reassign_with_default)]
 //! 4. Gateway invokes the agent loop with the session's message history
 //! 5. Gateway sends the response back via the platform adapter
 //!
@@ -190,7 +191,7 @@ struct CompressionOutcome {
     summary_warning: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 struct SessionRuntimeState {
     model: Option<String>,
     provider: Option<String>,
@@ -203,23 +204,6 @@ struct SessionRuntimeState {
     verbose: bool,
     yolo: bool,
     reasoning: bool,
-}
-
-impl Default for SessionRuntimeState {
-    fn default() -> Self {
-        Self {
-            model: None,
-            provider: None,
-            profile: None,
-            branch: None,
-            personality: None,
-            home: None,
-            budget: None,
-            verbose: false,
-            yolo: false,
-            reasoning: false,
-        }
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -259,17 +243,12 @@ pub struct Gateway {
     platform_access_policies: RwLock<HashMap<String, PlatformAccessPolicy>>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum GroupAccessMode {
+    #[default]
     Open,
     Allowlist,
     Disabled,
-}
-
-impl Default for GroupAccessMode {
-    fn default() -> Self {
-        Self::Open
-    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -623,10 +602,8 @@ impl Gateway {
         }
 
         // Slash commands are executed directly by the gateway command runtime.
-        if is_slash_command {
-            if self.execute_slash_command(incoming, &session_key).await? {
-                return Ok(());
-            }
+        if is_slash_command && self.execute_slash_command(incoming, &session_key).await? {
+            return Ok(());
         }
 
         let reaction_adapter = if Self::should_apply_slack_reaction_lifecycle(incoming) {
@@ -668,10 +645,9 @@ impl Gateway {
 
         // 5. Process through agent loop (streaming or non-streaming)
         let processing_result = if self.config.streaming_enabled {
-            self.route_streaming(&incoming, messages, &session_key)
-                .await
+            self.route_streaming(incoming, messages, &session_key).await
         } else {
-            self.route_non_streaming(&incoming, messages, &session_key)
+            self.route_non_streaming(incoming, messages, &session_key)
                 .await
         };
 
@@ -1641,7 +1617,7 @@ impl Gateway {
             match Self::summarize_removed_messages(middle) {
                 Ok(summary) => compressed.push(Message::assistant(&summary)),
                 Err(err) => {
-                    compressed.push(Message::assistant(&format!(
+                    compressed.push(Message::assistant(format!(
                         "[CONTEXT COMPACTION] Summary generation was unavailable. {removed_messages} message(s) were removed to free context space but could not be summarized. Continue from recent messages and current workspace state."
                     )));
                     summary_warning = Some(format!(

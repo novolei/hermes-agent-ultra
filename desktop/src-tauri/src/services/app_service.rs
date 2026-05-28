@@ -30,7 +30,7 @@ mod tests {
 
     #[test]
     fn info_reports_name_version_and_platform() {
-        let info = AppService::default().info();
+        let info = AppService.info();
         assert_eq!(info.name, "Hermes Agent Ultra");
         assert_eq!(info.version, env!("CARGO_PKG_VERSION"));
         assert_eq!(info.platform, std::env::consts::OS);

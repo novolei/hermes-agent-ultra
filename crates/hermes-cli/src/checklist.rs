@@ -4,6 +4,7 @@
 //! Provides an interactive multi-select list with keyboard navigation
 //! (↑↓ navigate, Space toggle, Enter confirm, Esc cancel) and a
 //! numbered text fallback for non-TTY terminals.
+#![allow(clippy::type_complexity)]
 
 use std::collections::HashSet;
 use std::io::{self, Write};

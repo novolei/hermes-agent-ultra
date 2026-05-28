@@ -7,6 +7,12 @@
 //! - Streaming output display (9.5)
 //! - Status bar with model/session info (9.6)
 //! - Theme/skin engine support (9.8)
+#![allow(
+    clippy::manual_clamp,
+    clippy::too_many_arguments,
+    clippy::manual_checked_ops,
+    clippy::field_reassign_with_default
+)]
 
 use std::collections::{HashMap, HashSet};
 use std::io::{Stdout, Write};
@@ -2796,8 +2802,7 @@ fn push_block(lines: &mut Vec<String>, header: &str, value: &serde_json::Value) 
 }
 
 fn sanitize_tool_line(raw: &str) -> String {
-    let sanitized =
-        sanitize_line_to_default_language_ascii(raw, false).unwrap_or_else(|| String::new());
+    let sanitized = sanitize_line_to_default_language_ascii(raw, false).unwrap_or_default();
     truncate_chars(&sanitized, max_tool_output_line_chars())
 }
 
@@ -3096,7 +3101,7 @@ fn append_transcript_message_lines(
         if let Some(tool_calls) = msg.tool_calls.as_ref() {
             for tc in tool_calls {
                 let args = serde_json::from_str::<serde_json::Value>(&tc.function.arguments)
-                    .unwrap_or_else(|_| serde_json::Value::Null);
+                    .unwrap_or(serde_json::Value::Null);
                 let preview =
                     build_tool_preview_from_value(&tc.function.name, &args, 44).unwrap_or_default();
                 let emoji = tool_emoji(&tc.function.name);

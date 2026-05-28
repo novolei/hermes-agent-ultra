@@ -4,6 +4,7 @@
 //! updating, pausing, resuming, removal, and execution. It runs a background
 //! loop that polls for due jobs (default every 60s, overridable via
 //! `HERMES_CRON_TICK_SECS`) and dispatches them to the `CronRunner`.
+#![allow(clippy::question_mark)]
 
 use std::collections::HashMap;
 use std::sync::Arc;

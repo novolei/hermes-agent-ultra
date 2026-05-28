@@ -3,6 +3,7 @@
 //! This module augments the conversation with diagnostics + symbol/reference
 //! hints after file tool calls. It is designed to be lightweight and
 //! deterministic, while still giving the model immediate code-intel feedback.
+#![allow(clippy::field_reassign_with_default)]
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -134,7 +135,7 @@ pub fn build_lsp_context_note(
     }
 
     if !touched_paths.is_empty() {
-        code_index.refresh_paths(touched_paths.into_iter());
+        code_index.refresh_paths(touched_paths);
     }
     if sections.is_empty() {
         return None;

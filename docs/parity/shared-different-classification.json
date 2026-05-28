@@ -687,6 +687,20 @@
       "rationale": "CI workflow differences affect release and parity gate enforcement.",
       "owner": "sheawinkler",
       "ticket": 25
+    },
+    {
+      "path": "plugins/web",
+      "classification": "intentional_divergence",
+      "rationale": "The upstream Python web plugin is superseded by Hermes's Rust-native HTTP/WebSocket stack; web-browsing capability is covered by the hermes-http crate and MCP tool integration.",
+      "owner": "sheawinkler",
+      "ticket": 305
+    },
+    {
+      "path": "tests/integration",
+      "classification": "intentional_divergence",
+      "rationale": "Upstream Python integration test suite is replaced by Rust workspace integration tests; parity contracts cover equivalent behavioral coverage.",
+      "owner": "sheawinkler",
+      "ticket": 305
     }
   ]
 }

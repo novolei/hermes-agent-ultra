@@ -1,3 +1,9 @@
+#![allow(
+    clippy::manual_strip,
+    clippy::inconsistent_digit_grouping,
+    clippy::await_holding_lock
+)]
+
 use std::collections::{BTreeMap, HashSet};
 use std::fs::OpenOptions;
 use std::io::{Read, Write};
@@ -663,7 +669,7 @@ fn load_openai_oauth_import_from_path(path: &Path, base_url: &str) -> Option<Ope
     let expires_in = tokens
         .id_token
         .as_deref()
-        .and_then(|jwt| decode_jwt_exp_seconds(jwt))
+        .and_then(decode_jwt_exp_seconds)
         .map(|exp| exp - now_secs)
         .filter(|remaining| *remaining > 0);
     let state = CodexAuthState {
@@ -932,9 +938,7 @@ fn nous_oauth_discovery_paths() -> Vec<PathBuf> {
 
 fn parse_nous_oauth_state(value: Value) -> Option<NousAuthState> {
     let state: NousAuthState = serde_json::from_value(value).ok()?;
-    if state.runtime_api_key().is_none() {
-        return None;
-    }
+    state.runtime_api_key()?;
     Some(state)
 }
 
@@ -1083,7 +1087,7 @@ async fn refresh_nous_access_token(
     });
 
     state.access_token = access_token;
-    state.refresh_token = payload.refresh_token.or_else(|| Some(refresh_token));
+    state.refresh_token = payload.refresh_token.or(Some(refresh_token));
     state.token_type = payload.token_type.unwrap_or_else(|| "Bearer".to_string());
     state.scope = payload.scope.or_else(|| state.scope.clone());
     state.obtained_at = now.to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
