@@ -19,6 +19,24 @@ export async function togglePinAgentSession(_sessionId: string): Promise<void> {
   throw new Error('togglePinAgentSession: not implemented in Plan 2b.2.a (state-machine port)')
 }
 
+/**
+ * Toggle the archived state of an agent session.
+ * Returns the new archived epoch-ms timestamp, or null when un-archiving.
+ * Stub — real implementation lands when the Rust command is wired up.
+ */
+export async function toggleArchiveAgentSession(_id: string): Promise<number | null> {
+  throw new Error('toggleArchiveAgentSession: not yet implemented')
+}
+
+/**
+ * Permanently delete an agent session.
+ * Returns true on success.
+ * Stub — real implementation lands when the Rust command is wired up.
+ */
+export async function deleteAgentSession(_id: string): Promise<boolean> {
+  throw new Error('deleteAgentSession: not yet implemented')
+}
+
 /** Subscribe to agent:ask_user_request events from the Tauri backend. */
 export const onAskUserRequest = (cb: (payload: AskUserRequest) => void): Promise<UnlistenFn> =>
   listen('agent:ask_user_request', (e) => cb(e.payload as AskUserRequest))
