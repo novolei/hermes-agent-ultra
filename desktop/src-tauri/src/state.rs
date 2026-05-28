@@ -3,6 +3,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use crate::services::agent_service::AgentService;
 use crate::services::app_service::AppService;
 use crate::services::session_service::SessionService;
 
@@ -10,6 +11,7 @@ use crate::services::session_service::SessionService;
 pub struct AppState {
     pub app: AppService,
     pub session: Arc<SessionService>,
+    pub agent: Arc<AgentService>,
 }
 
 impl AppState {
@@ -21,6 +23,7 @@ impl AppState {
         Self {
             app: AppService,
             session: Arc::new(session),
+            agent: Arc::new(AgentService::new()),
         }
     }
 }

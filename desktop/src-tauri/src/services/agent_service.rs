@@ -60,6 +60,146 @@ pub fn translate_chunk(session_id: &str, chunk: &StreamChunk) -> Vec<TranslatedE
     out
 }
 
+use std::sync::Arc;
+use tokio::sync::Mutex;
+
+use hermes_agent::agent_loop::ToolRegistry as AgentToolRegistry;
+use hermes_agent::provider::{AnthropicProvider, OpenAiProvider};
+use hermes_agent::{AgentConfig, AgentLoop};
+use hermes_core::{AgentError, LlmProvider, Message, MessageRole};
+use tauri::AppHandle;
+
+use crate::events;
+use crate::services::session_service::SessionService;
+
+/// Lazily-constructed AgentLoop wrapper. Holds the single LLM provider for
+/// the desktop session; constructed on first use from env vars (MVP).
+pub struct AgentService {
+    inner: Mutex<Option<Arc<AgentLoop>>>,
+}
+
+impl AgentService {
+    pub fn new() -> Self {
+        Self { inner: Mutex::new(None) }
+    }
+
+    /// Returns (or initialises) the underlying AgentLoop.
+    /// MVP: env-var driven. Plan 4.5's settings UI replaces this.
+    async fn get_or_init(&self) -> Result<Arc<AgentLoop>, AgentError> {
+        let mut guard = self.inner.lock().await;
+        if let Some(existing) = guard.as_ref() {
+            return Ok(existing.clone());
+        }
+        let (provider, model) = build_provider_from_env()?;
+        let mut config = AgentConfig::default();
+        config.model = model;
+        config.stream = true;
+        config.max_turns = 20;
+        let tools = Arc::new(AgentToolRegistry::new());
+        let agent = Arc::new(AgentLoop::new(config, tools, provider));
+        *guard = Some(agent.clone());
+        Ok(agent)
+    }
+
+    /// Send a user message, stream chunks back to the frontend via Tauri
+    /// events, persist the resulting history, return the final assistant
+    /// text.
+    pub async fn send_message_streaming(
+        &self,
+        app: AppHandle,
+        session: &SessionService,
+        session_id: String,
+        user_text: String,
+    ) -> Result<String, AgentError> {
+        let agent = self.get_or_init().await?;
+
+        // Load prior history (empty for new sessions) and append the new user turn.
+        let mut history = session.load(&session_id).unwrap_or_default();
+        history.push(Message {
+            role: MessageRole::User,
+            content: Some(user_text),
+            tool_calls: None,
+            tool_call_id: None,
+            name: None,
+            reasoning_content: None,
+            cache_control: None,
+        });
+
+        // Stream callback: translate chunks → emit Tauri events.
+        let app_for_cb = app.clone();
+        let session_for_cb = session_id.clone();
+        let on_chunk: Box<dyn Fn(hermes_core::StreamChunk) + Send + Sync> = Box::new(move |chunk| {
+            for tev in translate_chunk(&session_for_cb, &chunk) {
+                match tev {
+                    TranslatedEvent::TextDelta(e) =>
+                        events::emit_text_delta(&app_for_cb, e),
+                    TranslatedEvent::ToolCallDelta(e) =>
+                        events::emit_tool_call_delta(&app_for_cb, e),
+                    TranslatedEvent::Usage(e) => events::emit_usage(&app_for_cb, e),
+                }
+            }
+        });
+
+        // Drive the loop.
+        let result = match agent.run_stream(history.clone(), None, Some(on_chunk)).await {
+            Ok(r) => r,
+            Err(e) => {
+                events::emit_error(&app, events::ErrorEvent {
+                    session_id: session_id.clone(),
+                    message: e.to_string(),
+                });
+                return Err(e);
+            }
+        };
+
+        // Persist updated history + return the last assistant reply.
+        let _ = session.save(&session_id, &result.messages, None);
+        let reply = result
+            .messages
+            .iter()
+            .rev()
+            .find(|m| matches!(m.role, MessageRole::Assistant))
+            .and_then(|m| m.content.clone())
+            .unwrap_or_default();
+
+        events::emit_done(&app, events::DoneEvent {
+            session_id: session_id.clone(),
+            reason: Some("stop".into()),
+        });
+        Ok(reply)
+    }
+}
+
+impl Default for AgentService {
+    fn default() -> Self { Self::new() }
+}
+
+/// MVP provider selection. Reads `OPENAI_API_KEY` (or `ANTHROPIC_API_KEY` as a
+/// fallback). Plan 4.5 replaces this with a settings-driven config. Returns
+/// `(provider, "provider:model")` where the model string is what `AgentConfig.model`
+/// expects (e.g. "openai:gpt-4o-mini").
+fn build_provider_from_env() -> Result<(Arc<dyn LlmProvider>, String), AgentError> {
+    if let Ok(key) = std::env::var("OPENAI_API_KEY") {
+        let model = std::env::var("HERMES_DESKTOP_MODEL")
+            .unwrap_or_else(|_| "gpt-4o-mini".to_string());
+        let provider: Arc<dyn LlmProvider> =
+            Arc::new(OpenAiProvider::new(key).with_model(model.clone()));
+        return Ok((provider, format!("openai:{}", model)));
+    }
+    if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
+        let model = std::env::var("HERMES_DESKTOP_MODEL")
+            .unwrap_or_else(|_| "claude-3-5-sonnet-20241022".to_string());
+        // AnthropicProvider::with_model exists (confirmed at provider.rs:919) —
+        // chain it to honour HERMES_DESKTOP_MODEL.
+        let provider: Arc<dyn LlmProvider> =
+            Arc::new(AnthropicProvider::new(key).with_model(model.clone()));
+        return Ok((provider, format!("anthropic:{}", model)));
+    }
+    Err(AgentError::Config(
+        "no API key found in environment (set OPENAI_API_KEY or ANTHROPIC_API_KEY)".into(),
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
