@@ -12,4 +12,8 @@ export type {
   UsageEvent_Serialize as UsageEvent,
   DoneEvent_Serialize as DoneEvent,
   ErrorEvent,
+  ToolStartEvent,
+  ToolResultEvent,
+  ThinkingDeltaEvent,
+  StatusEvent,
 } from "./generated";
