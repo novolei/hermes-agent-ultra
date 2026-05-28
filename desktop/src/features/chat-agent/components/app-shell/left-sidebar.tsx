@@ -165,13 +165,15 @@ import {
   togglePinConversation,
   toggleArchiveConversation,
   deleteConversation as deleteConversationIPC,
-  deleteAgentSession,
   createAgentSession,
   updateAgentSessionTitle,
   togglePinAgentSession,
   toggleManualWorkingAgentSession,
-  toggleArchiveAgentSession,
 } from '@/features/chat-agent/lib/tauri-bridge-stub'
+import {
+  toggleArchiveAgentSession,
+  deleteAgentSession,
+} from '@/lib/bridge/session'
 
 interface SidebarItemProps {
   icon: React.ReactNode

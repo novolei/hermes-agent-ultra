@@ -16,6 +16,9 @@ fn make_builder() -> Builder<tauri::Wry> {
             commands::app::app_info,
             commands::agent::agent_send_message,
             commands::session::session_load,
+            // Plan 3.3 F1 — session archive/delete commands consumed by lib/bridge/session.ts
+            commands::session::toggle_archive_agent_session,
+            commands::session::delete_agent_session,
             // Plan 2b.2.c.3 — file-attachment Tauri commands consumed by InlineImage +
             // screenshot-result via the frontend bridge/files.ts wrapper.
             commands::files::read_attachment,

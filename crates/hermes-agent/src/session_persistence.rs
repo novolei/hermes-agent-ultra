@@ -167,6 +167,18 @@ impl SessionPersistence {
                 )));
             }
         }
+        // Plan 3.3 F1 migration: add archived column (epoch-ms integer, NULL = not archived).
+        if let Err(e) = conn.execute(
+            "ALTER TABLE sessions ADD COLUMN archived INTEGER",
+            [],
+        ) {
+            let msg = e.to_string();
+            if !msg.contains("duplicate column") {
+                return Err(AgentError::Io(format!(
+                    "Failed to migrate sessions.archived: {e}"
+                )));
+            }
+        }
 
         Ok(())
     }
@@ -518,6 +530,96 @@ impl SessionPersistence {
         }
     }
 
+    /// Toggle the archived state of a session.
+    ///
+    /// Returns the archived epoch-ms timestamp when archiving, or `None` when
+    /// un-archiving.  Returns `AgentError::Io` if the session does not exist.
+    ///
+    /// Plan 3.3 F1.
+    pub fn toggle_archive(&self, session_id: &str) -> Result<Option<i64>, AgentError> {
+        self.ensure_db()?;
+        let conn = rusqlite::Connection::open(&self.db_path)
+            .map_err(|e| AgentError::Io(format!("Failed to open sessions db: {e}")))?;
+
+        // Read current archived value (NULL → not archived).
+        let current: Option<i64> = match conn.query_row(
+            "SELECT archived FROM sessions WHERE id = ?1",
+            rusqlite::params![session_id],
+            |row| row.get(0),
+        ) {
+            Ok(v) => v,
+            Err(rusqlite::Error::QueryReturnedNoRows) => {
+                return Err(AgentError::Io(format!(
+                    "Session not found: {session_id}"
+                )));
+            }
+            Err(e) => {
+                return Err(AgentError::Io(format!(
+                    "Failed to read archived flag: {e}"
+                )));
+            }
+        };
+
+        let now_ms = chrono::Utc::now().timestamp_millis();
+        let new_archived: Option<i64> = if current.is_some() {
+            // Already archived → un-archive.
+            None
+        } else {
+            // Not archived → archive now.
+            Some(now_ms)
+        };
+
+        let updated_at = chrono::Utc::now().to_rfc3339();
+        conn.execute(
+            "UPDATE sessions SET archived = ?1, updated_at = ?2 WHERE id = ?3",
+            rusqlite::params![new_archived, updated_at, session_id],
+        )
+        .map_err(|e| AgentError::Io(format!("Failed to update archived flag: {e}")))?;
+
+        Ok(new_archived)
+    }
+
+    /// Permanently delete a session and all its messages from SQLite.
+    ///
+    /// Returns `Ok(true)` when the session was found and deleted, `Ok(false)`
+    /// when no row matched (already gone). Messages are deleted in a single
+    /// transaction.
+    ///
+    /// Plan 3.3 F1.
+    pub fn delete_one(&self, session_id: &str) -> Result<bool, AgentError> {
+        self.ensure_db()?;
+        let conn = rusqlite::Connection::open(&self.db_path)
+            .map_err(|e| AgentError::Io(format!("Failed to open sessions db: {e}")))?;
+
+        let tx = conn
+            .unchecked_transaction()
+            .map_err(|e| AgentError::Io(format!("Failed to open delete transaction: {e}")))?;
+
+        tx.execute(
+            "DELETE FROM messages_fts WHERE session_id = ?1",
+            rusqlite::params![session_id],
+        )
+        .map_err(|e| AgentError::Io(format!("Failed to delete messages_fts rows: {e}")))?;
+
+        tx.execute(
+            "DELETE FROM messages WHERE session_id = ?1",
+            rusqlite::params![session_id],
+        )
+        .map_err(|e| AgentError::Io(format!("Failed to delete message rows: {e}")))?;
+
+        let rows = tx
+            .execute(
+                "DELETE FROM sessions WHERE id = ?1",
+                rusqlite::params![session_id],
+            )
+            .map_err(|e| AgentError::Io(format!("Failed to delete session row: {e}")))?;
+
+        tx.commit()
+            .map_err(|e| AgentError::Io(format!("Failed to commit delete transaction: {e}")))?;
+
+        Ok(rows > 0)
+    }
+
     /// Load a previous session from SQLite.
     pub fn load_session(&self, session_id: &str) -> Result<Vec<Message>, AgentError> {
         let conn = rusqlite::Connection::open(&self.db_path)
@@ -842,5 +944,84 @@ mod tests {
         let result = sp.maybe_auto_prune_and_vacuum(90, 24, false);
         assert!(!result.skipped);
         assert_eq!(result.pruned, 1);
+    }
+
+    // -------------------------------------------------------------------------
+    // Plan 3.3 F1 — toggle_archive + delete_one
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn toggle_archive_flips_archived_flag() {
+        let tmp = tempfile::tempdir().unwrap();
+        let sp = SessionPersistence::new(tmp.path());
+        let messages = vec![Message::user("hello")];
+        sp.persist_session("session-f1", &messages, None, None, None, None)
+            .unwrap();
+
+        // First call → archives, returns Some(epoch_ms).
+        let first = sp.toggle_archive("session-f1").expect("first toggle");
+        assert!(first.is_some(), "first toggle should set archived timestamp");
+        let ts = first.unwrap();
+        assert!(ts > 0, "archived epoch-ms should be positive");
+
+        // Second call → un-archives, returns None.
+        let second = sp.toggle_archive("session-f1").expect("second toggle");
+        assert!(second.is_none(), "second toggle should clear archived flag");
+
+        // Third call → re-archives again.
+        let third = sp.toggle_archive("session-f1").expect("third toggle");
+        assert!(third.is_some(), "third toggle should archive again");
+    }
+
+    #[test]
+    fn toggle_archive_missing_session_returns_error() {
+        let tmp = tempfile::tempdir().unwrap();
+        let sp = SessionPersistence::new(tmp.path());
+        sp.ensure_db().unwrap();
+
+        let result = sp.toggle_archive("nonexistent-session");
+        assert!(result.is_err(), "should fail for missing session");
+        let msg = result.unwrap_err().to_string();
+        assert!(
+            msg.contains("Session not found"),
+            "error should mention 'Session not found', got: {msg}"
+        );
+    }
+
+    #[test]
+    fn delete_one_removes_session_and_messages() {
+        let tmp = tempfile::tempdir().unwrap();
+        let sp = SessionPersistence::new(tmp.path());
+        let messages = vec![Message::user("First"), Message::assistant("Second")];
+        sp.persist_session("del-session", &messages, None, None, None, None)
+            .unwrap();
+
+        let removed = sp.delete_one("del-session").expect("delete");
+        assert!(removed, "should return true when row was deleted");
+
+        // Session row gone.
+        let loaded = sp.load_session("del-session").expect("load after delete");
+        assert!(loaded.is_empty(), "messages should be gone after delete");
+
+        // Messages row count should be zero.
+        let conn = rusqlite::Connection::open(&sp.db_path).unwrap();
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM messages WHERE session_id = 'del-session'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 0, "messages table should have no rows for deleted session");
+    }
+
+    #[test]
+    fn delete_one_idempotent_for_missing_session() {
+        let tmp = tempfile::tempdir().unwrap();
+        let sp = SessionPersistence::new(tmp.path());
+        sp.ensure_db().unwrap();
+
+        let removed = sp.delete_one("ghost-session").expect("delete missing");
+        assert!(!removed, "should return false when session did not exist");
     }
 }

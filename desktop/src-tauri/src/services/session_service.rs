@@ -42,6 +42,26 @@ impl SessionService {
         self.inner
             .persist_session(session_id, messages, model, Some("desktop"), None, None)
     }
+
+    /// Toggle the archived flag of a session.
+    ///
+    /// Returns the new archived epoch-ms timestamp when archiving, or `None`
+    /// when un-archiving.
+    ///
+    /// Plan 3.3 F1.
+    pub fn toggle_archive(&self, session_id: &str) -> Result<Option<i64>, AgentError> {
+        self.inner.toggle_archive(session_id)
+    }
+
+    /// Permanently delete a session and all its messages.
+    ///
+    /// Returns `true` when the session existed and was removed, `false` when it
+    /// was already absent (idempotent).
+    ///
+    /// Plan 3.3 F1.
+    pub fn delete_one(&self, session_id: &str) -> Result<bool, AgentError> {
+        self.inner.delete_one(session_id)
+    }
 }
 
 #[cfg(test)]
