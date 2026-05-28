@@ -35,15 +35,15 @@
 | Atom | Already ported | Stubbed here | Notes |
 |---|---|---|---|
 | userProfileAtom | ✓ in features/chat-agent/atoms/user-profile | | real user profile data |
-| agentDisplayNameForAtom | ✗ | ✓ Task 2 stub | display name for agent |
-| channelsAtom | ✗ | ✓ Task 2 stub | Channel[] = [] |
-| tabMinimapCacheAtom | ✗ | ✓ Task 2 stub | minimap cache for scroll sync |
-| proactiveLearningEventsAtom | ✗ | ✓ Task 2 stub | ProactiveLearningEvent[] = [] |
-| memoryRecallEventAtom | ✗ | ✓ Task 2 stub | MemoryRecallEvent\|null = null |
-| skillRecallsMapAtom | ✗ | ✓ Task 2 stub | Record<string, SkillRecall[]> = {} |
+| agentDisplayNameForAtom | ✓ in atoms/agent-display-name.ts | — | real; Task 11 retargeted consumer |
+| channelsAtom | ✓ in atoms/chat-atoms.ts | — | real; Task 11 retargeted consumer |
+| tabMinimapCacheAtom | ✓ in atoms/tab-atoms.ts | — | real; Task 11 retargeted consumer |
+| proactiveLearningEventsAtom | ✓ in atoms/agent-atoms.ts | — | real; Task 11 retargeted consumer |
+| memoryRecallEventAtom | ✓ in atoms/agent-atoms.ts | — | real; Task 11 retargeted consumer |
+| skillRecallsMapAtom | ✓ in atoms/agent-atoms.ts | — | real; Task 11 retargeted consumer |
 | stickyUserMessageEnabledAtom | ✓ in features/chat-agent/atoms/ui-preferences | | UI preference flag |
 
-**All atoms except userProfileAtom and stickyUserMessageEnabledAtom require stubs.**
+**Amended 2b.2.c.2 Task 11:** all atom shadows removed from peripheral-stubs; consumers now point at real atoms. The original recon misclassified proactiveLearningEventsAtom, memoryRecallEventAtom, and skillRecallsMapAtom as needing stubs — they were already in agent-atoms.ts at the time (2b.2.c-A bug). Task 11 closes both 2b.2.c-A and 2b.2.c-C.
 
 ## Stub-target component signatures
 

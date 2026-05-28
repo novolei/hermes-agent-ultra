@@ -1,66 +1,23 @@
 /**
- * Plan 2b.2.b.2 — feature-local stubs for the atoms and Tauri bridge
- * helpers that AgentMessages.tsx imports from uclaw's chat-side modules.
+ * After Plan 2b.2.c.2, this file holds ONLY:
+ *   - Settings / UI atoms (settingsTabAtom, settingsOpenAtom, etc.)
+ *   - Tauri shims (readAttachment, saveImageAs, openExternal)
+ *   - recordSkillCited (no-op until Plan 4 ships the real Tauri command)
+ *   - Composer autocomplete bridge stubs (listInvocableSkills,
+ *     searchWorkspaceFilesForMention; real backends land in Plan 3+)
  *
- * Each export is a minimum-viable replacement so the slim AgentMessages
- * port compiles and renders. Plan 2b.2.c upgrades each to the real
- * backend implementation. The exported names + shapes match uclaw's
- * signatures exactly — no consumer changes needed when 2b.2.c swaps these out.
+ * All atom shadows that previously duplicated real atoms have been removed:
+ *   channelsAtom          → atoms/chat-atoms.ts
+ *   tabMinimapCacheAtom   → atoms/tab-atoms.ts
+ *   proactiveLearningEventsAtom, memoryRecallEventAtom,
+ *   skillRecallsMapAtom   → atoms/agent-atoms.ts
+ *   agentDisplayNameForAtom → atoms/agent-display-name.ts
+ *   stickyUserMessageEnabledAtom → atoms/ui-preferences.ts
+ *
+ * Plan 2b.2.c.3 deletes this file entirely when the real Tauri commands land.
  */
 import { atom } from 'jotai'
-import type { Channel } from './chat-types'
-import type { MinimapItem } from '@/features/chat-agent/components/ai-elements/scroll-minimap'
-
-// ---- Minimal type shapes (mirrors uclaw agent-atoms.ts stubs) ---------------
-
-/** Matches uclaw ProactiveLearningEvent — only the fields AgentMessages accesses. */
-export interface ProactiveLearningEvent {
-  scenario: string
-  items_extracted: number
-  categories: string[]
-  timestamp: string
-  summary: string
-  sessionId?: string | null
-}
-
-/** Matches uclaw MemoryRecallEvent — only the fields AgentMessages accesses. */
-export interface MemoryRecallEvent {
-  totalCandidates: number
-  skillsCount: number
-  bootCount: number
-  triggeredCount: number
-  relevantCount: number
-  expandedCount: number
-  recentCount: number
-  items: Array<{ nodeId: string; title: string; kind: string; source: string }>
-  conversationId: string | null
-  timestamp: string
-}
-
-// ---- Side-feature atoms ----------------------------------------------------
-
-/** uclaw: channels for chat-mode model selection. Empty in agent-mode MVP. */
-export const channelsAtom = atom<Channel[]>([])
-
-/** uclaw: per-tab minimap scroll position cache. Map keyed by sessionId. */
-export const tabMinimapCacheAtom = atom<Map<string, MinimapItem[]>>(new Map())
-
-/** uclaw: events emitted when the agent proactively recalls a learning. */
-export const proactiveLearningEventsAtom = atom<ProactiveLearningEvent[]>([])
-
-/** uclaw: per-session memory recall events keyed by sessionId / conversationId. */
-export const memoryRecallEventAtom = atom<Map<string, MemoryRecallEvent>>(new Map())
-
-/** uclaw: per-session skill recall events keyed by sessionId. */
-export const skillRecallsMapAtom = atom<Map<string, unknown[]>>(new Map())
-
-/** uclaw: returns a function that resolves agent id → display name. */
-export const agentDisplayNameForAtom = atom<(agentId: string | undefined) => string | undefined>(
-  () => () => undefined,
-)
-
-/** uclaw: user preference for the sticky-user-message indicator. */
-export const stickyUserMessageEnabledAtom = atom<boolean>(true)
+import type { InvocableSkill, WorkspaceFileMatch } from './types'
 
 // ---- Settings / UI atoms (uclaw: @/atoms/settings-tab, @/atoms/environment) --
 // Stubs so SDKMessageRenderer's ErrorMessage recovery actions compile without
@@ -114,4 +71,46 @@ export async function saveImageAs(_args: SaveImageArgs): Promise<boolean> {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function openExternal(_url: string): Promise<void> {
   // Plan 3+ wires this to the real Tauri shell:open command.
+}
+
+/**
+ * Plan 2b.2.c.2 — no-op stub for uclaw's recordSkillCited Tauri command.
+ * Real implementation lands in Plan 4 (skill registry backend).
+ * SkillCitationChips calls this when a citation is clicked.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function recordSkillCited(_skillName: string): Promise<void> {
+  return
+}
+
+// ---- Composer autocomplete bridge stubs ------------------------------------
+// Plan 2b.2.c.2 — stubs for composer mention controller's Tauri IPC calls.
+// Real implementations land when the skill registry + workspace file search
+// backends are wired (Plan 3+). Until then the popup opens empty but
+// doesn't crash.
+
+/**
+ * uclaw: @/lib/tauri-bridge → listInvocableSkills.
+ * Lists skills available for `/`-autocomplete in the composer.
+ * Returns empty array until the real Tauri backend is wired.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function listInvocableSkills(_spaceId?: string): Promise<InvocableSkill[]> {
+  return []
+}
+
+/**
+ * uclaw: @/lib/tauri-bridge → searchWorkspaceFilesForMention.
+ * Searches workspace files for `@`-autocomplete in the composer.
+ * Returns empty array until the real Tauri backend is wired.
+ */
+export async function searchWorkspaceFilesForMention(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _sessionId: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _query: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _limit?: number,
+): Promise<WorkspaceFileMatch[]> {
+  return []
 }
