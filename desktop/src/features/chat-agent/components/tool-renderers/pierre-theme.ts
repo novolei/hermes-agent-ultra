@@ -1,16 +1,16 @@
 import { useAtomValue } from 'jotai'
-import { themeAtom } from '@/features/chat-agent/atoms/theme-atoms'
+import { resolvedThemeAtom } from '@/features/chat-agent/atoms/theme'
 
 /**
  * Ported from uclaw's tool-renderers/pierre-theme.ts.
  *
- * uclaw uses `resolvedThemeAtom` (from `@/atoms/theme`) which is a derived
- * `'light' | 'dark'` atom. Our `themeAtom` exposes the same string union
- * directly, so the adaptation is a 1:1 import retarget. Plan 3 (multi-theme)
- * may introduce a richer resolved-theme atom; this file remains compatible.
+ * Plan 3.1 — retargeted from the simple themeAtom (Plan 2b.2.b.1) to the
+ * resolvedThemeAtom derived atom from the multi-theme port. The `'light' | 'dark'`
+ * union is preserved; switching to a named theme (e.g., ocean-dark) properly
+ * resolves to 'dark' for syntax highlighting.
  */
 export function usePierreTheme(): 'one-light' | 'one-dark-pro' {
-  const theme = useAtomValue(themeAtom)
+  const theme = useAtomValue(resolvedThemeAtom)
   return theme === 'dark' ? 'one-dark-pro' : 'one-light'
 }
 
