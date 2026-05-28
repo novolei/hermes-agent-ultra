@@ -12,7 +12,8 @@
  */
 
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
-import type { AskUserRequest, ExitPlanModeRequest } from './agent-types'
+import type { AskUserRequest, ExitPlanModeRequest, AgentSessionMeta, WorkspaceCapabilities } from './agent-types'
+import type { ConversationMeta, UserProfile } from './chat-types'
 
 /** Toggle the pinned state of an agent session. Returns the new pinnedAt timestamp or null. */
 export async function togglePinAgentSession(_sessionId: string): Promise<void> {
@@ -112,6 +113,116 @@ export type SymphonyNodeUpdateEvent = {
 
 export async function listChatSessionsForSpec(_specId: string): Promise<ChatSessionSummary[]> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: listChatSessionsForSpec')
+}
+
+// ─── Plan 3.3 E1: conversation + agent session + user profile stubs ───────
+// LeftSidebar calls these IPC wrappers. Real implementations land in Plan 3.3 F1
+// (agent session backend) and a future chat plan. Until then they're stubs.
+
+/**
+ * List all conversations (chat mode).
+ * Plan 3.3 E1 stub.
+ */
+export async function listConversations(): Promise<ConversationMeta[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3_E1: listConversations')
+}
+
+/**
+ * Create a new conversation.
+ * Plan 3.3 E1 stub.
+ */
+export async function createConversation(_params: {
+  title?: string
+  modelId?: string
+  channelId?: string
+}): Promise<ConversationMeta> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3_E1: createConversation')
+}
+
+/**
+ * Update the title of a conversation.
+ * Plan 3.3 E1 stub.
+ */
+export async function updateConversationTitle(_id: string, _newTitle: string): Promise<ConversationMeta> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3_E1: updateConversationTitle')
+}
+
+/**
+ * Toggle the pinned state of a conversation. Returns the updated ConversationMeta.
+ * Plan 3.3 E1 stub.
+ */
+export async function togglePinConversation(_id: string): Promise<ConversationMeta> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3_E1: togglePinConversation')
+}
+
+/**
+ * Toggle the archived state of a conversation.
+ * Returns the new archivedAt timestamp or null when un-archiving.
+ * Plan 3.3 E1 stub.
+ */
+export async function toggleArchiveConversation(_id: string): Promise<number | null> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3_E1: toggleArchiveConversation')
+}
+
+/**
+ * Permanently delete a conversation.
+ * Plan 3.3 E1 stub.
+ */
+export async function deleteConversation(_id: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3_E1: deleteConversation')
+}
+
+/**
+ * Get the current user's profile (display name + avatar).
+ * Plan 3.3 E1 stub.
+ */
+export async function getUserProfile(): Promise<UserProfile> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3_E1: getUserProfile')
+}
+
+/**
+ * List all agent sessions.
+ * Plan 3.3 E1 stub.
+ */
+export async function listAgentSessions(): Promise<AgentSessionMeta[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3_E1: listAgentSessions')
+}
+
+/**
+ * Create a new agent session.
+ * Plan 3.3 E1 stub.
+ */
+export async function createAgentSession(
+  _title?: string,
+  _channelId?: string,
+  _workspaceId?: string,
+): Promise<AgentSessionMeta> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3_E1: createAgentSession')
+}
+
+/**
+ * Update the title of an agent session.
+ * Plan 3.3 E1 stub.
+ */
+export async function updateAgentSessionTitle(_id: string, _newTitle: string): Promise<AgentSessionMeta> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3_E1: updateAgentSessionTitle')
+}
+
+/**
+ * Toggle the manual-working flag of an agent session.
+ * Returns the updated AgentSessionMeta.
+ * Plan 3.3 E1 stub.
+ */
+export async function toggleManualWorkingAgentSession(_id: string): Promise<AgentSessionMeta> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3_E1: toggleManualWorkingAgentSession')
+}
+
+/**
+ * Get the capabilities (MCP servers + skills) for a workspace.
+ * Plan 3.3 E1 stub.
+ */
+export async function getWorkspaceCapabilities(_workspaceId: string): Promise<WorkspaceCapabilities> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3_E1: getWorkspaceCapabilities')
 }
 
 // ─── Plan 3.3 C2: git stubs for SidebarGitActions ─────────────────────────
