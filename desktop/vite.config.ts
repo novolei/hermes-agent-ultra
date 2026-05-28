@@ -9,23 +9,32 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(async () => ({
   plugins: [react()],
   resolve: {
-    alias: {
-      "@": path.resolve(import.meta.dirname, "./src"),
+    // Order matters: specific aliases first so the catchall "@" doesn't
+    // greedily eat "@tauri-apps/..." imports (vite resolves aliases in
+    // declaration order, first match wins).
+    alias: [
       // Stub out Tauri plugins that are not yet wired on the Rust side.
       // The plugin npm packages are intentionally NOT installed (Plan 3.3 has
       // not shipped updater/process backends). Until they do, these aliases
       // route the JS imports to the same no-op mocks vitest uses, so the dev
       // server's import-analysis pass resolves cleanly and the verbatim-ported
       // updater.ts atom gracefully degrades at runtime.
-      "@tauri-apps/plugin-updater": path.resolve(
-        import.meta.dirname,
-        "./src/__mocks__/tauri-plugin-updater.ts",
-      ),
-      "@tauri-apps/plugin-process": path.resolve(
-        import.meta.dirname,
-        "./src/__mocks__/tauri-plugin-process.ts",
-      ),
-    },
+      {
+        find: "@tauri-apps/plugin-updater",
+        replacement: path.resolve(
+          import.meta.dirname,
+          "./src/__mocks__/tauri-plugin-updater.ts",
+        ),
+      },
+      {
+        find: "@tauri-apps/plugin-process",
+        replacement: path.resolve(
+          import.meta.dirname,
+          "./src/__mocks__/tauri-plugin-process.ts",
+        ),
+      },
+      { find: /^@\//, replacement: path.resolve(import.meta.dirname, "./src/") + "/" },
+    ],
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
