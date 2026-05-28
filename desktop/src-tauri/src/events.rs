@@ -14,8 +14,11 @@ pub struct TextDeltaEvent {
 pub struct ToolCallDeltaEvent {
     pub session_id: String,
     pub index: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub function_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub arguments_chunk: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub call_id: Option<String>,
 }
 
@@ -25,12 +28,14 @@ pub struct UsageEvent {
     pub prompt_tokens: u64,
     pub completion_tokens: u64,
     pub total_tokens: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub estimated_cost: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
 pub struct DoneEvent {
     pub session_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 }
 
@@ -46,30 +51,34 @@ pub const USAGE: &str = "agent:usage";
 pub const DONE: &str = "agent:done";
 pub const ERROR: &str = "agent:error";
 
-pub fn emit_text_delta(app: &AppHandle, session_id: &str, text: &str) {
-    let _ = app.emit(TEXT_DELTA, TextDeltaEvent {
-        session_id: session_id.into(),
-        text: text.into(),
-    });
+pub fn emit_text_delta(app: &AppHandle, e: TextDeltaEvent) {
+    if let Err(err) = app.emit(TEXT_DELTA, e) {
+        tracing::warn!(target = "events", "emit text-delta failed: {err}");
+    }
 }
 
 pub fn emit_tool_call_delta(app: &AppHandle, e: ToolCallDeltaEvent) {
-    let _ = app.emit(TOOL_CALL_DELTA, e);
+    if let Err(err) = app.emit(TOOL_CALL_DELTA, e) {
+        tracing::warn!(target = "events", "emit tool-call-delta failed: {err}");
+    }
 }
 
 pub fn emit_usage(app: &AppHandle, e: UsageEvent) {
-    let _ = app.emit(USAGE, e);
+    if let Err(err) = app.emit(USAGE, e) {
+        tracing::warn!(target = "events", "emit usage failed: {err}");
+    }
 }
 
-pub fn emit_done(app: &AppHandle, session_id: &str, reason: Option<String>) {
-    let _ = app.emit(DONE, DoneEvent { session_id: session_id.into(), reason });
+pub fn emit_done(app: &AppHandle, e: DoneEvent) {
+    if let Err(err) = app.emit(DONE, e) {
+        tracing::warn!(target = "events", "emit done failed: {err}");
+    }
 }
 
-pub fn emit_error(app: &AppHandle, session_id: &str, message: &str) {
-    let _ = app.emit(ERROR, ErrorEvent {
-        session_id: session_id.into(),
-        message: message.into(),
-    });
+pub fn emit_error(app: &AppHandle, e: ErrorEvent) {
+    if let Err(err) = app.emit(ERROR, e) {
+        tracing::warn!(target = "events", "emit error failed: {err}");
+    }
 }
 
 #[cfg(test)]
@@ -77,7 +86,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn text_delta_serializes_to_camelcase_json() {
+    fn text_delta_serializes_to_snake_case_json() {
         let json = serde_json::to_value(TextDeltaEvent {
             session_id: "s1".into(),
             text: "hi".into(),
@@ -109,5 +118,31 @@ mod tests {
         }).unwrap();
         assert_eq!(json["session_id"], "s1");
         assert!(json.get("reason").map(|v| v.is_null()).unwrap_or(true));
+    }
+
+    #[test]
+    fn tool_call_delta_skips_none_optional_fields() {
+        let json = serde_json::to_value(ToolCallDeltaEvent {
+            session_id: "s1".into(),
+            index: 0,
+            function_name: None,
+            arguments_chunk: None,
+            call_id: None,
+        }).unwrap();
+        assert_eq!(json["session_id"], "s1");
+        assert_eq!(json["index"], 0);
+        assert!(json.get("function_name").is_none(), "None should be skipped");
+        assert!(json.get("arguments_chunk").is_none(), "None should be skipped");
+        assert!(json.get("call_id").is_none(), "None should be skipped");
+    }
+
+    #[test]
+    fn error_serializes_with_message() {
+        let json = serde_json::to_value(ErrorEvent {
+            session_id: "s1".into(),
+            message: "boom".into(),
+        }).unwrap();
+        assert_eq!(json["session_id"], "s1");
+        assert_eq!(json["message"], "boom");
     }
 }
