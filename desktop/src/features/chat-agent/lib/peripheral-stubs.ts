@@ -115,3 +115,13 @@ export async function saveImageAs(_args: SaveImageArgs): Promise<boolean> {
 export async function openExternal(_url: string): Promise<void> {
   // Plan 3+ wires this to the real Tauri shell:open command.
 }
+
+/**
+ * Plan 2b.2.c.2 — no-op stub for uclaw's recordSkillCited Tauri command.
+ * Real implementation lands in Plan 4 (skill registry backend).
+ * SkillCitationChips calls this when a citation is clicked.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function recordSkillCited(_skillName: string): Promise<void> {
+  return
+}
