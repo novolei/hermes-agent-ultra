@@ -12,6 +12,28 @@
 
 ---
 
+## Amendments (Post-Task-1 Recon, commit 5a5101c)
+
+The recon (Task 1) surfaced seven dependencies the original task list assumed away. Adaptations:
+
+| Original | Action | Why |
+|---|---|---|
+| **Task 11 (model-logo)** | Move target: `shared/lib/` → `features/chat-agent/lib/` | model-logo imports `Channel` type from feature-scoped `chat-types`; placing it under `shared/` would invert layer dependency. |
+| **Task 15 (CodeBlock)** | Also port `uclaw/ui/src/lib/highlight.ts` (167 LOC Shiki wrapper) → `shared/lib/highlight.ts` as part of the same task | CodeBlock imports `highlightCode`/`escapeHtml` from this file. Self-contained Shiki wrapper. |
+| **Task 17 (CopyButton)** | **REPURPOSE: extract `MessageAction` standalone** to `features/chat-agent/components/ai-elements/message-action.tsx` (21 LOC). CopyButton port deferred to a NEW Task 27b after Message. | CopyButton depends on `MessageAction` (exported from uclaw's message.tsx), Message depends on CopyButton → circular. Breaking MessageAction into its own file removes the cycle. |
+| **Task 18 (ChatToolActivityIndicator)** | **DROPPED** — deferred to Plan 2b.2.c | Transitively pulls in 5 un-ported tool-rendering modules (`tool-utils`, `tool-phrase`, `tool-renderers/*`, `BashStreamView`). That entire subsystem belongs to 2b.2.c per spec §2. |
+| **Task 19 (WelcomeEmptyState)** | Also port `lib/tips.ts` (71 LOC self-contained) → `features/chat-agent/lib/tips.ts` AND `atoms/user-profile.ts` (16 LOC) → `features/chat-agent/atoms/user-profile.ts` as part of the same task | Both small, self-contained, feature-scoped. Cheaper to port than stub. |
+| **Task 25 (RichTextInput)** | **DROPPED** — deferred to Plan 2b.2.c | Pulls in `@/components/composer/MentionChipNode` + `composer-serialize`. RichTextInput is the user composer, not a message-view component — its rightful home is the App.tsx wiring plan. |
+| **Task 27 (Message)** | Inline-stub `@/components/preview/chips/*` imports with no-op equivalents (markdown-only render; file paths render as plain text). Inline comment marks them as Plan 3.5 follow-up. Import `MessageAction` from the standalone file (Task 17). | Preview-chip rendering is a Plan 3.5 (App Shell + file preview) feature. Stubbing preserves message-view rendering for everything except file-path chips. |
+| **NEW Task 27b "Port CopyButton"** | New task slotted after Task 27. Test asserts `content` prop (not `value`). | Now resolvable: depends on MessageAction (Task 17). |
+| **Task 30 smoke** | Updated test-count floor from ≥31 to ≥27 (dropped 2 components × ~2 tests + adjustments). | Reflects the 2 dropped components. |
+
+**Net effect:** 28 source-affecting tasks (was 29). Tasks 18 and 25 are SKIPPED markers; Task 27b is a new insertion. Smoke verification stays at Task 30.
+
+**Plan 2b.2.c gets:** ChatToolActivityIndicator, ChatToolBlock + 5 tool-rendering modules, RichTextInput + composer module. Spec §14 already lists "tool-renderers/*" and "App.tsx integration" for 2b.2.c, so this slots in cleanly.
+
+---
+
 ## File Structure
 
 ```
