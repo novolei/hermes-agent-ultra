@@ -3,7 +3,7 @@
 use serde::Serialize;
 
 /// Basic application metadata surfaced to the frontend.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
 pub struct AppInfo {
     pub name: String,
     pub version: String,
