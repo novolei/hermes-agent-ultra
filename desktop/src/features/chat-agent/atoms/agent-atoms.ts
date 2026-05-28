@@ -251,7 +251,7 @@ export const currentAgentMessagesAtom = atom<AgentMessage[]>([])
 export const togglePinAgentSessionAtom = atom(
   null,
   async (_get, set, sessionId: string) => {
-    const { togglePinAgentSession } = await import('@/lib/tauri-bridge')
+    const { togglePinAgentSession } = await import('../lib/tauri-bridge-stub')
     const newPinnedAt = await togglePinAgentSession(sessionId)
     set(agentSessionsAtom, (prev) =>
       prev.map((s) =>
@@ -338,7 +338,7 @@ export const workspaceFilesVersionAtom = atom(0)
  * stays co-located with the tab-list source of truth.
  */
 export const workspaceActiveRightPanelTabMapAtom =
-  atom<Map<string, import('@/components/app-shell/RightSidePanel').ActiveTab>>(new Map())
+  atom<Map<string, import('../lib/ui-types-stub').ActiveTab>>(new Map())
 
 // ===== 侧面板 Atoms =====
 
@@ -430,7 +430,7 @@ export const pendingAskUserRequestsAtom = atom(
 export async function installAskUserListener(
   setMap: (update: (prev: Map<string, readonly AskUserRequest[]>) => Map<string, readonly AskUserRequest[]>) => void,
 ): Promise<() => void> {
-  const { onAskUserRequest } = await import('@/lib/tauri-bridge')
+  const { onAskUserRequest } = await import('../lib/tauri-bridge-stub')
   return await onAskUserRequest((payload) => {
     setMap((prev) => {
       const next = new Map(prev)
@@ -450,7 +450,7 @@ export const allPendingExitPlanRequestsAtom = atom<Map<string, readonly ExitPlan
 export async function installExitPlanListener(
   setMap: (update: (prev: Map<string, readonly ExitPlanModeRequest[]>) => Map<string, readonly ExitPlanModeRequest[]>) => void,
 ): Promise<() => void> {
-  const { onExitPlanRequest } = await import('@/lib/tauri-bridge')
+  const { onExitPlanRequest } = await import('../lib/tauri-bridge-stub')
   return await onExitPlanRequest((payload) => {
     setMap((prev) => {
       const next = new Map(prev)
