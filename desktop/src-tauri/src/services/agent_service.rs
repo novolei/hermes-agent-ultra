@@ -102,10 +102,12 @@ impl AgentService {
             return Ok(existing.clone());
         }
         let (provider, model) = build_provider_from_env()?;
-        let mut config = AgentConfig::default();
-        config.model = model;
-        config.stream = true;
-        config.max_turns = 20;
+        let config = AgentConfig {
+            model,
+            stream: true,
+            max_turns: 20,
+            ..AgentConfig::default()
+        };
         let tools = Arc::new(AgentToolRegistry::new());
         let agent = Arc::new(AgentLoop::new(config, tools, provider));
         *guard = Some(agent.clone());
