@@ -44,3 +44,61 @@ export const onAskUserRequest = (cb: (payload: AskUserRequest) => void): Promise
 /** Subscribe to agent:exit_plan_request events from the Tauri backend. */
 export const onExitPlanRequest = (cb: (payload: ExitPlanModeRequest) => void): Promise<UnlistenFn> =>
   listen('agent:exit_plan_request', (e) => cb(e.payload as ExitPlanModeRequest))
+
+// ─── Plan 3.3 B6-prereq: automation + symphony type stubs ─────────────────
+// BottomDock + LeftSidebar import atoms/hooks that consume these types from
+// @/lib/tauri-bridge. The real Tauri commands ship in Plan 4 (automation)
+// and a future plan (symphony). Until then we expose placeholder types
+// (shape-only) + a single throwing async function so verbatim ports compile.
+
+export type HumaneSpecRow = {
+  id: string
+  title: string
+  [key: string]: unknown
+}
+export type AutomationActivity = {
+  spec_id: string
+  [key: string]: unknown
+}
+export type EscalationRow = {
+  id: string
+  spec_id: string
+  [key: string]: unknown
+}
+export type ChatSessionSummary = {
+  id: string
+  spec_id: string
+  [key: string]: unknown
+}
+export type SymphonyWorkflowSummary = {
+  id: string
+  name: string
+  [key: string]: unknown
+}
+export type SymphonyWorkflowDetailDto = {
+  id: string
+  nodes: unknown[]
+  edges: unknown[]
+  [key: string]: unknown
+}
+export type SymphonyRunRow = {
+  id: string
+  workflowId: string
+  [key: string]: unknown
+}
+export type SymphonyNodeRunRow = {
+  runId: string
+  nodeId: string
+  status: string
+  [key: string]: unknown
+}
+export type SymphonyNodeUpdateEvent = {
+  runId: string
+  nodeId: string
+  status: string
+  [key: string]: unknown
+}
+
+export async function listChatSessionsForSpec(_specId: string): Promise<ChatSessionSummary[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: listChatSessionsForSpec')
+}
