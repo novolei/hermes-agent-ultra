@@ -5,6 +5,7 @@
  * tool-activity-item) retarget to import from here.
  */
 import { commands } from './generated'
+import { call } from './client'
 
 /**
  * Read a file from disk and return its base64-encoded bytes.
@@ -39,5 +40,20 @@ export async function saveImageAs(args: SaveImageArgs): Promise<boolean> {
     return result.status === 'ok' ? result.data : false
   } catch {
     return false
+  }
+}
+
+/**
+ * Open a native folder-picker dialog.
+ * Returns `{ path }` if the user selected a folder, or `null` if cancelled.
+ * Mirrors the uclaw `bridge.openFolderDialog()` API consumed by
+ * WorkspaceCreateDialog.
+ */
+export async function openFolderDialog(): Promise<{ path: string } | null> {
+  try {
+    const path = await call<string | null>('open_folder_dialog')
+    return path ? { path } : null
+  } catch {
+    return null
   }
 }

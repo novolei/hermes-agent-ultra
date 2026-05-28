@@ -4,6 +4,7 @@ export * as appBridge from "./app";
 export * as agentBridge from "./agent";
 export * as sessionBridge from "./session";
 export * from "./files";
+export * from "./workspaces";
 export * from "./events";
 export type {
   AppInfo,

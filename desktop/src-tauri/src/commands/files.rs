@@ -32,6 +32,20 @@ pub struct SaveImageArgs {
     pub media_type: String,
 }
 
+/// Open a folder-picker dialog and return the chosen directory path, or
+/// `None` if the user cancelled.
+#[tauri::command]
+#[specta::specta]
+pub async fn open_folder_dialog(app: AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let path: Option<std::path::PathBuf> = app
+        .dialog()
+        .file()
+        .blocking_pick_folder()
+        .and_then(|fp| fp.into_path().ok());
+    Ok(path.map(|p| p.to_string_lossy().into_owned()))
+}
+
 /// Open a save-as dialog for the user, then copy `local_path` to the chosen
 /// destination. Returns `true` if the user picked a destination + copy
 /// succeeded; `false` if the user cancelled.
