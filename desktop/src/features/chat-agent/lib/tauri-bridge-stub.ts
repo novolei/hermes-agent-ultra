@@ -45,6 +45,17 @@ export const onAskUserRequest = (cb: (payload: AskUserRequest) => void): Promise
 export const onExitPlanRequest = (cb: (payload: ExitPlanModeRequest) => void): Promise<UnlistenFn> =>
   listen('agent:exit_plan_request', (e) => cb(e.payload as ExitPlanModeRequest))
 
+/**
+ * Subscribe to agent:need_approval events from the Tauri backend (tool approval signals).
+ * Gracefully handles test environments where Tauri is not available.
+ */
+export const onNeedApproval = (cb: () => void): Promise<UnlistenFn> => {
+  return listen('agent:need_approval', () => cb()).catch(() => {
+    // Test environment or Tauri not available — return a no-op unlisten function
+    return () => {}
+  })
+}
+
 // ─── Plan 3.3 B6-prereq: automation + symphony type stubs ─────────────────
 // BottomDock + LeftSidebar import atoms/hooks that consume these types from
 // @/lib/tauri-bridge. The real Tauri commands ship in Plan 4 (automation)
