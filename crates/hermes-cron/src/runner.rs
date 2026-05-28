@@ -3,6 +3,11 @@
 //! The `CronRunner` is responsible for executing a cron job by creating a fresh
 //! agent loop context, loading the job's skills, and delivering results to
 //! the configured target platform.
+#![allow(
+    clippy::field_reassign_with_default,
+    clippy::vec_init_then_push,
+    clippy::question_mark
+)]
 //!
 //! Safety: cron jobs **cannot** recursively schedule more cron jobs. The runner
 //! runs the agent with a restricted tool set that excludes the cronjob tool.

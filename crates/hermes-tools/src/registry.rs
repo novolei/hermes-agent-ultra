@@ -4,6 +4,7 @@
 //! - Dynamic registration/deregistration with availability checks
 //! - Name-conflict detection with warning on overwrite
 //! - Per-tool result size limits and global default
+#![allow(clippy::too_many_arguments)]
 //! - Dispatch with error catching that always returns JSON
 
 use std::collections::HashMap;

@@ -20,6 +20,25 @@ export const commands = {
 	agentSendMessage: (sessionId: string, text: string) => typedError<string, AgentSendError>(__TAURI_INVOKE("agent_send_message", { sessionId, text })),
 	sessionLoad: (sessionId: string) => typedError<SessionMessage_Serialize[], SessionLoadError>(__TAURI_INVOKE("session_load", { sessionId })),
 	/**
+	 *  Toggle the archived flag for an agent session.
+	 * 
+	 *  Returns the archived epoch-ms timestamp (as f64 to stay within JS safe
+	 *  integer range) when archiving, or `null` when un-archiving. Fails with an
+	 *  error string when the session is not found.
+	 * 
+	 *  Plan 3.3 F1.
+	 */
+	toggleArchiveAgentSession: (sessionId: string) => typedError<number | null, string>(__TAURI_INVOKE("toggle_archive_agent_session", { sessionId })),
+	/**
+	 *  Permanently delete an agent session and all its messages.
+	 * 
+	 *  Returns `true` when the session existed and was removed, `false` when it
+	 *  was already absent.
+	 * 
+	 *  Plan 3.3 F1.
+	 */
+	deleteAgentSession: (sessionId: string) => typedError<boolean, string>(__TAURI_INVOKE("delete_agent_session", { sessionId })),
+	/**
 	 *  Read a file from disk and return its bytes as base64.
 	 *  Used by InlineImage / screenshot-result to render local attachments
 	 *  without a `file://` blob URL (which is blocked by Tauri's CSP).

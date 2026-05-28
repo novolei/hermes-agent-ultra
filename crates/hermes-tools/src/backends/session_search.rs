@@ -1,4 +1,5 @@
 //! Real session search backend using rusqlite with FTS5.
+#![allow(clippy::manual_clamp, clippy::ptr_arg)]
 
 use async_trait::async_trait;
 use chrono::{DateTime, Local, NaiveDateTime, TimeZone, Utc};

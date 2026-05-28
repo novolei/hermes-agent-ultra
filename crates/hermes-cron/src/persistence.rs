@@ -2,6 +2,7 @@
 //!
 //! Provides a trait for persisting cron jobs and a file-based implementation
 //! that stores jobs as JSON files in `~/.hermes/cron/`.
+#![allow(clippy::cloned_ref_to_slice_refs)]
 
 use std::path::PathBuf;
 use std::{collections::HashSet, ffi::OsStr};
@@ -161,7 +162,7 @@ impl JobPersistence for FileJobPersistence {
         let mut entries = fs::read_dir(&self.data_dir).await?;
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
-            if path.extension().map_or(false, |ext| ext == "json") {
+            if path.extension().is_some_and(|ext| ext == "json") {
                 let contents = fs::read_to_string(&path).await?;
                 let job = serde_json::from_str::<CronJob>(&contents).map_err(|e| {
                     CronPersistenceError::Corrupted(format!(
@@ -236,7 +237,7 @@ impl SqliteJobPersistence {
     fn open_connection(&self) -> Result<rusqlite::Connection, CronPersistenceError> {
         // Ensure parent directory exists
         if let Some(parent) = self.db_path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| CronPersistenceError::Io(e))?;
+            std::fs::create_dir_all(parent).map_err(CronPersistenceError::Io)?;
         }
 
         let conn = rusqlite::Connection::open(&self.db_path)

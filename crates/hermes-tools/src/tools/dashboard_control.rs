@@ -1,3 +1,4 @@
+#![allow(clippy::await_holding_lock)]
 use async_trait::async_trait;
 use indexmap::IndexMap;
 use serde_json::{json, Value};

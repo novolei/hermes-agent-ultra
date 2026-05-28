@@ -134,6 +134,12 @@ pub struct ByteRoverPlugin {
     turn_count: Mutex<u32>,
 }
 
+impl Default for ByteRoverPlugin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ByteRoverPlugin {
     pub fn new() -> Self {
         Self {

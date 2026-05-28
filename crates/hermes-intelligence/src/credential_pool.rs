@@ -33,17 +33,13 @@ pub const EXHAUSTED_TTL_DEFAULT_SECONDS: u64 = 3600;
 /// How the pool selects the next credential.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum PoolStrategy {
+    #[default]
     FillFirst,
     RoundRobin,
     Random,
     LeastUsed,
-}
-
-impl Default for PoolStrategy {
-    fn default() -> Self {
-        Self::FillFirst
-    }
 }
 
 impl PoolStrategy {

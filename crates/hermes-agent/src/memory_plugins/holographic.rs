@@ -2,6 +2,7 @@
 //!
 //! SQLite-backed structured fact storage with entity resolution, trust scoring,
 //! and keyword-based retrieval. Rust port of the Python holographic memory plugin.
+#![allow(clippy::manual_clamp)]
 //!
 //! The Python version uses HRR (Holographic Reduced Representations) with numpy
 //! for vector algebra. This Rust port uses keyword/FTS-based retrieval as a
@@ -149,6 +150,12 @@ pub struct HolographicMemoryPlugin {
     default_trust: f64,
     min_trust: f64,
     session_id: Mutex<String>,
+}
+
+impl Default for HolographicMemoryPlugin {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HolographicMemoryPlugin {

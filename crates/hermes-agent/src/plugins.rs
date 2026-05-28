@@ -4,6 +4,7 @@
 //! - Custom memory providers
 //! - Additional tools
 //! - Custom hooks (pre/post LLM call, tool call, API request, session lifecycle)
+#![allow(clippy::type_complexity)]
 //! - Additional LLM providers
 //! - CLI commands
 

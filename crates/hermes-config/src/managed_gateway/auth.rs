@@ -89,8 +89,8 @@ fn parse_timestamp(value: &str) -> Option<DateTime<Utc>> {
     if trimmed.is_empty() {
         return None;
     }
-    let normalised = if trimmed.ends_with('Z') {
-        format!("{}+00:00", &trimmed[..trimmed.len() - 1])
+    let normalised = if let Some(stripped) = trimmed.strip_suffix('Z') {
+        format!("{stripped}+00:00")
     } else {
         trimmed.to_string()
     };

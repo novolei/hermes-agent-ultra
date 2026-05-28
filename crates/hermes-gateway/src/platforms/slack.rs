@@ -854,7 +854,7 @@ impl SlackAdapter {
 
         let resp = self
             .client
-            .post(&format!("{}/apps.connections.open", SLACK_API_BASE))
+            .post(format!("{}/apps.connections.open", SLACK_API_BASE))
             .header("Authorization", format!("Bearer {}", app_token))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .send()

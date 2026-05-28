@@ -3,6 +3,7 @@
 //! Implements `MemoryProviderPlugin` for Honcho's AI-native cross-session
 //! user modeling. Provides context recall, peer-card access, semantic search,
 //! and persistent conclusions via the Honcho API.
+#![allow(clippy::manual_clamp)]
 //!
 //! Mirrors the Python `plugins/memory/honcho/__init__.py` at the capability
 //! level, while using direct HTTP calls instead of the Python SDK.
@@ -222,6 +223,12 @@ pub struct HonchoMemoryPlugin {
     prefetch_result: Arc<Mutex<String>>,
     turn_count: Mutex<u32>,
     recall_mode: Mutex<String>,
+}
+
+impl Default for HonchoMemoryPlugin {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HonchoMemoryPlugin {

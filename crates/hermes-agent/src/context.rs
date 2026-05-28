@@ -2,6 +2,7 @@
 //!
 //! The `ContextManager` tracks messages, enforces budget constraints on the
 //! conversation window, and provides context compression via `ContextCompressor`.
+#![allow(clippy::manual_checked_ops)]
 //!
 //! Also provides SOUL.md personality loading, context file injection, and
 //! full system prompt assembly (corresponding to Python `run_agent.py`'s
@@ -133,20 +134,22 @@ impl ContextCompressor {
             }
 
             match msg.role {
-                MessageRole::User if goals.len() < MAX_ITEMS_PER_SECTION => {
-                    if !goals.contains(&concise) {
-                        goals.push(concise);
-                    }
+                MessageRole::User
+                    if goals.len() < MAX_ITEMS_PER_SECTION && !goals.contains(&concise) =>
+                {
+                    goals.push(concise);
                 }
-                MessageRole::Assistant if assistant_updates.len() < MAX_ITEMS_PER_SECTION => {
-                    if !assistant_updates.contains(&concise) {
-                        assistant_updates.push(concise);
-                    }
+                MessageRole::Assistant
+                    if assistant_updates.len() < MAX_ITEMS_PER_SECTION
+                        && !assistant_updates.contains(&concise) =>
+                {
+                    assistant_updates.push(concise);
                 }
-                MessageRole::Tool if tool_updates.len() < MAX_ITEMS_PER_SECTION => {
-                    if !tool_updates.contains(&concise) {
-                        tool_updates.push(concise);
-                    }
+                MessageRole::Tool
+                    if tool_updates.len() < MAX_ITEMS_PER_SECTION
+                        && !tool_updates.contains(&concise) =>
+                {
+                    tool_updates.push(concise);
                 }
                 _ => {}
             }

@@ -174,20 +174,19 @@ impl DefaultContextEngine {
             }
 
             match role {
-                "user" if goals.len() < MAX_SECTION_ITEMS => {
-                    if !goals.contains(&concise) {
-                        goals.push(concise);
-                    }
+                "user" if goals.len() < MAX_SECTION_ITEMS && !goals.contains(&concise) => {
+                    goals.push(concise);
                 }
-                "assistant" if decisions.len() < MAX_SECTION_ITEMS => {
-                    if !decisions.contains(&concise) {
-                        decisions.push(concise);
-                    }
+                "assistant"
+                    if decisions.len() < MAX_SECTION_ITEMS && !decisions.contains(&concise) =>
+                {
+                    decisions.push(concise);
                 }
-                "tool" if tool_outcomes.len() < MAX_SECTION_ITEMS => {
-                    if !tool_outcomes.contains(&concise) {
-                        tool_outcomes.push(concise);
-                    }
+                "tool"
+                    if tool_outcomes.len() < MAX_SECTION_ITEMS
+                        && !tool_outcomes.contains(&concise) =>
+                {
+                    tool_outcomes.push(concise);
                 }
                 _ => {}
             }

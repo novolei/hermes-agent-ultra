@@ -254,6 +254,12 @@ pub struct HindsightPlugin {
     session_turns: Mutex<Vec<String>>,
 }
 
+impl Default for HindsightPlugin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HindsightPlugin {
     pub fn new() -> Self {
         Self {
@@ -463,7 +469,7 @@ impl MemoryProviderPlugin for HindsightPlugin {
 
         let mut counter = self.turn_counter.lock().unwrap();
         *counter += 1;
-        if *counter % config.retain_every_n_turns != 0 {
+        if !(*counter).is_multiple_of(config.retain_every_n_turns) {
             return;
         }
 

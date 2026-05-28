@@ -38,8 +38,9 @@ impl WorkspacePersistence {
 
     pub fn ensure_db(&self) -> Result<(), AgentError> {
         if let Some(parent) = self.db_path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| AgentError::Io(format!("Failed to create workspaces db directory: {e}")))?;
+            std::fs::create_dir_all(parent).map_err(|e| {
+                AgentError::Io(format!("Failed to create workspaces db directory: {e}"))
+            })?;
         }
         let conn = Connection::open(&self.db_path)
             .map_err(|e| AgentError::Io(format!("open workspaces db: {e}")))?;
@@ -105,7 +106,11 @@ impl WorkspacePersistence {
         let now = unix_now();
         let conn = self.open()?;
         let max_pos: i64 = conn
-            .query_row("SELECT COALESCE(MAX(position), -1) FROM workspaces", [], |r| r.get(0))
+            .query_row(
+                "SELECT COALESCE(MAX(position), -1) FROM workspaces",
+                [],
+                |r| r.get(0),
+            )
             .map_err(|e| AgentError::Io(format!("max pos: {e}")))?;
         let position = max_pos + 1;
         conn.execute(
@@ -159,7 +164,9 @@ impl WorkspacePersistence {
 
     pub fn reorder_workspaces(&self, ordered_ids: &[String]) -> Result<(), AgentError> {
         let mut conn = self.open()?;
-        let tx = conn.transaction().map_err(|e| AgentError::Io(format!("begin tx: {e}")))?;
+        let tx = conn
+            .transaction()
+            .map_err(|e| AgentError::Io(format!("begin tx: {e}")))?;
         for (idx, id) in ordered_ids.iter().enumerate() {
             tx.execute(
                 "UPDATE workspaces SET position = ?1 WHERE id = ?2",
@@ -167,7 +174,8 @@ impl WorkspacePersistence {
             )
             .map_err(|e| AgentError::Io(format!("reorder: {e}")))?;
         }
-        tx.commit().map_err(|e| AgentError::Io(format!("commit reorder: {e}")))?;
+        tx.commit()
+            .map_err(|e| AgentError::Io(format!("commit reorder: {e}")))?;
         Ok(())
     }
 
@@ -284,11 +292,7 @@ mod tests {
             .unwrap();
 
         store
-            .reorder_workspaces(&[
-                "ws-3".to_string(),
-                "ws-1".to_string(),
-                "ws-2".to_string(),
-            ])
+            .reorder_workspaces(&["ws-3".to_string(), "ws-1".to_string(), "ws-2".to_string()])
             .unwrap();
 
         let list = store.list_workspaces().unwrap();

@@ -2,6 +2,14 @@
 //!
 //! Initializes logging, parses CLI arguments, and dispatches to the
 //! appropriate subcommand handler.
+#![allow(
+    clippy::question_mark,
+    clippy::unnecessary_sort_by,
+    clippy::type_complexity,
+    clippy::too_many_arguments,
+    clippy::manual_clamp,
+    clippy::field_reassign_with_default
+)]
 
 use aes_gcm::aead::Aead;
 use aes_gcm::Aes256Gcm;
@@ -2310,7 +2318,7 @@ fn install_gateway_service(force: bool, dry_run: bool) -> Result<(), AgentError>
             "Installed gateway launchd service at {}",
             plist_path.display()
         );
-        return Ok(());
+        Ok(())
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -2347,7 +2355,7 @@ fn uninstall_gateway_service(dry_run: bool) -> Result<(), AgentError> {
         } else {
             println!("Gateway service is not installed.");
         }
-        return Ok(());
+        Ok(())
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -2367,7 +2375,7 @@ fn try_start_gateway_service() -> Result<bool, AgentError> {
             return Ok(false);
         }
         launchctl_bootstrap(&plist_path)?;
-        return Ok(true);
+        Ok(true)
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -2390,7 +2398,7 @@ fn try_stop_gateway_service() -> Result<bool, AgentError> {
             .arg(plist_path)
             .status()
             .map_err(|e| AgentError::Io(format!("launchctl bootout: {e}")))?;
-        return Ok(status.success());
+        Ok(status.success())
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -2408,7 +2416,7 @@ fn try_restart_gateway_service() -> Result<bool, AgentError> {
             return Ok(false);
         }
         launchctl_bootstrap(&plist_path)?;
-        return Ok(true);
+        Ok(true)
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -2500,7 +2508,7 @@ fn migrate_legacy_gateway_services(dry_run: bool, yes: bool) -> Result<(), Agent
             let _ = std::fs::remove_file(&p);
             println!("Removed {}", p.display());
         }
-        return Ok(());
+        Ok(())
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -3386,10 +3394,7 @@ async fn configure_platform_basic_prompts(
     disk: &mut hermes_config::GatewayConfig,
     key: &str,
 ) -> Result<(), AgentError> {
-    let p = disk
-        .platforms
-        .entry(key.to_string())
-        .or_insert_with(PlatformConfig::default);
+    let p = disk.platforms.entry(key.to_string()).or_default();
     p.enabled = true;
 
     match key {
@@ -4826,7 +4831,7 @@ fn resolve_auth_provider(provider: Option<String>) -> String {
     let raw = std::env::var("HERMES_AUTH_DEFAULT_PROVIDER")
         .ok()
         .filter(|s| !s.trim().is_empty())
-        .or_else(|| infer_default_auth_provider_from_config())
+        .or_else(infer_default_auth_provider_from_config)
         .unwrap_or_else(|| "nous".to_string());
     normalize_auth_provider(&raw)
 }
@@ -5739,8 +5744,10 @@ async fn qqbot_qr_login_flow(
                     "qqbot qr login timed out after {timeout_seconds}s"
                 )));
             }
-            match qqbot_poll_bind_result(&client, portal_host, poll_path, &task_id).await {
-                Ok((status, app_id, encrypted_secret, user_openid)) => match status {
+            if let Ok((status, app_id, encrypted_secret, user_openid)) =
+                qqbot_poll_bind_result(&client, portal_host, poll_path, &task_id).await
+            {
+                match status {
                     2 => {
                         if app_id.trim().is_empty() || encrypted_secret.trim().is_empty() {
                             return Err(AgentError::Config(
@@ -5766,8 +5773,7 @@ async fn qqbot_qr_login_flow(
                         break;
                     }
                     _ => {}
-                },
-                Err(_) => {}
+                }
             }
             tokio::time::sleep(ONBOARD_POLL_INTERVAL).await;
         }
@@ -7056,7 +7062,7 @@ async fn run_auth(
                             id: uuid::Uuid::new_v4().simple().to_string()[..6].to_string(),
                             label: label.unwrap_or_else(|| email.clone().unwrap_or(default_label)),
                             auth_type: "oauth".to_string(),
-                            source: source,
+                            source,
                             access_token: access_token.clone(),
                             last_status: None,
                             last_status_at: None,
@@ -8159,7 +8165,7 @@ async fn run_cron(
             if agent {
                 job.no_agent = false;
             }
-            if job.no_agent && job.script.as_ref().map_or(true, |s| s.trim().is_empty()) {
+            if job.no_agent && job.script.as_ref().is_none_or(|s| s.trim().is_empty()) {
                 return Err(AgentError::Config(
                     "cron create: --no-agent requires --script".into(),
                 ));
@@ -8263,7 +8269,7 @@ async fn run_cron(
                     job.script_shell = Some(shell.trim().to_string());
                 }
             }
-            if job.no_agent && job.script.as_ref().map_or(true, |s| s.trim().is_empty()) {
+            if job.no_agent && job.script.as_ref().is_none_or(|s| s.trim().is_empty()) {
                 return Err(AgentError::Config(
                     "cron edit: no_agent mode requires a non-empty script".into(),
                 ));
@@ -8367,11 +8373,11 @@ async fn run_cron(
 }
 
 fn webhook_store_path(cli: &Cli) -> PathBuf {
-    hermes_state_root(&cli).join("webhooks.json")
+    hermes_state_root(cli).join("webhooks.json")
 }
 
 fn webhook_subscriptions_path(cli: &Cli) -> PathBuf {
-    hermes_state_root(&cli).join("webhook_subscriptions.json")
+    hermes_state_root(cli).join("webhook_subscriptions.json")
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -9441,7 +9447,7 @@ fn maybe_import_legacy_env(
     let imported = merge_missing_env_keys(
         source,
         env_path,
-        &source
+        source
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("legacy source"),
@@ -10771,7 +10777,7 @@ fn parse_provenance_key_material(raw: &str) -> Result<Vec<u8>, AgentError> {
             "empty provenance key material".to_string(),
         ));
     }
-    let is_hex = s.len() % 2 == 0 && s.chars().all(|c| c.is_ascii_hexdigit());
+    let is_hex = s.len().is_multiple_of(2) && s.chars().all(|c| c.is_ascii_hexdigit());
     if is_hex {
         return hex::decode(s)
             .map_err(|e| AgentError::Config(format!("decode provenance hex key: {e}")));
@@ -12431,10 +12437,8 @@ fn prune_old_debug_reports(path: &Path, expire_days: u32) -> Result<usize, Agent
             .ok()
             .and_then(|m| m.modified().ok())
             .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
-        if modified < cutoff {
-            if std::fs::remove_file(&p).is_ok() {
-                removed += 1;
-            }
+        if modified < cutoff && std::fs::remove_file(&p).is_ok() {
+            removed += 1;
         }
     }
     Ok(removed)
@@ -13281,19 +13285,19 @@ async fn run_profile(
                 .map_err(|e| AgentError::Config(e.to_string()))?;
             if let Some(map) = value.as_mapping() {
                 if let Some(v) = map
-                    .get(&serde_yaml::Value::String("model".to_string()))
+                    .get(serde_yaml::Value::String("model".to_string()))
                     .and_then(|v| v.as_str())
                 {
                     disk.model = Some(v.to_string());
                 }
                 if let Some(v) = map
-                    .get(&serde_yaml::Value::String("personality".to_string()))
+                    .get(serde_yaml::Value::String("personality".to_string()))
                     .and_then(|v| v.as_str())
                 {
                     disk.personality = Some(v.to_string());
                 }
                 if let Some(v) = map
-                    .get(&serde_yaml::Value::String("max_turns".to_string()))
+                    .get(serde_yaml::Value::String("max_turns".to_string()))
                     .and_then(|v| v.as_u64())
                 {
                     disk.max_turns = v.min(u32::MAX as u64) as u32;

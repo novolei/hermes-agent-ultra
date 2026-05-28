@@ -104,6 +104,7 @@ impl AuxiliaryTask {
 
     /// Construct a task from a free-form string. Returns `Custom` for any
     /// unknown identifier.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(name: &str) -> Self {
         match name.trim().to_lowercase().as_str() {
             "compression" => AuxiliaryTask::Compression,

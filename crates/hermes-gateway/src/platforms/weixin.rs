@@ -2,6 +2,7 @@
 //!
 //! Aligns with Python `gateway/platforms/weixin.py`: long-poll `getupdates`,
 //! `context_token` echo on send, AES-128-ECB CDN download, DM/group policies.
+#![allow(clippy::too_many_arguments, clippy::if_same_then_else)]
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -34,7 +35,7 @@ const ILINK_BASE_URL: &str = "https://ilinkai.weixin.qq.com";
 const WEIXIN_CDN_BASE: &str = "https://novac2c.cdn.weixin.qq.com/c2c";
 const ILINK_APP_ID: &str = "bot";
 const CHANNEL_VERSION: &str = "2.2.0";
-const ILINK_APP_CLIENT_VERSION: i32 = (2 << 16) | (2 << 8) | 0;
+const ILINK_APP_CLIENT_VERSION: i32 = (2 << 16) | (2 << 8);
 
 const EP_GET_UPDATES: &str = "ilink/bot/getupdates";
 const EP_SEND_MESSAGE: &str = "ilink/bot/sendmessage";
@@ -91,7 +92,7 @@ fn pkcs7_pad(data: &[u8], block_size: usize) -> Vec<u8> {
 }
 
 fn aes_padded_size(size: usize) -> usize {
-    ((size + 1 + 15) / 16) * 16
+    (size + 1).div_ceil(16) * 16
 }
 
 fn pkcs7_unpad(padded: &[u8]) -> Result<Vec<u8>, GatewayError> {
@@ -125,7 +126,7 @@ fn aes128_ecb_encrypt(plaintext: &[u8], key_bytes: &[u8; 16]) -> Vec<u8> {
 }
 
 fn aes128_ecb_decrypt(ciphertext: &[u8], key_bytes: &[u8; 16]) -> Result<Vec<u8>, GatewayError> {
-    if ciphertext.is_empty() || ciphertext.len() % 16 != 0 {
+    if ciphertext.is_empty() || !ciphertext.len().is_multiple_of(16) {
         return Err(GatewayError::Platform(
             "weixin: invalid AES ciphertext length".into(),
         ));
@@ -777,7 +778,7 @@ impl WeChatAdapter {
             HeaderName::from_static("authorizationtype"),
             HeaderValue::from_static("ilink_bot_token"),
         );
-        let clen = body.as_bytes().len();
+        let clen = body.len();
         h.insert(
             HeaderName::from_static("content-length"),
             HeaderValue::from_str(&clen.to_string()).unwrap(),

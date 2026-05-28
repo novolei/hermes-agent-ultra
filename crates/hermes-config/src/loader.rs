@@ -5,10 +5,9 @@ use std::path::Path;
 // Re-export ConfigError for convenience
 pub use hermes_core::ConfigError;
 
-use crate::config::{GatewayConfig, LlmProviderConfig, ProxyConfig};
+use crate::config::{GatewayConfig, ProxyConfig};
 use crate::merge::merge_configs;
 use crate::paths;
-use crate::platform::PlatformConfig;
 
 // ---------------------------------------------------------------------------
 // ConfigError conversion helpers
@@ -518,7 +517,7 @@ fn apply_user_config_patch_dotted(
             let entry = config
                 .llm_providers
                 .entry((*provider).to_string())
-                .or_insert_with(LlmProviderConfig::default);
+                .or_default();
             match *field {
                 "api_key" => entry.api_key = Some(value.to_string()),
                 "api_key_env" => entry.api_key_env = Some(value.to_string()),
@@ -859,7 +858,7 @@ pub fn apply_env_overrides(config: &mut GatewayConfig) {
         config
             .llm_providers
             .entry("openai".to_string())
-            .or_insert_with(LlmProviderConfig::default)
+            .or_default()
             .api_key = Some(v);
     }
     for (env_var, provider_name) in [
@@ -880,7 +879,7 @@ pub fn apply_env_overrides(config: &mut GatewayConfig) {
             config
                 .llm_providers
                 .entry(provider_name.to_string())
-                .or_insert_with(LlmProviderConfig::default)
+                .or_default()
                 .api_key = Some(v);
         }
     }
@@ -896,10 +895,7 @@ pub fn apply_env_overrides(config: &mut GatewayConfig) {
     if let Ok(token) = std::env::var("SLACK_BOT_TOKEN") {
         let trimmed = token.trim();
         if !trimmed.is_empty() {
-            let slack = config
-                .platforms
-                .entry("slack".to_string())
-                .or_insert_with(PlatformConfig::default);
+            let slack = config.platforms.entry("slack".to_string()).or_default();
             let enabled_was_explicit = slack
                 .extra
                 .remove("_enabled_explicit")
@@ -975,8 +971,10 @@ mod tests {
 
     #[test]
     fn validate_zero_max_turns() {
-        let mut config = GatewayConfig::default();
-        config.max_turns = 0;
+        let config = GatewayConfig {
+            max_turns: 0,
+            ..GatewayConfig::default()
+        };
         assert!(validate_config(&config).is_err());
     }
 
@@ -1055,9 +1053,10 @@ mod tests {
 
     #[test]
     fn env_overrides_model() {
-        let mut config = GatewayConfig::default();
-        // Simulate env var (we can't easily set env vars in tests, so test the logic directly)
-        config.model = Some("env-model".into());
+        let config = GatewayConfig {
+            model: Some("env-model".into()),
+            ..GatewayConfig::default()
+        };
         assert_eq!(config.model.as_deref(), Some("env-model"));
     }
 

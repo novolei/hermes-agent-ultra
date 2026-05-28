@@ -140,6 +140,12 @@ pub struct Mem0MemoryPlugin {
     breaker_open_until: Arc<Mutex<Option<Instant>>>,
 }
 
+impl Default for Mem0MemoryPlugin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Mem0MemoryPlugin {
     pub fn new() -> Self {
         Self {

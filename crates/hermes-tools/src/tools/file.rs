@@ -1,4 +1,5 @@
 //! File tools: read, write, patch, and search
+#![allow(clippy::too_many_arguments)]
 
 use async_trait::async_trait;
 use indexmap::IndexMap;

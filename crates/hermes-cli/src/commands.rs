@@ -2,6 +2,14 @@
 //!
 //! Defines and dispatches all supported `/` commands in the interactive
 //! REPL, and provides auto-completion suggestions.
+#![allow(
+    clippy::type_complexity,
+    clippy::if_same_then_else,
+    clippy::manual_clamp,
+    clippy::unnecessary_sort_by,
+    clippy::enum_variant_names,
+    clippy::await_holding_lock
+)]
 
 use std::process::Stdio;
 use std::sync::Arc;
@@ -53,7 +61,7 @@ use crate::model_switch::{
 };
 use crate::pairing_store::{PairingStatus, PairingStore};
 use crate::skin_engine::{canonical_skin_name, BUILTIN_SKINS};
-use hermes_config::{GatewayConfig, LlmProviderConfig};
+use hermes_config::GatewayConfig;
 
 // ---------------------------------------------------------------------------
 // CommandResult
@@ -4215,10 +4223,10 @@ async fn pick_model_for_provider(
     app.switch_model(&guarded);
     let mut msg = format!("Model switched to: {}", guarded);
     if let Some(n) = note {
-        msg.push_str("\n");
+        msg.push('\n');
         msg.push_str(&n);
     }
-    msg.push_str("\n");
+    msg.push('\n');
     msg.push_str(&format_model_persistence_note(app));
     emit_command_output(app, msg);
     Ok(true)
@@ -4783,17 +4791,17 @@ async fn handle_model_command(app: &mut App, args: &[&str]) -> Result<CommandRes
             app.switch_model(&guarded);
             let mut msg = format!("Model switched to: {}", guarded);
             if let Some(n) = note {
-                msg.push_str("\n");
+                msg.push('\n');
                 msg.push_str(&n);
             }
             if !requirements.is_empty() {
-                msg.push_str("\n");
+                msg.push('\n');
                 msg.push_str(&format!(
                     "Capability constraints satisfied: {}.",
                     requirements.summary()
                 ));
             }
-            msg.push_str("\n");
+            msg.push('\n');
             msg.push_str(&format_model_persistence_note(app));
             emit_command_output(app, msg);
         }
@@ -4880,9 +4888,9 @@ fn read_codex_runtime_config(path: &Path) -> Result<serde_yaml::Value, AgentErro
 
 fn codex_runtime_from_config(root: &serde_yaml::Value) -> &'static str {
     root.as_mapping()
-        .and_then(|map| map.get(&yaml_key("model")))
+        .and_then(|map| map.get(yaml_key("model")))
         .and_then(|model| model.as_mapping())
-        .and_then(|model| model.get(&yaml_key("openai_runtime")))
+        .and_then(|model| model.get(yaml_key("openai_runtime")))
         .and_then(|value| value.as_str())
         .and_then(normalize_codex_runtime_value)
         .unwrap_or("auto")
@@ -10711,7 +10719,7 @@ fn parse_reasoning_effort(raw: &str) -> Result<Option<&'static str>, AgentError>
     }
 }
 
-fn resolve_provider_key<'a>(cfg: &'a GatewayConfig, provider: &str) -> String {
+fn resolve_provider_key(cfg: &GatewayConfig, provider: &str) -> String {
     cfg.llm_providers
         .keys()
         .find(|key| key.eq_ignore_ascii_case(provider))
@@ -10741,10 +10749,7 @@ fn openai_reasoning_effort_for_level(effort: &str) -> &'static str {
 
 fn set_provider_reasoning_effort(cfg: &mut GatewayConfig, provider: &str, effort: Option<&str>) {
     let provider_key = resolve_provider_key(cfg, provider);
-    let provider_cfg = cfg
-        .llm_providers
-        .entry(provider_key.clone())
-        .or_insert_with(LlmProviderConfig::default);
+    let provider_cfg = cfg.llm_providers.entry(provider_key.clone()).or_default();
 
     let mut body_map = provider_cfg
         .extra_body
@@ -18101,7 +18106,7 @@ fn command_catalog_matches_filter(command: &str, description: &str, query: &str)
     }
     let cmd = command.to_ascii_lowercase();
     let desc = description.to_ascii_lowercase();
-    cmd.contains(&q) || desc.contains(&q.trim_start_matches('/'))
+    cmd.contains(&q) || desc.contains(q.trim_start_matches('/'))
 }
 
 fn render_command_catalog(filter: Option<&str>) -> String {
@@ -20140,8 +20145,8 @@ pub async fn handle_cli_skills(
             }
 
             println!(
-                "{:28} {:14} {:14} {:16} {}",
-                "Skill", "Source", "Local Hash", "Upstream Hash", "Status"
+                "{:28} {:14} {:14} {:16} Status",
+                "Skill", "Source", "Local Hash", "Upstream Hash"
             );
             println!("{}", "-".repeat(98));
 
@@ -21544,7 +21549,7 @@ fn plugin_git_host_allowed(url: &str, allow_untrusted: bool) -> bool {
         .next()
         .unwrap_or(host_part)
         .split('@')
-        .last()
+        .next_back()
         .unwrap_or(host_part);
     let host = host.split(':').next().unwrap_or(host).to_lowercase();
     hosts
@@ -21966,10 +21971,7 @@ pub async fn handle_cli_plugins(
                 // Registry lookup
                 println!("  Looking up '{}' in plugin registry...", plugin_name);
                 match reqwest::Client::new()
-                    .get(&format!(
-                        "https://plugins.hermes.run/api/v1/{}",
-                        plugin_name
-                    ))
+                    .get(format!("https://plugins.hermes.run/api/v1/{}", plugin_name))
                     .timeout(std::time::Duration::from_secs(10))
                     .send()
                     .await
@@ -23095,12 +23097,10 @@ pub async fn handle_cli_sessions(
                     }
                     if let Ok(meta) = std::fs::metadata(&path) {
                         let modified = meta.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH);
-                        if modified < cutoff {
-                            if std::fs::remove_file(&path).is_ok() {
-                                let name = path.file_stem().unwrap_or_default().to_string_lossy();
-                                println!("  Pruned: {}", name);
-                                pruned += 1;
-                            }
+                        if modified < cutoff && std::fs::remove_file(&path).is_ok() {
+                            let name = path.file_stem().unwrap_or_default().to_string_lossy();
+                            println!("  Pruned: {}", name);
+                            pruned += 1;
                         }
                     }
                 }
@@ -23172,8 +23172,8 @@ pub async fn handle_cli_sessions(
                 println!("No sessions found.");
             } else {
                 println!(
-                    "{:3} {:30} {:>8} {:>6}  {}",
-                    "#", "Session ID", "Size", "Msgs", "Modified"
+                    "{:3} {:30} {:>8} {:>6}  Modified",
+                    "#", "Session ID", "Size", "Msgs"
                 );
                 println!("{}", "-".repeat(75));
                 for (idx, (name, size, modified, msgs)) in entries.iter().enumerate() {
@@ -23458,12 +23458,12 @@ pub async fn handle_cli_logout(provider: Option<String>) -> Result<(), hermes_co
                 if let Ok(rd) = std::fs::read_dir(&creds_dir) {
                     for entry in rd.filter_map(|e| e.ok()) {
                         let path = entry.path();
-                        if path.extension().map(|e| e == "json").unwrap_or(false) {
-                            if std::fs::remove_file(&path).is_ok() {
-                                let name = path.file_stem().unwrap_or_default().to_string_lossy();
-                                println!("  Removed credential: {}", name);
-                                removed += 1;
-                            }
+                        if path.extension().map(|e| e == "json").unwrap_or(false)
+                            && std::fs::remove_file(&path).is_ok()
+                        {
+                            let name = path.file_stem().unwrap_or_default().to_string_lossy();
+                            println!("  Removed credential: {}", name);
+                            removed += 1;
                         }
                     }
                 }
@@ -23841,15 +23841,15 @@ pub async fn handle_cli_pairing(
 
     match action.as_deref().unwrap_or("list") {
         "list" => {
-            let devices = store.list().map_err(|e| hermes_core::AgentError::Io(e))?;
+            let devices = store.list().map_err(hermes_core::AgentError::Io)?;
             if devices.is_empty() {
                 println!("No paired devices.");
                 println!("  Store: {}", PairingStore::default_path().display());
             } else {
                 println!("Paired devices ({}):", devices.len());
                 println!(
-                    "  {:20} {:10} {:12} {}",
-                    "Device ID", "Status", "Last Seen", "Name"
+                    "  {:20} {:10} {:12} Name",
+                    "Device ID", "Status", "Last Seen"
                 );
                 println!("  {}", "-".repeat(60));
                 for d in &devices {
@@ -24063,10 +24063,8 @@ fn claw_migrate_cmd() -> Result<(), hermes_core::AgentError> {
             for entry in entries.flatten() {
                 let src = entry.path();
                 let dst = dst_sessions.join(entry.file_name());
-                if src.is_file() && !dst.exists() {
-                    if std::fs::copy(&src, &dst).is_ok() {
-                        session_count += 1;
-                    }
+                if src.is_file() && !dst.exists() && std::fs::copy(&src, &dst).is_ok() {
+                    session_count += 1;
                 }
             }
         }
@@ -26066,8 +26064,7 @@ mod tests {
 
     #[test]
     fn test_merged_skill_taps_deduplicates_default() {
-        let merged =
-            merged_skill_taps(&vec!["https://github.com/MiniMax-AI/cli::skill".to_string()]);
+        let merged = merged_skill_taps(&["https://github.com/MiniMax-AI/cli::skill".to_string()]);
         assert_eq!(
             merged
                 .iter()
@@ -26594,13 +26591,10 @@ install_command: "uv pip install -r requirements.txt"
 
     #[test]
     fn parse_toggle_arg_supports_status_and_explicit_values() {
-        assert_eq!(parse_toggle_arg(None, true).expect("toggle"), false);
-        assert_eq!(
-            parse_toggle_arg(Some("toggle"), false).expect("toggle"),
-            true
-        );
-        assert_eq!(parse_toggle_arg(Some("on"), false).expect("on"), true);
-        assert_eq!(parse_toggle_arg(Some("off"), true).expect("off"), false);
+        assert!(!parse_toggle_arg(None, true).expect("toggle"));
+        assert!(parse_toggle_arg(Some("toggle"), false).expect("toggle"));
+        assert!(parse_toggle_arg(Some("on"), false).expect("on"));
+        assert!(!parse_toggle_arg(Some("off"), true).expect("off"));
         assert!(parse_toggle_arg(Some("bad-value"), true).is_err());
     }
 

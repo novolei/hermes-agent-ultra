@@ -72,7 +72,12 @@ pub struct UpdateWorkspaceArgs {
 #[tauri::command]
 #[specta::specta]
 pub fn workspace_list(state: State<'_, AppState>) -> Result<Vec<WorkspaceInfo>, WorkspaceError> {
-    Ok(state.workspace.list()?.into_iter().map(WorkspaceInfo::from).collect())
+    Ok(state
+        .workspace
+        .list()?
+        .into_iter()
+        .map(WorkspaceInfo::from)
+        .collect())
 }
 
 #[tauri::command]
@@ -126,9 +131,7 @@ pub fn workspace_reorder(
 
 #[tauri::command]
 #[specta::specta]
-pub fn workspace_get_active(
-    state: State<'_, AppState>,
-) -> Result<Option<String>, WorkspaceError> {
+pub fn workspace_get_active(state: State<'_, AppState>) -> Result<Option<String>, WorkspaceError> {
     Ok(state.workspace.get_active()?)
 }
 

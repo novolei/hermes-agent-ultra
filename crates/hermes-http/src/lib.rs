@@ -2,6 +2,7 @@
 //!
 //! Environment (see also `security` module):
 //! - `HERMES_HTTP_MAX_BODY_BYTES` — max JSON body size for POST routes (default 2 MiB).
+//!
 //! Policy HTTP routes are intentionally omitted (Hermes Python does not expose them).
 
 mod security;

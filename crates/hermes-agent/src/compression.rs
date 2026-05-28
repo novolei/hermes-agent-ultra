@@ -3,6 +3,7 @@
 //! Port of Python `agent.context_compressor.ContextCompressor` (738 LoC).
 //! See the Python source for a detailed algorithm description; the Rust
 //! version mirrors it phase-for-phase:
+#![allow(clippy::needless_range_loop)]
 //!
 //! 1. **Prune** old `tool` results (cheap pre-pass, no LLM call)
 //! 2. **Protect** head messages (system prompt + first exchange)

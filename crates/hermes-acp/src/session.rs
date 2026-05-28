@@ -17,8 +17,10 @@ use serde_json::Value;
 /// Lifecycle phase of an ACP session.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum SessionPhase {
     /// Session created, awaiting first prompt.
+    #[default]
     Created,
     /// Session is actively processing a prompt.
     Active,
@@ -30,12 +32,6 @@ pub enum SessionPhase {
     Cancelled,
     /// Session encountered an unrecoverable error.
     Failed,
-}
-
-impl Default for SessionPhase {
-    fn default() -> Self {
-        Self::Created
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -135,6 +131,7 @@ impl From<&SessionState> for SessionInfo {
 /// provided to sync state to a database or disk.
 pub struct SessionManager {
     sessions: Mutex<HashMap<String, SessionState>>,
+    #[allow(clippy::type_complexity)]
     on_persist: Option<Box<dyn Fn(&SessionState) + Send + Sync>>,
 }
 

@@ -4,6 +4,7 @@
 //! model:
 //! - `allowed_root` defaults to `cwd` (workspace confinement)
 //! - sensitive home and Hermes credential paths are blocked
+#![allow(clippy::while_let_loop)]
 //! - attached context is bounded by soft/hard token budgets
 
 use std::collections::VecDeque;
