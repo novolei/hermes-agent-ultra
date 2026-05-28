@@ -32,7 +32,14 @@ The full port is ~3,500 LOC across ~18 files. Split into:
 ~2,300 LOC. Self-contained PR — every component compiles in isolation and has fixture-driven tests, even though no app surface consumes them yet.
 
 ### 3.2 Plan 2b.2.b.2 — `AgentMessages.tsx` integration (`feat/desktop-agent-messages`)
-~1,267 LOC for the single file that integrates all of b.1's outputs into a scrollable message list. Separate plan so the review pass focuses on one large file with full context.
+
+**Amended 2026-05-28 (after Plan 2b.2.b.2 brainstorming recon):** uclaw's `AgentMessages.tsx` is 1,267 LOC and transitively pulls in ~20 currently-unported files: tool rendering (`ToolActivityList`, `ThinkingBlock`, `NativeBlockRenderer`, `ChatToolActivityIndicator`, `CompactingIndicator`, `CompactBoundaryDivider`), chat-side atoms/chips (`channelsAtom`, `tabMinimapCacheAtom`, `proactiveLearningEventsAtom`, `memoryRecallEventAtom`, `skillRecallsMapAtom`, `agentDisplayNameForAtom`, `stickyUserMessageEnabledAtom`, `MemoryRecallChip`, `ProactiveLearningChip`, `SkillCitationChips`, `SkillRecallChips`), and ancillaries (`formatMessageTime`, `ScrollPositionManager`, `readAttachment`/`saveImageAs` from Tauri bridge).
+
+Verbatim porting would balloon scope to ~3,000+ LOC across many files — defeating stacked-PR discipline. So 2b.2.b.2 ships a **slim AgentMessages** (~400 LOC effective port) covering only the message-list + Welcome + ScrollMinimap + StickyUserMessage + streaming + error rendering. The ~20 unported deps are replaced with **feature-local stubs** under `features/chat-agent/components/stubs/` and `features/chat-agent/lib/peripheral-stubs.ts` — each stub clearly marked for Plan 2b.2.c upgrade.
+
+**Carry-forward follow-up addressed in this plan:** Follow-up #2 from Plan 2b.2.b.1's final review — AgentMessages's error-state branch surfaces `event.message` (now typed on `AgentEvent`).
+
+**Carry-forward follow-ups NOT addressed (still deferred):** #1 (real `useSmoothStream` impl), #3 (scroll-minimap dead handlers), #4 (real preview-chips → Plan 3.5).
 
 **Dependency:** 2b.2.b.2 depends on 2b.2.b.1 landing. Stacked PR pattern (#5 → #4, #6 → #5).
 
@@ -268,9 +275,12 @@ The other three follow-ups (status `'retrying'`, tool-result `isError`, LIFO too
 - Bundle size within budget (smoke step).
 - Final code review: APPROVED or APPROVED_WITH_FOLLOWUPS.
 
-### 2b.2.b.2 ships when:
-- `agent-messages.tsx` present, ≥10 new tests pass on top of b.1's count.
-- Existing tests still pass.
+### 2b.2.b.2 ships when (amended per §3.2 slim-with-stubs strategy):
+- `agent-messages.tsx` present at `desktop/src/features/chat-agent/components/agent-messages.tsx` — slim port (~400 LOC effective) covering: message-list iteration, Welcome empty state, ScrollMinimap, StickyUserMessage, streaming partial state, error state surfacing `event.message`.
+- Peripheral stubs present under `desktop/src/features/chat-agent/components/stubs/` (tool-activity-list, content-block, skill-chips, learning-chips, compaction-indicator, sdk-message-renderer) and `desktop/src/features/chat-agent/lib/peripheral-stubs.ts` (static-default atoms for channels / tab-minimap / proactive-learning / memory-recall / skill-recalls / display-name / sticky-enabled, plus no-op `readAttachment`/`saveImageAs` shims). Each stub clearly comment-marked for Plan 2b.2.c upgrade.
+- `format-message-time.ts` ported as a small helper.
+- ≥10 new Vitest + RTL tests covering all rendering branches (welcome, single user, single assistant, multi-turn, streaming partial state, tool-activity stub, error with `event.message`, sticky indicator, scroll-minimap integration, atom-driven re-render).
+- Existing 195 frontend + 21 backend tests still pass.
 - Build clean.
 - `App.tsx` still untouched.
 - Final code review: APPROVED or APPROVED_WITH_FOLLOWUPS.
