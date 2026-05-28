@@ -1,6 +1,16 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: ["class", '[data-theme="dark"]'],
+  darkMode: [
+    'class',
+    // Plan 2b.2.b.1 — base light/dark via data-theme attribute
+    '[data-theme="dark"]',
+    // Plan 3.1 — named theme dark variants also count as dark mode so
+    // `dark:` Tailwind utilities respond to .theme-ocean-dark, .theme-forest-dark, etc.
+    '[class*="theme-"][class*="-dark"]',
+    '.theme-qingye',
+    '.theme-black',
+    '.theme-the-finals',
+  ],
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
