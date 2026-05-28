@@ -115,7 +115,6 @@ describe('agent-messages-utils', () => {
 
   describe('extractToolActivities', () => {
     it('returns empty array for undefined input', () => {
-      // @ts-expect-error — runtime guard test
       expect(extractToolActivities(undefined)).toEqual([])
     })
     it('returns empty array for empty events array', () => {
