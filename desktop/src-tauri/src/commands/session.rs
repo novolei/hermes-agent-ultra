@@ -1,6 +1,7 @@
 //! `session` domain commands. Thin wrappers over `services::session_service`.
 
 use crate::state::AppState;
+use hermes_core::MessageRole;
 use serde::Serialize;
 use tauri::State;
 
@@ -30,7 +31,12 @@ pub fn session_load(
         .map(|msgs| {
             msgs.into_iter()
                 .map(|m| SessionMessage {
-                    role: format!("{:?}", m.role).to_lowercase(),
+                    role: match m.role {
+                        MessageRole::System => "system".to_string(),
+                        MessageRole::User => "user".to_string(),
+                        MessageRole::Assistant => "assistant".to_string(),
+                        MessageRole::Tool => "tool".to_string(),
+                    },
                     content: m.content,
                 })
                 .collect()
