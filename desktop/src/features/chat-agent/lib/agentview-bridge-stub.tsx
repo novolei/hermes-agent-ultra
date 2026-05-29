@@ -45,46 +45,6 @@ function makeStubFn(symbol: string, plan: string) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Plan 2b.2.c.4.b — banners + status bar + permission modes + appearance
-// ────────────────────────────────────────────────────────────────────────────
-
-/** Heartbeat / stall detection banner shown while agent is streaming */
-export const AgentHeartbeatBanner = makeStubComponent('AgentHeartbeatBanner', '4.b')
-
-/** Banner surfaced when agent issues an ask_user tool call */
-export const AskUserBanner = makeStubComponent('AskUserBanner', '4.b')
-
-/** Banner shown when agent enters plan mode and awaits user confirmation to exit */
-export const ExitPlanModeBanner = makeStubComponent('ExitPlanModeBanner', '4.b')
-
-/** Banner that suggests switching to plan mode when heuristics detect a long task */
-export const PlanModeSuggestBanner = makeStubComponent('PlanModeSuggestBanner', '4.b')
-
-/** Banner shown when an automation run is active */
-export const AutomationRunBanner = makeStubComponent('AutomationRunBanner', '4.b')
-
-/** Dashed border overlay rendered around the view when plan mode is active */
-export const PlanModeDashedBorder = makeStubComponent('PlanModeDashedBorder', '4.b')
-
-/** Banner displayed when agent needs a permission approval */
-export const PermissionBanner = makeStubComponent('PermissionBanner', '4.b')
-
-/** Banner shown when messages are queued waiting for the current turn to finish */
-export const QueuedMessagesBanner = makeStubComponent('QueuedMessagesBanner', '4.b')
-
-/** Dropdown/selector for switching the agent's permission mode (ask / auto / yolo) */
-export const PermissionModeSelector = makeStubComponent('PermissionModeSelector', '4.b')
-
-/** Selector for strategy presets (balanced / thorough / fast) */
-export const StrategyPresetSelector = makeStubComponent('StrategyPresetSelector', '4.b')
-
-/** Status bar at the bottom of the agent view showing token/cost metrics */
-export const AgentStatusBar = makeStubComponent('AgentStatusBar', '4.b')
-
-/** Popover for adjusting chat appearance settings (font size, theme, etc.) */
-export const ChatAppearancePopover = makeStubComponent('ChatAppearancePopover', '4.b')
-
-// ────────────────────────────────────────────────────────────────────────────
 // Plan 2b.2.c.4.c — speech-to-text (STT)
 // ────────────────────────────────────────────────────────────────────────────
 

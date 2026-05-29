@@ -19,26 +19,13 @@ describe('agentview-bridge-stub', () => {
       const v = (stubs as Record<string, unknown>)[k]
       return typeof v === 'function' && k[0] === k[0].toUpperCase()
     })
-    // 18 stubs across 4.b (12) + 4.c (3) + 4.d (4) + 4.e (2) = 21 but
-    // modelStatusAtom is NOT a component — threshold is conservative
-    expect(componentKeys.length).toBeGreaterThanOrEqual(18)
+    // 4.b (12) stubs removed — now real components.
+    // Remaining: 4.c (3) + 4.d (4) + 4.e (2) = 9 component stubs
+    // (modelStatusAtom is NOT a component — threshold is conservative)
+    expect(componentKeys.length).toBeGreaterThanOrEqual(9)
   })
 
   it.each([
-    // 4.b banners
-    'AgentHeartbeatBanner',
-    'AskUserBanner',
-    'ExitPlanModeBanner',
-    'PlanModeSuggestBanner',
-    'AutomationRunBanner',
-    'PlanModeDashedBorder',
-    'PermissionBanner',
-    'QueuedMessagesBanner',
-    // 4.b selectors + bar + appearance
-    'PermissionModeSelector',
-    'StrategyPresetSelector',
-    'AgentStatusBar',
-    'ChatAppearancePopover',
     // 4.c STT
     'SttModal',
     'FirstRunDialog',
