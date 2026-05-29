@@ -363,3 +363,48 @@ export function onQueuedConsumed(
 ): CleanupFn {
   return () => { /* no-op stub */ }
 }
+
+// ─── Plan 2b.2.c.4.b: banner IPC stubs ────────────────────────────────────
+// All throw NOT_IMPLEMENTED until the Rust agent-session backend ships the
+// corresponding Tauri commands. Real implementations arrive in Plan 4.x
+// (backend) once permission/safety/ask-user flow is wired.
+
+/** Respond to an exit-plan-mode request from the agent. Plan 4.x stub. */
+export async function respondExitPlanMode(_input: {
+  requestId: string
+  decision: 'accept_and_auto' | 'accept_keep_plan' | 'reject'
+  feedback?: string
+  allowedPrompts?: string[]
+  sessionId: string
+}): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: respondExitPlanMode')
+}
+
+/** Respond to an ask-user request with answers. Plan 4.x stub. */
+export async function respondAskUser(_input: { requestId: string; answers: Record<string, string> }): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: respondAskUser')
+}
+
+/** Respond to a permission request. Plan 4.x stub. */
+export async function respondPermission(_input: any): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: respondPermission')
+}
+
+/** Respond to a plan-mode-suggest event. Plan 4.x stub. */
+export async function respondPlanModeSuggest(
+  _eventId: string,
+  _outcome: 'accepted' | 'skipped' | 'silenced' | 'aborted',
+  _declineReason?: string,
+): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: respondPlanModeSuggest')
+}
+
+/** Get the current global safety policy. Plan 4.x stub. */
+export async function getSafetyPolicy(): Promise<SafetyModeWire> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: getSafetyPolicy')
+}
+
+/** Set the global safety mode. Plan 4.x stub. */
+export async function setSafetyMode(_input: any): Promise<SafetyModeWire> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: setSafetyMode')
+}
