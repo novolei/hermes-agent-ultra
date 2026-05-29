@@ -1298,3 +1298,82 @@ export async function patchMemoryRecallConfig(
 ): Promise<MemoryRecallConfigDto> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: patchMemoryRecallConfig')
 }
+
+// === Plan 3.5.s.b Wave D additions ===
+// ─── Wave D — LearnedProfileTab IPC stubs ─────────────────────────────────────
+// LearnedProfileTab calls memoryLearningListFacets + memoryLearningDismissFacet +
+//   memoryLearningRebuildNow + memoryLearningPromoteFacet + memoryLearningDemoteFacet.
+// All throw NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND until the Rust backend ships.
+// Source: uclaw `@/lib/tauri-bridge` lines 1081–1110.
+
+import type {
+  LearningListFacetsInput,
+  LearningRebuildNowInput,
+  LearningDismissFacetInput,
+  LearningDismissOutcome,
+  LearningPromoteFacetInput,
+  LearningDemoteFacetInput,
+  LearningSetStateOutcome,
+  FacetDto,
+} from './learned-profile-types'
+
+export type {
+  LearningListFacetsInput,
+  LearningRebuildNowInput,
+  LearningDismissFacetInput,
+  LearningDismissOutcome,
+  LearningPromoteFacetInput,
+  LearningDemoteFacetInput,
+  LearningSetStateOutcome,
+  FacetDto,
+}
+
+/**
+ * List facets from the learning pipeline. Both class and state filters are optional.
+ * Plan 3.5.s.b Wave D stub.
+ */
+export async function memoryLearningListFacets(
+  _input: LearningListFacetsInput,
+): Promise<FacetDto[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: memoryLearningListFacets')
+}
+
+/**
+ * Dismiss a facet (flip state to "forgotten"). Does not delete.
+ * Plan 3.5.s.b Wave D stub.
+ */
+export async function memoryLearningDismissFacet(
+  _input: LearningDismissFacetInput,
+): Promise<LearningDismissOutcome> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: memoryLearningDismissFacet')
+}
+
+/**
+ * Manually trigger a stability rebuild of the facet cache.
+ * Plan 3.5.s.b Wave D stub.
+ */
+export async function memoryLearningRebuildNow(
+  _input: LearningRebuildNowInput,
+): Promise<Record<string, unknown>> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: memoryLearningRebuildNow')
+}
+
+/**
+ * Promote a facet to "active" state (soft override).
+ * Plan 3.5.s.b Wave D stub.
+ */
+export async function memoryLearningPromoteFacet(
+  _input: LearningPromoteFacetInput,
+): Promise<LearningSetStateOutcome> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: memoryLearningPromoteFacet')
+}
+
+/**
+ * Demote a facet from "active" to "provisional" state.
+ * Plan 3.5.s.b Wave D stub.
+ */
+export async function memoryLearningDemoteFacet(
+  _input: LearningDemoteFacetInput,
+): Promise<LearningSetStateOutcome> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: memoryLearningDemoteFacet')
+}
