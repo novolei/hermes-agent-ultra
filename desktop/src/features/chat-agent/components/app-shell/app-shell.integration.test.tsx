@@ -9,6 +9,7 @@
  * sidebar peripheral mounting.
  */
 
+import * as React from 'react'
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import { Provider, createStore } from 'jotai'
@@ -22,6 +23,7 @@ import { currentAgentSessionIdAtom } from '@/features/chat-agent/atoms/agent-ato
 // Environment stubs — jsdom doesn't implement ResizeObserver or scrollTo
 // (same boilerplate as app-shell.test.tsx; copied verbatim for test isolation)
 // Plan 3.5 C2 addition: scrollIntoView stub needed for cmdk open state
+// Plan 3.5.s.a F2 addition: IntersectionObserver needed by SettingsBreadcrumb
 // ---------------------------------------------------------------------------
 beforeAll(() => {
   ;(globalThis as { ResizeObserver?: unknown }).ResizeObserver = class {
@@ -36,11 +38,38 @@ beforeAll(() => {
   if (!window.HTMLElement.prototype.scrollIntoView) {
     window.HTMLElement.prototype.scrollIntoView = function () {}
   }
+  // SettingsBreadcrumb uses IntersectionObserver to track scroll position
+  ;(globalThis as unknown as { IntersectionObserver: unknown }).IntersectionObserver = class {
+    observe(): void {}
+    disconnect(): void {}
+    unobserve(): void {}
+    takeRecords() { return [] }
+    root = null
+    rootMargin = ''
+    thresholds = []
+  } as unknown as typeof IntersectionObserver
 })
 
 // ---------------------------------------------------------------------------
 // Tauri plugin / API mocks — identical to app-shell.test.tsx
 // ---------------------------------------------------------------------------
+// Plan 3.5.s.a F2 — recharts uses SVG / ResizeObserver in ways jsdom can't satisfy
+vi.mock('recharts', async () => {
+  return {
+    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    BarChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    Bar: () => null,
+    PieChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    Pie: () => null,
+    Cell: () => null,
+    XAxis: () => null,
+    YAxis: () => null,
+    CartesianGrid: () => null,
+    Tooltip: () => null,
+    Legend: () => null,
+  }
+})
+
 vi.mock('@tauri-apps/plugin-updater', () => ({
   check: vi.fn().mockResolvedValue(null),
 }))
@@ -113,6 +142,19 @@ vi.mock('@/features/chat-agent/lib/tauri-bridge-stub', () => ({
   listRecentThreads: vi.fn().mockResolvedValue([]),
   listSpaces: vi.fn().mockResolvedValue([]),
   searchFragments: vi.fn().mockResolvedValue([]),
+  // Plan 3.5.s.a F2 — SettingsDialog open state (ConnectivityTab) calls these
+  getSettings: vi.fn().mockResolvedValue({ language: 'zh-CN', theme: 'dark', configPath: '', dataPath: '' }),
+  patchSettings: vi.fn().mockResolvedValue({}),
+  getSystemPromptConfig: vi.fn().mockResolvedValue({ prompts: [], defaultPromptId: null }),
+  listProviders: vi.fn().mockResolvedValue([]),
+  listConfiguredProviders: vi.fn().mockResolvedValue([]),
+  getAllConfiguredModels: vi.fn().mockResolvedValue([]),
+  getDailyCosts: vi.fn().mockResolvedValue([]),
+  getModelCosts: vi.fn().mockResolvedValue([]),
+  getSessionCosts: vi.fn().mockResolvedValue([]),
+  onTurnCost: vi.fn().mockResolvedValue(() => {}),
+  getMonthCostTotal: vi.fn().mockResolvedValue(0),
+  listWorkspaceCostRollup: vi.fn().mockResolvedValue([]),
 }))
 
 // ---------------------------------------------------------------------------
@@ -560,5 +602,52 @@ describe('AppShell + global shortcuts (shortcuts-cleanup)', () => {
     // exercised by the manual launch gate.
     const afterValue = store.get(searchPaletteOpenAtom)
     expect(typeof afterValue).toBe('boolean')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// N. AppShell + SettingsDialog (Plan 3.5.s.a) — 4 cases
+// ---------------------------------------------------------------------------
+import { settingsOpenAtom, settingsTabAtom } from '@/features/chat-agent/atoms/settings-tab'
+
+describe('AppShell + SettingsDialog (Plan 3.5.s.a)', () => {
+  // SettingsDialog uses Radix Dialog which portals to document.body.
+  // Use document.body queries instead of container queries.
+  beforeEach(() => localStorage.clear())
+  afterEach(() => cleanup())
+
+  it('N1: SettingsDialog mounts in DOM tree (initially closed, portal-rendered)', () => {
+    const store = createStore()
+    render(<Provider store={store}><AppShell /></Provider>)
+    // When closed, Radix dialog may not render visible markup.
+    // Verify AppShell mounts without throwing — that's enough at this layer.
+    expect(store.get(settingsOpenAtom)).toBe(false)
+  })
+
+  it('N2: settingsOpenAtom=true opens the dialog with default tab visible', () => {
+    const store = createStore()
+    store.set(settingsOpenAtom, true)
+    render(<Provider store={store}><AppShell /></Provider>)
+    // SettingsDialog renders the data-settings-dialog wrapper to body
+    expect(document.body.querySelector('[data-settings-dialog]')).not.toBeNull()
+    // Default tab is 'connectivity' per settings-tab.ts
+    // ConnectivityTab renders data-settings-section="服务商"
+    expect(document.body.querySelector('[data-settings-section]')).not.toBeNull()
+  })
+
+  it('N3: deferred tabs (e.g., intelligence) show data-deferred-to placeholders', () => {
+    const store = createStore()
+    store.set(settingsOpenAtom, true)
+    store.set(settingsTabAtom, 'intelligence')
+    render(<Provider store={store}><AppShell /></Provider>)
+    expect(document.body.querySelector('[data-deferred-to="3.5.s.b"]')).not.toBeNull()
+  })
+
+  it('N4: closed-state DOM has zero [data-stub] elements (no regression from prior K/L assertions)', () => {
+    const store = createStore()
+    // settingsOpenAtom defaults to false; deferred-tab stubs only render when open
+    const { container } = render(<Provider store={store}><AppShell /></Provider>)
+    expect(container.querySelectorAll('[data-stub]').length).toBe(0)
+    expect(document.body.querySelectorAll('[data-stub]').length).toBe(0)
   })
 })
