@@ -229,7 +229,7 @@ export function PermissionsSettings(): React.ReactElement {
               <option value="block">阻止</option>
               <option value="ask">询问</option>
             </select>
-            <Button size="sm" onClick={onAddRule} className="col-span-1" disabled={!draft.toolName.trim()}>
+            <Button size="sm" onClick={() => void onAddRule()} className="col-span-1" disabled={!draft.toolName.trim()}>
               <Plus className="size-3.5" />
             </Button>
           </div>

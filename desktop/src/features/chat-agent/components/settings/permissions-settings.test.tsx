@@ -4,7 +4,6 @@
  * Uses hermes render pattern: direct @testing-library/react + jotai Provider.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import * as React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Provider } from 'jotai'

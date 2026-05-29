@@ -293,7 +293,7 @@ export function UsageSettings(): React.ReactElement {
                        tickFormatter={(v: number) => formatUsd(v)} />
                 <Tooltip
                   contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', fontSize: 12 }}
-                  formatter={(v: number) => formatUsd(v)}
+                  formatter={((v: unknown) => formatUsd(Number(v))) as never}
                 />
                 <Bar dataKey="costUsd" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
               </BarChart>
@@ -328,7 +328,7 @@ export function UsageSettings(): React.ReactElement {
                   </Pie>
                   <Tooltip
                     contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', fontSize: 12 }}
-                    formatter={(v: number) => formatUsd(v)}
+                    formatter={((v: unknown) => formatUsd(Number(v))) as never}
                   />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                 </PieChart>

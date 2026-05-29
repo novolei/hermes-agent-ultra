@@ -1,4 +1,3 @@
-import * as React from 'react'
 import { Switch } from '@/shared/ui/switch'
 import { cn } from '@/shared/lib/cn'
 import { LABEL_CLASS, DESCRIPTION_CLASS, ROW_CLASS } from './SettingsUIConstants'

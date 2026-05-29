@@ -8,7 +8,6 @@
  * so the component tree renders.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import * as React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import { Provider } from 'jotai'
 import { UsageSettings } from './usage-settings'

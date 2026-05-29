@@ -36,16 +36,23 @@ export function ChannelSettings() {
   const [modelCounts, setModelCounts] = useState<Map<string, number>>(new Map())
 
   const refreshData = useCallback(async () => {
-    const [allProviders, ids, allModels] = await Promise.all([
-      listProviders(),
-      listConfiguredProviders(),
-      getAllConfiguredModels(),
-    ])
-    setProviders(allProviders)
-    setConfiguredIds(new Set(ids))
-    const counts = new Map<string, number>()
-    allModels.forEach(([pid, mids]) => counts.set(pid, mids.length))
-    setModelCounts(counts)
+    try {
+      const [allProviders, ids, allModels] = await Promise.all([
+        listProviders(),
+        listConfiguredProviders(),
+        getAllConfiguredModels(),
+      ])
+      setProviders(allProviders)
+      setConfiguredIds(new Set(ids))
+      const counts = new Map<string, number>()
+      allModels.forEach(([pid, mids]) => counts.set(pid, mids.length))
+      setModelCounts(counts)
+    } catch (err) {
+      // Backend IPC throws NOT_IMPLEMENTED until Rust ships listProviders/etc.
+      // Don't silently leave the list blank — surface to the user.
+      console.error('[ChannelSettings] refreshData failed:', err)
+      toast.error('无法加载模型服务商：' + (err instanceof Error ? err.message : String(err)))
+    }
   }, [])
 
   useEffect(() => {
@@ -167,10 +174,21 @@ export function ProviderDetail({ provider, isConfigured, onSaved }: ProviderDeta
     setSelectedModelIds(new Set())
 
     void (async () => {
-      const [cfg, savedModelIds] = await Promise.all([
-        getProviderConfig(provider.id),
-        getConfiguredModels(provider.id),
-      ])
+      let cfg: Awaited<ReturnType<typeof getProviderConfig>>
+      let savedModelIds: Awaited<ReturnType<typeof getConfiguredModels>>
+      try {
+        ;[cfg, savedModelIds] = await Promise.all([
+          getProviderConfig(provider.id),
+          getConfiguredModels(provider.id),
+        ])
+      } catch (err) {
+        // Backend IPC throws NOT_IMPLEMENTED until Rust ships provider config.
+        // Don't silently leave the form at defaults — surface to the user so
+        // they don't overwrite a real saved configuration with empty values.
+        console.error('[ProviderDetail] init fetch failed:', err)
+        toast.error('无法加载服务商配置：' + (err instanceof Error ? err.message : String(err)))
+        return
+      }
       if (cfg) {
         setBaseUrl(cfg.baseUrl ?? provider.defaultBaseUrl)
         if (cfg.api) setApiType(cfg.api)
