@@ -149,7 +149,9 @@ vi.mock('@/features/chat-agent/lib/tauri-bridge-stub', () => ({
   listProviders: vi.fn().mockResolvedValue([]),
   listConfiguredProviders: vi.fn().mockResolvedValue([]),
   getAllConfiguredModels: vi.fn().mockResolvedValue([]),
-  getRoleModels: vi.fn().mockResolvedValue({ chat: null, title: null, tools: null, embedding: null, vision: null, stt: null, tts: null }),
+  // ModelSettings calls `roles.find(...)` on the resolved value — actual IPC
+  // signature is `Promise<ModelRoleConfig[]>` (see tauri-bridge-stub.ts:1073).
+  getRoleModels: vi.fn().mockResolvedValue([]),
   setRoleModel: vi.fn().mockResolvedValue(undefined),
   // Plan 3.5.s.b Wave F — intelligence-tab + children IPC
   proactiveStatus: vi.fn().mockResolvedValue({ status: { status: 'Stopped' } }),
@@ -701,6 +703,8 @@ describe('AppShell + SettingsDialog 3.5.s.b tabs (real ports)', () => {
     store.set(settingsOpenAtom, true)
     store.set(settingsTabAtom, 'memoryRecall')
     render(<Provider store={store}><AppShell /></Provider>)
+    // Positive: MemoryRecallTab wraps content in a section with this attr.
+    expect(document.body.querySelector('[data-settings-section="记忆召回配置"]')).not.toBeNull()
     expect(document.body.querySelector('[data-deferred-to="3.5.s.b"]')).toBeNull()
   })
 
@@ -709,6 +713,8 @@ describe('AppShell + SettingsDialog 3.5.s.b tabs (real ports)', () => {
     store.set(settingsOpenAtom, true)
     store.set(settingsTabAtom, 'learnedProfile')
     render(<Provider store={store}><AppShell /></Provider>)
+    // Positive: LearnedProfileTab wraps content in a section with this attr.
+    expect(document.body.querySelector('[data-settings-section="学到的偏好"]')).not.toBeNull()
     expect(document.body.querySelector('[data-deferred-to="3.5.s.b"]')).toBeNull()
   })
 

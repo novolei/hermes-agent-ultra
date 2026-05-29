@@ -23,7 +23,6 @@ import {
 import { SettingsNav } from './settings-nav'
 import { SettingsBreadcrumb } from './settings-breadcrumb'
 
-
 function SettingsContent({ tab }: { tab: SettingsTab }) {
   switch (tab) {
     case 'connectivity':
