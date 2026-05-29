@@ -1053,7 +1053,8 @@ export async function openFolderDialog(): Promise<{ path: string; name: string }
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: openFolderDialog')
 }
 
-// ─── Plan 3.5.s.b Wave B — IntelligenceTab cluster stubs ─────────────────────
+// === Plan 3.5.s.b additions ===
+// ─── Wave B — IntelligenceTab cluster stubs ──────────────────────────────────
 // ModelSettings calls getRoleModels + setRoleModel (setRoleModel already stubbed above).
 // IntelligenceTab calls proactiveStatus + proactiveStart + proactiveStop.
 // PromptsSettings calls readWorkspaceUclawMd + writeWorkspaceUclawMd +
@@ -1141,7 +1142,7 @@ export async function openWorkspaceUclawMdExternally(): Promise<void> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: openWorkspaceUclawMdExternally')
 }
 
-// ─── Plan 3.5.s.b Wave B — Persona IPC stubs ─────────────────────────────────
+// ─── Wave B — Persona IPC stubs ───────────────────────────────────────────────
 // PersonaStudio calls getPersonaConfig + updatePersonaVoiceProfile.
 // PersonaBondTimeline calls getPersonaRelationshipTimeline + createPersonaJournalEntry +
 //   deletePersonaJournalEntry + promotePersonaJournalEntry + updatePersonaKeepsakeStatus +
@@ -1255,7 +1256,6 @@ export async function updatePersonaBadgeVisibility(
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: updatePersonaBadgeVisibility')
 }
 
-// === Plan 3.5.s.b additions ===
 // ─── Wave C — MemoryRecallSettings IPC stubs ──────────────────────────────────
 // MemoryRecallSettings calls getMemoryRecallConfig + patchMemoryRecallConfig.
 // All throw NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND until the Rust backend ships.

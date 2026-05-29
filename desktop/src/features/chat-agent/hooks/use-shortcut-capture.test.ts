@@ -55,8 +55,9 @@ describe('eventToShortcut — pure translator', () => {
 })
 
 describe('useShortcutCapture — hook', () => {
-  let onCapture: ReturnType<typeof vi.fn>
-  beforeEach(() => { onCapture = vi.fn() })
+  // Typed mock so the (combo: string | null) => void parameter matches without casts.
+  let onCapture: ReturnType<typeof vi.fn<(combo: string | null) => void>>
+  beforeEach(() => { onCapture = vi.fn<(combo: string | null) => void>() })
 
   it('delivers the captured combo when active', () => {
     renderHook(() => useShortcutCapture({ active: true, onCapture }))
