@@ -400,11 +400,24 @@ export async function respondPlanModeSuggest(
 }
 
 /** Get the current global safety policy. Plan 4.x stub. */
-export async function getSafetyPolicy(): Promise<SafetyModeWire> {
+export async function getSafetyPolicy(): Promise<SafetyPolicyResponse> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: getSafetyPolicy')
 }
 
 /** Set the global safety mode. Plan 4.x stub. */
-export async function setSafetyMode(_input: any): Promise<SafetyModeWire> {
+export async function setSafetyMode(_input: SetSafetyModeInput): Promise<SafetyPolicyResponse> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: setSafetyMode')
+}
+
+/** Safety policy response from the backend. */
+export interface SafetyPolicyResponse {
+  globalMode: SafetyModeWire
+  toolOverrides: Record<string, SafetyModeWire>
+  autoApprovedTools: string[]
+  blockedTools: string[]
+}
+
+/** Input to set the global safety mode. */
+export interface SetSafetyModeInput {
+  mode: SafetyModeWire
 }
