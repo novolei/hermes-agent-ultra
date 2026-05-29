@@ -20,6 +20,19 @@ if (typeof globalThis.localStorage === 'undefined') {
   })
 }
 
+// Provide ResizeObserver polyfill for test environments where jsdom does not expose it
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  Object.defineProperty(globalThis, 'ResizeObserver', {
+    value: ResizeObserver,
+    writable: true,
+  })
+}
+
 afterEach(() => {
   cleanup()
   // Clear localStorage between tests to prevent state leakage.
