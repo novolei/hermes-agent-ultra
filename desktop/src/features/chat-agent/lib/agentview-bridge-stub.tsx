@@ -36,13 +36,6 @@ function makeStubComponent(symbol: string, plan: string) {
   return StubComponent
 }
 
-/** Returns a function that throws NOT_IMPLEMENTED on first call */
-function makeStubFn(symbol: string, plan: string) {
-  return (..._args: unknown[]): never => {
-    throw new Error(`NOT_IMPLEMENTED_IN_PLAN_2_B_2_C_4_A:${symbol} (deferred to ${plan})`)
-  }
-}
-
 // ────────────────────────────────────────────────────────────────────────────
 // Plan 2b.2.c.4.d — pet widget + browser preview + model selector
 // ────────────────────────────────────────────────────────────────────────────
