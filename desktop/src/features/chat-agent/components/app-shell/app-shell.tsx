@@ -26,14 +26,18 @@ import { TooltipProvider } from '@/shared/ui/tooltip'
 import { cn } from '@/shared/lib/cn'
 import { bottomDockEnabledAtom } from '@/features/chat-agent/atoms/dock-atoms'
 import { refreshWorkspacesAtom } from '@/features/chat-agent/atoms/workspace'
-
-// SESSION_ID will be replaced with currentAgentSessionIdAtom in Task E2
-// (driven by workspace atom changes once session selection is dispatched).
-const SESSION_ID = 'default'
+import { currentAgentSessionIdAtom } from '@/features/chat-agent/atoms/agent-atoms'
 
 export function AppShell(): React.ReactElement {
   const bottomDockEnabled = useAtomValue(bottomDockEnabledAtom)
   const refreshWorkspaces = useSetAtom(refreshWorkspacesAtom)
+
+  // Closes Plan 3.3 carry-forward #4: derive sessionId from the active
+  // workspace's currentAgentSessionIdAtom rather than the hardcoded
+  // 'default' placeholder. Falls back to 'default' when no session is
+  // active (first launch / pre-onboarding state).
+  const currentSessionId = useAtomValue(currentAgentSessionIdAtom)
+  const sessionId = currentSessionId ?? 'default'
 
   React.useEffect(() => {
     void refreshWorkspaces()
@@ -47,8 +51,8 @@ export function AppShell(): React.ReactElement {
       >
         <LeftSidebar />
         <main data-testid="app-shell-main" className="flex flex-1 flex-col overflow-hidden">
-          <AgentSessionProvider sessionId={SESSION_ID}>
-            <AgentView sessionId={SESSION_ID} />
+          <AgentSessionProvider sessionId={sessionId}>
+            <AgentView sessionId={sessionId} />
           </AgentSessionProvider>
         </main>
         {bottomDockEnabled ? (

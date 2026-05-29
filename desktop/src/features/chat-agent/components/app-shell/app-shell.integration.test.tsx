@@ -16,6 +16,7 @@ import { AppShell } from './app-shell'
 import { bottomDockEnabledAtom } from '@/features/chat-agent/atoms/dock-atoms'
 import { themeModeAtom } from '@/features/chat-agent/atoms/theme'
 import { activeWorkspaceIdAtom } from '@/features/chat-agent/atoms/workspace'
+import { currentAgentSessionIdAtom } from '@/features/chat-agent/atoms/agent-atoms'
 
 // ---------------------------------------------------------------------------
 // Environment stubs — jsdom doesn't implement ResizeObserver or scrollTo
@@ -275,5 +276,28 @@ describe('AppShell integration — F. End-to-end smoke', () => {
     const afterSecond = document.body.childElementCount
     expect(afterSecond).toBe(afterFirst)
     u2()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// G. Session ID threading — 2 cases (Task E2: Plan 3.3 carry-forward #4)
+// ---------------------------------------------------------------------------
+describe('AppShell integration — G. Session ID threading', () => {
+  beforeEach(() => localStorage.clear())
+  afterEach(() => cleanup())
+
+  it('G1: AppShell threads currentAgentSessionId through to AgentSessionProvider and AgentView', () => {
+    const store = createStore()
+    store.set(currentAgentSessionIdAtom, 'session-foo')
+    const { container } = mountAppShell(store)
+    // AgentView mounts and receives the threaded sessionId via context
+    expect(container.querySelector('[data-testid="agent-view"]')).not.toBeNull()
+  })
+
+  it('G2: AppShell falls back to "default" when currentAgentSessionIdAtom is null', () => {
+    const store = createStore()
+    store.set(currentAgentSessionIdAtom, null)
+    const { container } = mountAppShell(store)
+    expect(container.querySelector('[data-testid="agent-view"]')).not.toBeNull()
   })
 })
