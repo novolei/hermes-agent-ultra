@@ -22,6 +22,12 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import type { AskUserRequest, ExitPlanModeRequest, AgentSessionMeta, WorkspaceCapabilities, AgentSendInput, AgentMessage } from './agent-types'
 import type { ConversationMeta, UserProfile } from './chat-types'
 
+/**
+ * SafetyMode wire type — mirrors the Rust enum's serde shape.
+ * Used by PermissionModeSelector + PermissionBanner to display/set the global safety policy.
+ */
+export type SafetyModeWire = 'ask' | 'acceptedits' | 'plan' | 'supervised' | 'yolo'
+
 /** Toggle the pinned state of an agent session. Returns the new pinnedAt timestamp or null. */
 export async function togglePinAgentSession(_sessionId: string): Promise<void> {
   throw new Error('togglePinAgentSession: not implemented in Plan 2b.2.a (state-machine port)')
