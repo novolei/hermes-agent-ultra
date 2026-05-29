@@ -301,3 +301,61 @@ describe('AppShell integration — G. Session ID threading', () => {
     expect(container.querySelector('[data-testid="agent-view"]')).not.toBeNull()
   })
 })
+
+// ---------------------------------------------------------------------------
+// H. AgentView cross-cutting (Plan 2b.2.c.4.a Task E3) — 5 cases
+// ---------------------------------------------------------------------------
+describe('AppShell + AgentView cross-cutting (Plan 2b.2.c.4.a Task E3)', () => {
+  beforeEach(() => localStorage.clear())
+  afterEach(() => cleanup())
+
+  it('H1: Plan 4.b/c/d stub components render aria-hidden placeholders, not visible UI noise', () => {
+    const { container } = mountAppShell()
+    const stubs = container.querySelectorAll('[data-stub]')
+    // Expect at least a handful of stubs visible from AgentView's mount
+    expect(stubs.length).toBeGreaterThan(0)
+    stubs.forEach((s) => {
+      expect((s as HTMLElement).getAttribute('aria-hidden')).toBe('true')
+    })
+  })
+
+  it('H2: end-to-end mount with no atom overrides produces zero console.error calls', () => {
+    const errs: unknown[][] = []
+    const orig = console.error
+    console.error = (...args: unknown[]) => {
+      errs.push(args)
+      orig(...args)
+    }
+    try {
+      mountAppShell()
+      expect(errs).toEqual([])
+    } finally {
+      console.error = orig
+    }
+  })
+
+  it('H3: layout: LeftSidebar + AgentView are present under app-shell root', () => {
+    const { container } = mountAppShell()
+    expect(container.querySelector('[data-testid="left-sidebar"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="agent-view"]')).not.toBeNull()
+    // app-shell-main wraps AgentView
+    const main = container.querySelector('[data-testid="app-shell-main"]')
+    expect(main?.querySelector('[data-testid="agent-view"]')).not.toBeNull()
+  })
+
+  it('H4: AgentView mount survives bottomDockEnabledAtom=false (no dock visible)', () => {
+    const store = createStore()
+    store.set(bottomDockEnabledAtom, false)
+    const { container } = mountAppShell(store)
+    // AgentView still mounts
+    expect(container.querySelector('[data-testid="agent-view"]')).not.toBeNull()
+    // BottomDockHoverRegion absent
+    expect(container.querySelector('[data-testid="bottom-dock-hover"]')).toBeNull()
+  })
+
+  it('H5: AgentView mounts with the agentStatusBarEnabledAtom default (no crash either way)', () => {
+    // Just smoke-mount; the stubbed AgentStatusBar renders the same regardless
+    const { container } = mountAppShell()
+    expect(container.querySelector('[data-testid="agent-view"]')).not.toBeNull()
+  })
+})
