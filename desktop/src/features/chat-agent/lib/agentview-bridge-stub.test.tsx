@@ -52,7 +52,7 @@ describe('agentview-bridge-stub', () => {
     'FeishuNotifyToggle',
     'GitChipsRow',
   ])('%s renders a hidden placeholder with data-stub', (name) => {
-    const Comp = (stubs as Record<string, React.ComponentType>)[name]
+    const Comp = (stubs as unknown as Record<string, React.ComponentType>)[name]
     expect(Comp, `${name} should be defined`).toBeDefined()
     const { container } = render(<Comp />)
     const el = container.querySelector(`[data-stub="${name}"]`)
