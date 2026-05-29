@@ -21,6 +21,7 @@ import { currentAgentSessionIdAtom } from '@/features/chat-agent/atoms/agent-ato
 // ---------------------------------------------------------------------------
 // Environment stubs — jsdom doesn't implement ResizeObserver or scrollTo
 // (same boilerplate as app-shell.test.tsx; copied verbatim for test isolation)
+// Plan 3.5 C2 addition: scrollIntoView stub needed for cmdk open state
 // ---------------------------------------------------------------------------
 beforeAll(() => {
   ;(globalThis as { ResizeObserver?: unknown }).ResizeObserver = class {
@@ -30,6 +31,10 @@ beforeAll(() => {
   }
   if (!window.HTMLElement.prototype.scrollTo) {
     window.HTMLElement.prototype.scrollTo = function () {}
+  }
+  // cmdk calls scrollIntoView on the highlighted item when palette opens
+  if (!window.HTMLElement.prototype.scrollIntoView) {
+    window.HTMLElement.prototype.scrollIntoView = function () {}
   }
 })
 
@@ -104,6 +109,10 @@ vi.mock('@/features/chat-agent/lib/tauri-bridge-stub', () => ({
   saveFilesToAgentSession: vi.fn().mockResolvedValue(null),
   getSafetyPolicy: vi.fn().mockResolvedValue({ globalMode: 'ask', toolOverrides: {} }),
   setSafetyMode: vi.fn().mockResolvedValue({ globalMode: 'ask', toolOverrides: {} }),
+  // Plan 3.5 C2 — SearchPalette open state calls these on mount
+  listRecentThreads: vi.fn().mockResolvedValue([]),
+  listSpaces: vi.fn().mockResolvedValue([]),
+  searchFragments: vi.fn().mockResolvedValue([]),
 }))
 
 // ---------------------------------------------------------------------------
@@ -442,5 +451,59 @@ describe('AppShell + AgentView final state (Plan 2b.2.c.4.d — stack complete)'
   it('zero [data-deferred-to] elements remain', () => {
     const { container } = mountAppShell()
     expect(container.querySelectorAll('[data-deferred-to]').length).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// L. AppShell + SearchPalette (Plan 3.5-slim C1) — 3 cases
+// ---------------------------------------------------------------------------
+import { searchPaletteOpenAtom } from '@/features/chat-agent/atoms/search-atoms'
+
+describe('AppShell + SearchPalette (Plan 3.5-slim)', () => {
+  beforeEach(() => localStorage.clear())
+  afterEach(() => cleanup())
+
+  it('L1: SearchPalette mounts in AppShell tree (closed initially — returns null, no crash)', () => {
+    // SearchPalette returns null when searchPaletteOpenAtom=false.
+    // The key assertion: AppShell renders without throwing, and the
+    // data-search-palette element is absent (closed state, no DOM output).
+    const { container } = mountAppShell()
+    expect(container).toBeDefined()
+    expect(container.querySelector('[data-testid="app-shell"]')).not.toBeNull()
+    // Closed — SearchPalette renders null, so no data-search-palette in DOM
+    expect(container.querySelector('[data-search-palette]')).toBeNull()
+  })
+
+  it('L2: searchPaletteOpenAtom=true mounts visible palette in DOM', () => {
+    const store = createStore()
+    store.set(searchPaletteOpenAtom, true)
+    const { container } = render(
+      <Provider store={store}>
+        <AppShell />
+      </Provider>,
+    )
+    // When open, SearchPalette renders the cmdk root with data-search-palette.
+    // cmdk may use a portal; check both container and document.body.
+    const palette =
+      container.querySelector('[data-search-palette]') ??
+      container.querySelector('[data-cmdk-root]') ??
+      document.body.querySelector('[data-search-palette]') ??
+      document.body.querySelector('[role="dialog"]')
+    expect(palette).not.toBeNull()
+  })
+
+  it('L3: zero new console.error calls when SearchPalette is mounted closed', () => {
+    const errs: unknown[][] = []
+    const orig = console.error
+    console.error = (...args: unknown[]) => {
+      errs.push(args)
+      orig(...args)
+    }
+    try {
+      mountAppShell()
+      expect(errs).toEqual([])
+    } finally {
+      console.error = orig
+    }
   })
 })
