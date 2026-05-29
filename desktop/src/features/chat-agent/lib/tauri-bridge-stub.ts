@@ -540,6 +540,45 @@ export async function browserCaptureScreenshot(_sessionId: string, _tabId: strin
 //
 // No typed wrappers exported here — components use raw invoke()/listen().
 
+// ─── Plan 3.5-slim — SearchPalette type stubs ────────────────────────────────
+// Wire types for SearchPalette command-menu stubs. Fragment searching and space
+// browsing are deferred to the Rust backend; type aliases ensure SearchPalette
+// can import and pass results through components without compilation errors.
+
+/** A workspace / space summary shown in SearchPalette browse mode. */
+export interface SpaceSummary {
+  id: string
+  name: string
+  icon: string
+  conversationCount?: number
+  lastUpdated?: string
+  createdAt: string
+  updatedAt: string
+}
+
+/** A fragment search result row returned by searchFragments(). */
+export interface FragmentSearchHit {
+  id: string
+  title: string | null
+  snippet: string
+  tags: string[]
+  subtype?: string
+  source: string
+  createdAt: number
+}
+
+/** A fragment metadata object for detailed views. */
+export interface FragmentItem {
+  id: string
+  title: string | null
+  content: string
+  source: string
+  tags: string[]
+  subtype?: string
+  createdAt: number
+  reviewStatus?: string
+}
+
 // ─── Plan 2b.2.c.4.d/4.e — ProviderModelSelector + BrowserPreviewOverlay + FeishuNotifyToggle IPC stubs ───
 // All throw NOT_IMPLEMENTED until the Rust model-provider + browser + feishu backends ship.
 
@@ -566,4 +605,23 @@ export async function openExternal(_url: string): Promise<void> {
 /** Set Feishu session notification mode. FeishuNotifyToggle consumes. Plan 4.d/4.e stub. */
 export async function setFeishuSessionNotify(_sessionId: string, _mode: FeishuNotifyMode): Promise<void> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: setFeishuSessionNotify')
+}
+
+// ─── Plan 3.5-slim — SearchPalette IPC stubs ──────────────────────────────────
+// All throw NOT_IMPLEMENTED until the Rust search backends ship. The
+// SearchPalette degrades to empty state when invoke() rejects.
+
+/** List recent conversations and agent sessions for the browse-mode palette. Plan 3.5-slim stub. */
+export async function listRecentThreads(): Promise<Array<import('./agent-types').RecentThread>> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_BACKEND: listRecentThreads')
+}
+
+/** List all workspaces / spaces for the browse-mode palette. Plan 3.5-slim stub. */
+export async function listSpaces(): Promise<SpaceSummary[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_BACKEND: listSpaces')
+}
+
+/** Search fragment database by query string. Plan 3.5-slim stub. */
+export async function searchFragments(_query: string): Promise<FragmentSearchHit[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_BACKEND: searchFragments')
 }
