@@ -20,7 +20,7 @@
 
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import type { AskUserRequest, ExitPlanModeRequest, AgentSessionMeta, WorkspaceCapabilities, AgentSendInput, AgentMessage } from './agent-types'
-import type { ConversationMeta, UserProfile } from './chat-types'
+import type { ConversationMeta, UserProfile, FeishuNotifyMode } from './chat-types'
 
 /**
  * SafetyMode wire type — mirrors the Rust enum's serde shape.
@@ -478,3 +478,31 @@ export async function browserCaptureScreenshot(_sessionId: string, _tabId: strin
 //     Fired during model download to report per-file progress and mirror fallback events.
 //
 // No typed wrappers exported here — components use raw invoke()/listen().
+
+// ─── Plan 2b.2.c.4.d/4.e — ProviderModelSelector + BrowserPreviewOverlay + FeishuNotifyToggle IPC stubs ───
+// All throw NOT_IMPLEMENTED until the Rust model-provider + browser + feishu backends ship.
+
+/** Get all configured provider/model pairs. ProviderModelSelector consumes. Plan 4.d/4.e stub. */
+export async function getAllConfiguredModels(): Promise<[string, string[]][]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: getAllConfiguredModels')
+}
+
+/** Set the active model for a given provider. ProviderModelSelector consumes. Plan 4.d/4.e stub. */
+export async function setActiveModel(_providerId: string, _modelId: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: setActiveModel')
+}
+
+/** Set the model for a given role. ProviderModelSelector consumes. Plan 4.d/4.e stub. */
+export async function setRoleModel(_role: string, _modelRef: string | null): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: setRoleModel')
+}
+
+/** Open a URL externally. BrowserPreviewOverlay consumes. Plan 4.d/4.e stub. */
+export async function openExternal(_url: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: openExternal')
+}
+
+/** Set Feishu session notification mode. FeishuNotifyToggle consumes. Plan 4.d/4.e stub. */
+export async function setFeishuSessionNotify(_sessionId: string, _mode: FeishuNotifyMode): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: setFeishuSessionNotify')
+}
