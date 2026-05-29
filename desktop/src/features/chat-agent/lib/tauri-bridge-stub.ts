@@ -9,10 +9,17 @@
  *   - `onAskUserRequest` / `onExitPlanRequest`: subscribe to real Tauri
  *     events; the events don't fire from our backend yet (Plan 2c+), so
  *     these listeners are no-ops in practice but the wire is intact.
+ *
+ * Plan 2b.2.c.4.a (D2) additions: AgentView IPC wrappers — updateSettings,
+ * getAgentSessionPath, getAgentSessionMessages, sendAgentMessage, stopAgent,
+ * openFileDialog, getPathForFile, checkPathsType, forkAgentSession,
+ * rewindSession, saveFilesToAgentSession, agentSteer, agentFollowUp,
+ * onStreamComplete, onQueuedConsumed, attachSessionDirectory,
+ * estimateSessionContext. All throw NOT_IMPLEMENTED. Real port: Plan 4.a D3+.
  */
 
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
-import type { AskUserRequest, ExitPlanModeRequest, AgentSessionMeta, WorkspaceCapabilities } from './agent-types'
+import type { AskUserRequest, ExitPlanModeRequest, AgentSessionMeta, WorkspaceCapabilities, AgentSendInput, AgentMessage } from './agent-types'
 import type { ConversationMeta, UserProfile } from './chat-types'
 
 /** Toggle the pinned state of an agent session. Returns the new pinnedAt timestamp or null. */
@@ -236,4 +243,117 @@ export async function moveAgentSessionToWorkspace(_params: {
   targetWorkspaceId: string
 }): Promise<any> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: moveAgentSessionToWorkspace')
+}
+
+// ─── Plan 2b.2.c.4.a D2: AgentView IPC wrappers ───────────────────────────
+// All stubs throw NOT_IMPLEMENTED. Real implementations arrive when the
+// Rust backend for agent sessions lands in Plan 4.a D3+.
+// Source: uclaw `@/lib/tauri-bridge` — see lines 1495–1886.
+
+/** Update global / per-session settings. Plan 4.a D3+ stub. */
+export async function updateSettings(_patch: Record<string, unknown>): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_A_D3: updateSettings')
+}
+
+/** Get the filesystem path for an agent session within a workspace. Plan 4.a D3+ stub. */
+export async function getAgentSessionPath(_workspaceId: string, _sessionId: string): Promise<string> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_A_D3: getAgentSessionPath')
+}
+
+/** Fetch persisted messages for an agent session. Plan 4.a D3+ stub. */
+export async function getAgentSessionMessages(_sessionId: string): Promise<AgentMessage[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_A_D3: getAgentSessionMessages')
+}
+
+/** Send a user message to the agent. Plan 4.a D3+ stub. */
+export async function sendAgentMessage(_input: AgentSendInput): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_A_D3: sendAgentMessage')
+}
+
+/** Interrupt / stop a running agent session. Plan 4.a D3+ stub. */
+export async function stopAgent(_sessionId: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_A_D3: stopAgent')
+}
+
+/** Steer a queued message (interrupt current turn and inject user message). Plan 4.a D3+ stub. */
+export async function agentSteer(_input: { sessionId: string; userMessage: string; uuid?: string }): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_A_D3: agentSteer')
+}
+
+/** Enqueue a follow-up message without interrupting the current turn. Plan 4.a D3+ stub. */
+export async function agentFollowUp(_input: { sessionId: string; userMessage: string; uuid?: string }): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_A_D3: agentFollowUp')
+}
+
+/** Fork an agent session up to a given message UUID. Plan 4.a D3+ stub. */
+export async function forkAgentSession(_input: { sessionId: string; upToMessageUuid: string }): Promise<AgentSessionMeta> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_A_D3: forkAgentSession')
+}
+
+/** Rewind an agent session to a given assistant message UUID. Plan 4.a D3+ stub. */
+export async function rewindSession(_input: { sessionId: string; assistantMessageUuid: string }): Promise<any> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_A_D3: rewindSession')
+}
+
+/** Save files to an agent session directory. Plan 4.a D3+ stub. */
+export async function saveFilesToAgentSession(_input: {
+  workspaceSlug: string
+  sessionId: string
+  files: Array<{ filename: string; data: string }>
+}): Promise<Array<{ filename: string; targetPath: string }>> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_A_D3: saveFilesToAgentSession')
+}
+
+/** Open a native file picker dialog. Plan 4.a D3+ stub. */
+export async function openFileDialog(): Promise<{
+  files: Array<{ filename: string; mediaType: string; size: number; data: string }>
+}> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_A_D3: openFileDialog')
+}
+
+/**
+ * Get the real filesystem path for a dropped File (via Tauri preload webUtils).
+ * Plan 4.a D3+ stub.
+ */
+export function getPathForFile(_file: File): string | null {
+  return null
+}
+
+/** Detect which paths are directories and which are regular files. Plan 4.a D3+ stub. */
+export async function checkPathsType(_paths: string[]): Promise<{ directories: string[]; files: string[] }> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_A_D3: checkPathsType')
+}
+
+/** Attach a directory to an agent session. Plan 4.a D3+ stub. */
+export async function attachSessionDirectory(_sessionId: string, _dirPath: string): Promise<string[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_A_D3: attachSessionDirectory')
+}
+
+/** Estimate the token context usage for a session from persisted messages. Plan 4.a D3+ stub. */
+export async function estimateSessionContext(_sessionId: string): Promise<{
+  inputTokens: number
+  contextWindow: number
+} | null> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_A_D3: estimateSessionContext')
+}
+
+/** Type alias for cleanup functions returned by event listeners. */
+type CleanupFn = () => void
+
+/**
+ * Subscribe to the chat:stream-complete event (fired when an agent turn finishes).
+ * Plan 4.a D3+ stub — returns a no-op cleanup.
+ */
+export function onStreamComplete(_cb: (payload: { conversationId: string }) => void): CleanupFn {
+  return () => { /* no-op stub */ }
+}
+
+/**
+ * Subscribe to the agent:queued-consumed event (backend confirmed a queued message
+ * was consumed by the agent loop). Plan 4.a D3+ stub — returns a no-op cleanup.
+ */
+export function onQueuedConsumed(
+  _cb: (payload: { sessionId: string; uuid: string }) => void
+): CleanupFn {
+  return () => { /* no-op stub */ }
 }

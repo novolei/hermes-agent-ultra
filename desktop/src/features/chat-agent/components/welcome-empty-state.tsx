@@ -63,7 +63,7 @@ export function WelcomeEmptyState({ onQuickAction, className }: WelcomeEmptyStat
   )
 
   return (
-    <div className={cn('flex-1 flex flex-col items-center justify-center gap-6 p-8 text-center', className)}>
+    <div data-testid="welcome-empty-state" className={cn('flex-1 flex flex-col items-center justify-center gap-6 p-8 text-center', className)}>
       {/* Logo / Branding */}
       <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center">
         <MessageSquare className="size-8 text-primary/60" />

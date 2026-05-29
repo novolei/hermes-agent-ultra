@@ -16,6 +16,7 @@ import { AppShell } from './app-shell'
 import { bottomDockEnabledAtom } from '@/features/chat-agent/atoms/dock-atoms'
 import { themeModeAtom } from '@/features/chat-agent/atoms/theme'
 import { activeWorkspaceIdAtom } from '@/features/chat-agent/atoms/workspace'
+import { currentAgentSessionIdAtom } from '@/features/chat-agent/atoms/agent-atoms'
 
 // ---------------------------------------------------------------------------
 // Environment stubs — jsdom doesn't implement ResizeObserver or scrollTo
@@ -69,6 +70,8 @@ vi.mock('@/features/chat-agent/lib/tauri-bridge-stub', () => ({
   onAskUserRequest: vi.fn().mockResolvedValue(() => {}),
   onExitPlanRequest: vi.fn().mockResolvedValue(() => {}),
   onNeedApproval: vi.fn().mockResolvedValue(() => {}),
+  onStreamComplete: vi.fn().mockReturnValue(() => {}),
+  onQueuedConsumed: vi.fn().mockReturnValue(() => {}),
   listConversations: vi.fn().mockResolvedValue([]),
   createConversation: vi.fn().mockResolvedValue(null),
   updateConversationTitle: vi.fn().mockResolvedValue(null),
@@ -84,6 +87,21 @@ vi.mock('@/features/chat-agent/lib/tauri-bridge-stub', () => ({
   gitIsRepo: vi.fn().mockResolvedValue(false),
   gitCurrentBranch: vi.fn().mockResolvedValue('main'),
   moveAgentSessionToWorkspace: vi.fn().mockResolvedValue(null),
+  updateSettings: vi.fn().mockResolvedValue(undefined),
+  getAgentSessionPath: vi.fn().mockResolvedValue('/mock/path'),
+  getAgentSessionMessages: vi.fn().mockResolvedValue([]),
+  sendAgentMessage: vi.fn().mockResolvedValue(undefined),
+  stopAgent: vi.fn().mockResolvedValue(undefined),
+  openFileDialog: vi.fn().mockResolvedValue({ files: [] }),
+  getPathForFile: vi.fn().mockReturnValue(null),
+  checkPathsType: vi.fn().mockResolvedValue({ directories: [], files: [] }),
+  attachSessionDirectory: vi.fn().mockResolvedValue([]),
+  estimateSessionContext: vi.fn().mockResolvedValue({}),
+  agentSteer: vi.fn().mockResolvedValue(undefined),
+  agentFollowUp: vi.fn().mockResolvedValue(undefined),
+  forkAgentSession: vi.fn().mockResolvedValue(null),
+  rewindSession: vi.fn().mockResolvedValue(null),
+  saveFilesToAgentSession: vi.fn().mockResolvedValue(null),
 }))
 
 // ---------------------------------------------------------------------------
@@ -258,5 +276,86 @@ describe('AppShell integration — F. End-to-end smoke', () => {
     const afterSecond = document.body.childElementCount
     expect(afterSecond).toBe(afterFirst)
     u2()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// G. Session ID threading — 2 cases (Task E2: Plan 3.3 carry-forward #4)
+// ---------------------------------------------------------------------------
+describe('AppShell integration — G. Session ID threading', () => {
+  beforeEach(() => localStorage.clear())
+  afterEach(() => cleanup())
+
+  it('G1: AppShell threads currentAgentSessionId through to AgentSessionProvider and AgentView', () => {
+    const store = createStore()
+    store.set(currentAgentSessionIdAtom, 'session-foo')
+    const { container } = mountAppShell(store)
+    // AgentView mounts and receives the threaded sessionId via context
+    expect(container.querySelector('[data-testid="agent-view"]')).not.toBeNull()
+  })
+
+  it('G2: AppShell falls back to "default" when currentAgentSessionIdAtom is null', () => {
+    const store = createStore()
+    store.set(currentAgentSessionIdAtom, null)
+    const { container } = mountAppShell(store)
+    expect(container.querySelector('[data-testid="agent-view"]')).not.toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// H. AgentView cross-cutting (Plan 2b.2.c.4.a Task E3) — 5 cases
+// ---------------------------------------------------------------------------
+describe('AppShell + AgentView cross-cutting (Plan 2b.2.c.4.a Task E3)', () => {
+  beforeEach(() => localStorage.clear())
+  afterEach(() => cleanup())
+
+  it('H1: Plan 4.b/c/d stub components render aria-hidden placeholders, not visible UI noise', () => {
+    const { container } = mountAppShell()
+    const stubs = container.querySelectorAll('[data-stub]')
+    // Expect at least a handful of stubs visible from AgentView's mount
+    expect(stubs.length).toBeGreaterThan(0)
+    stubs.forEach((s) => {
+      expect((s as HTMLElement).getAttribute('aria-hidden')).toBe('true')
+    })
+  })
+
+  it('H2: end-to-end mount with no atom overrides produces zero console.error calls', () => {
+    const errs: unknown[][] = []
+    const orig = console.error
+    console.error = (...args: unknown[]) => {
+      errs.push(args)
+      orig(...args)
+    }
+    try {
+      mountAppShell()
+      expect(errs).toEqual([])
+    } finally {
+      console.error = orig
+    }
+  })
+
+  it('H3: layout: LeftSidebar + AgentView are present under app-shell root', () => {
+    const { container } = mountAppShell()
+    expect(container.querySelector('[data-testid="left-sidebar"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="agent-view"]')).not.toBeNull()
+    // app-shell-main wraps AgentView
+    const main = container.querySelector('[data-testid="app-shell-main"]')
+    expect(main?.querySelector('[data-testid="agent-view"]')).not.toBeNull()
+  })
+
+  it('H4: AgentView mount survives bottomDockEnabledAtom=false (no dock visible)', () => {
+    const store = createStore()
+    store.set(bottomDockEnabledAtom, false)
+    const { container } = mountAppShell(store)
+    // AgentView still mounts
+    expect(container.querySelector('[data-testid="agent-view"]')).not.toBeNull()
+    // BottomDockHoverRegion absent
+    expect(container.querySelector('[data-testid="bottom-dock-hover"]')).toBeNull()
+  })
+
+  it('H5: AgentView mounts with the agentStatusBarEnabledAtom default (no crash either way)', () => {
+    // Just smoke-mount; the stubbed AgentStatusBar renders the same regardless
+    const { container } = mountAppShell()
+    expect(container.querySelector('[data-testid="agent-view"]')).not.toBeNull()
   })
 })

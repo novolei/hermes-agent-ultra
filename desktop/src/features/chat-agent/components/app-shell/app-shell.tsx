@@ -3,8 +3,12 @@
  *
  * Composes the ported navigation surface:
  *   - <LeftSidebar />        workspace rail + session list + git actions (Plan 3.3 E1)
- *   - <ChatAgentView />      main pane (Plan 2b.2.c.3)
+ *   - <AgentView />          main pane (Plan 2b.2.c.4.a)
  *   - <BottomDockHoverRegion /> dock pin row + connection indicator (Plan 3.3 B7)
+ *
+ * NOTE: The slim ChatAgentView (Plan 2b.2.c.3) stays in
+ * desktop/src/features/chat-agent/components/chat-agent-view.tsx as a
+ * rollback target until Plan 2b.2.c.4.d retires it.
  *
  * Deferred from uclaw's 441-LOC AppShell — out of scope for Plan 3.3:
  *   - RightSidePanel, MainArea tabs       → Plan 2b.2.c.4
@@ -15,20 +19,24 @@
 import * as React from 'react'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { LeftSidebar } from './left-sidebar'
-import { ChatAgentView } from '@/features/chat-agent/components/chat-agent-view'
+import { AgentView } from '@/features/chat-agent/components/agent/agent-view'
 import { BottomDockHoverRegion } from '@/features/chat-agent/components/dock/bottom-dock-hover-region'
 import { TooltipProvider } from '@/shared/ui/tooltip'
 import { cn } from '@/shared/lib/cn'
 import { bottomDockEnabledAtom } from '@/features/chat-agent/atoms/dock-atoms'
 import { refreshWorkspacesAtom } from '@/features/chat-agent/atoms/workspace'
-
-// Mirrors App.tsx SESSION_ID — Plan 2b.2.c.4 will replace with a derived atom
-// once workspace atoms drive active-session selection.
-const SESSION_ID = 'default'
+import { currentAgentSessionIdAtom } from '@/features/chat-agent/atoms/agent-atoms'
 
 export function AppShell(): React.ReactElement {
   const bottomDockEnabled = useAtomValue(bottomDockEnabledAtom)
   const refreshWorkspaces = useSetAtom(refreshWorkspacesAtom)
+
+  // Closes Plan 3.3 carry-forward #4: derive sessionId from the active
+  // workspace's currentAgentSessionIdAtom rather than the hardcoded
+  // 'default' placeholder. Falls back to 'default' when no session is
+  // active (first launch / pre-onboarding state).
+  const currentSessionId = useAtomValue(currentAgentSessionIdAtom)
+  const sessionId = currentSessionId ?? 'default'
 
   React.useEffect(() => {
     void refreshWorkspaces()
@@ -42,7 +50,12 @@ export function AppShell(): React.ReactElement {
       >
         <LeftSidebar />
         <main data-testid="app-shell-main" className="flex flex-1 flex-col overflow-hidden">
-          <ChatAgentView sessionId={SESSION_ID} />
+          {/*
+            NOTE: AgentView internally mounts its own AgentSessionProvider with
+            the sessionId prop. AppShell threads sessionId in as a prop only —
+            no need for an outer Provider here. (Plan 2b.2.c.4.a code review.)
+          */}
+          <AgentView sessionId={sessionId} />
         </main>
         {bottomDockEnabled ? (
           // BottomDockHoverRegion has an empty props interface (forwardRef with no

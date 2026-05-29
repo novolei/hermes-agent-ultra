@@ -3,6 +3,27 @@
   "generated_from": "docs/parity/parity-matrix.json",
   "items": [
     {
+      "path": ".gitattributes",
+      "classification": "policy_only",
+      "rationale": "Repository metadata affects text normalization and generated artifact handling, not runtime behavior.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": ".github/workflows",
+      "classification": "functional",
+      "rationale": "CI workflow differences affect release and parity gate enforcement.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": ".github/workflows/uv-lockfile-check.yml",
+      "classification": "intentional_divergence",
+      "rationale": "The upstream Python uv lock check is retained but adapted to skip cleanly when this Rust-first repo has no root pyproject.toml or uv.lock, while still failing partial uv project files.",
+      "owner": "sheawinkler",
+      "ticket": 305
+    },
+    {
       "path": ".gitignore",
       "classification": "branding_only",
       "rationale": "Repository-local ignore patterns and generated artifacts do not affect runtime parity behavior.",
@@ -66,20 +87,6 @@
       "ticket": 305
     },
     {
-      "path": "packaging/homebrew/hermes-agent.rb",
-      "classification": "intentional_divergence",
-      "rationale": "Homebrew packaging uses Hermes Ultra's checksummed Rust release artifacts instead of upstream's Python virtualenv formula.",
-      "owner": "sheawinkler",
-      "ticket": 305
-    },
-    {
-      "path": "packaging/homebrew",
-      "classification": "functional",
-      "rationale": "Distribution packaging path impacts install parity for Homebrew users.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
       "path": "optional-skills",
       "classification": "intentional_divergence",
       "rationale": "Optional skill catalog content is curated locally; Hermes Ultra tracks runtime parity through native skill-loader contracts instead of vendoring every upstream Python skill implementation.",
@@ -101,102 +108,18 @@
       "ticket": 25
     },
     {
-      "path": "scripts/install.sh",
+      "path": "packaging/homebrew",
+      "classification": "functional",
+      "rationale": "Distribution packaging path impacts install parity for Homebrew users.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "packaging/homebrew/hermes-agent.rb",
       "classification": "intentional_divergence",
-      "rationale": "Installer intentionally downloads or builds Hermes Agent Ultra Rust release binaries instead of cloning upstream's Python/uv environment; installer contracts cover release assets, symlinks, PATH guard, Termux pathing, and post-install probes.",
+      "rationale": "Homebrew packaging uses Hermes Ultra's checksummed Rust release artifacts instead of upstream's Python virtualenv formula.",
       "owner": "sheawinkler",
       "ticket": 305
-    },
-    {
-      "path": "tests",
-      "classification": "functional",
-      "rationale": "Top-level test differences can encode behavior contracts and must be mapped to Rust-native or local contract-test coverage before being cleared.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
-      "path": "tests/gateway",
-      "classification": "functional",
-      "rationale": "Gateway test deltas exercise platform adapter behavior and must be reviewed as runtime parity coverage.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
-      "path": "website/docs",
-      "classification": "policy_only",
-      "rationale": "Documentation-site content differs by project positioning and release policy; runtime behavior is unaffected.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
-      "path": "tests/tools",
-      "classification": "functional",
-      "rationale": "Tool tests cover command, policy, and backend semantics that affect runtime parity.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
-      "path": "tests/hermes_cli",
-      "classification": "functional",
-      "rationale": "CLI tests define user-facing command and setup behavior and must stay parity-reviewed.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
-      "path": "ui-tui",
-      "classification": "functional",
-      "rationale": "TUI package and documentation deltas can affect distributed interactive UX behavior and must be reviewed against Hermes Ultra's Rust-primary UX surface.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
-      "path": "ui-tui/src",
-      "classification": "functional",
-      "rationale": "TUI source differences affect interactive UX/runtime surfaces.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
-      "path": "tests/agent",
-      "classification": "functional",
-      "rationale": "Agent tests cover model routing, provider, memory, and loop semantics.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
-      "path": "tests/run_agent",
-      "classification": "functional",
-      "rationale": "Run-agent tests cover orchestration and provider execution semantics.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
-      "path": "ui-tui/packages",
-      "classification": "functional",
-      "rationale": "TUI package differences affect distributed interactive UI behavior.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
-      "path": "tests/cli",
-      "classification": "functional",
-      "rationale": "CLI test deltas cover command contracts and user-visible runtime behavior.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
-      "path": "skills/autonomous-ai-agents",
-      "classification": "intentional_divergence",
-      "rationale": "Autonomous-agent skill catalog content is curated locally while runtime behavior is governed by Hermes Ultra's native skill loader and execution contracts.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
-      "path": "skills/creative",
-      "classification": "intentional_divergence",
-      "rationale": "Skill catalog content is curated locally while Rust runtime parity is tracked through native skill loader contracts.",
-      "owner": "sheawinkler",
-      "ticket": 25
     },
     {
       "path": "plugins/disk-cleanup",
@@ -209,6 +132,97 @@
       "path": "plugins/disk-cleanup/__init__.py",
       "classification": "intentional_divergence",
       "rationale": "Local disk-cleanup delta is a behavior-equivalent tuple membership form covered by focused plugin contracts; no upstream runtime feature is missing.",
+      "owner": "sheawinkler",
+      "ticket": 304
+    },
+    {
+      "path": "plugins/example-dashboard",
+      "classification": "functional",
+      "rationale": "Example dashboard plugin differences affect plugin packaging and UI integration samples.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "plugins/example-dashboard/dashboard/manifest.json",
+      "classification": "intentional_divergence",
+      "rationale": "Local example dashboard intentionally advertises the sessions:top slot so the bundled SDK demo exercises page-scoped slot injection; contract tests verify the manifest and dist bundle stay aligned.",
+      "owner": "sheawinkler",
+      "ticket": 304
+    },
+    {
+      "path": "plugins/example-dashboard/dashboard/plugin_api.py",
+      "classification": "policy_only",
+      "rationale": "The shared diff is module docstring wording only; the /hello route behavior remains unchanged and is covered by the example dashboard contract test.",
+      "owner": "sheawinkler",
+      "ticket": 304
+    },
+    {
+      "path": "plugins/google_meet",
+      "classification": "functional",
+      "rationale": "Google Meet plugin differences affect connector/plugin runtime behavior.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "plugins/google_meet/__init__.py",
+      "classification": "policy_only",
+      "rationale": "The shared diff is realtime-capable documentation wording plus behavior-equivalent tuple membership for the supported-platform gate.",
+      "owner": "sheawinkler",
+      "ticket": 304
+    },
+    {
+      "path": "plugins/google_meet/cli.py",
+      "classification": "intentional_divergence",
+      "rationale": "Ultra uses the plugin-local Hermes home helper so the Google Meet CLI remains importable in the Rust-first tree without vendoring upstream hermes_constants; other shared diffs are behavior-equivalent tuple membership.",
+      "owner": "sheawinkler",
+      "ticket": 304
+    },
+    {
+      "path": "plugins/google_meet/meet_bot.py",
+      "classification": "policy_only",
+      "rationale": "The shared diff is behavior-equivalent tuple membership for headed-mode parsing and bot-speaker filtering.",
+      "owner": "sheawinkler",
+      "ticket": 304
+    },
+    {
+      "path": "plugins/google_meet/node/cli.py",
+      "classification": "policy_only",
+      "rationale": "The shared diff is behavior-equivalent tuple membership for node status and ping command dispatch.",
+      "owner": "sheawinkler",
+      "ticket": 304
+    },
+    {
+      "path": "plugins/google_meet/node/registry.py",
+      "classification": "intentional_divergence",
+      "rationale": "Ultra uses the plugin-local Hermes home helper so node registry storage remains importable in the Rust-first tree without vendoring upstream hermes_constants.",
+      "owner": "sheawinkler",
+      "ticket": 304
+    },
+    {
+      "path": "plugins/google_meet/node/server.py",
+      "classification": "intentional_divergence",
+      "rationale": "Ultra keeps plugin-local Hermes home resolution plus remote realtime-mode passthrough and stricter meet_say validation for node-hosted meetings.",
+      "owner": "sheawinkler",
+      "ticket": 304
+    },
+    {
+      "path": "plugins/google_meet/process_manager.py",
+      "classification": "intentional_divergence",
+      "rationale": "Ultra uses the plugin-local Hermes home helper so local meeting state remains importable in the Rust-first tree without vendoring upstream hermes_constants.",
+      "owner": "sheawinkler",
+      "ticket": 304
+    },
+    {
+      "path": "plugins/google_meet/realtime/openai_client.py",
+      "classification": "policy_only",
+      "rationale": "The shared diff is behavior-equivalent tuple membership for terminal OpenAI Realtime response frame handling.",
+      "owner": "sheawinkler",
+      "ticket": 304
+    },
+    {
+      "path": "plugins/google_meet/tools.py",
+      "classification": "policy_only",
+      "rationale": "The shared diff is behavior-equivalent tuple membership for local platform and mode validation; tool behavior remains covered by Google Meet plugin tests.",
       "owner": "sheawinkler",
       "ticket": 304
     },
@@ -227,16 +241,37 @@
       "ticket": 304
     },
     {
-      "path": "plugins/video_gen",
+      "path": "plugins/image_gen",
       "classification": "functional",
-      "rationale": "Video generation plugin differences affect media tool routing and provider packaging behavior.",
+      "rationale": "Image generation plugin differences affect media tool routing, packaging, and runtime connector behavior.",
       "owner": "sheawinkler",
       "ticket": 25
     },
     {
-      "path": "plugins/video_gen/xai/__init__.py",
+      "path": "plugins/kanban",
+      "classification": "functional",
+      "rationale": "Kanban plugin differences affect plugin runtime behavior.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "plugins/kanban/dashboard/dist/index.js",
       "classification": "intentional_divergence",
-      "rationale": "Local xAI video generation wording intentionally refers to the SuperGrok subscription credential path while preserving shared xAI credential resolution behavior.",
+      "rationale": "Ultra intentionally keeps the local kanban dashboard bundle as a legacy Python-dashboard shim while the Rust CLI owns kanban runtime behavior; upstream's expanded i18n, bulk drag/delete, and Python kanban_db API additions are not vendored into this Rust-first tree.",
+      "owner": "sheawinkler",
+      "ticket": 304
+    },
+    {
+      "path": "plugins/kanban/dashboard/dist/style.css",
+      "classification": "intentional_divergence",
+      "rationale": "Ultra intentionally preserves the local kanban dashboard layout and theme overrides instead of adopting upstream's newer multi-drag/trash CSS, because the corresponding Python dashboard interactions are not vendored in the Rust-first runtime.",
+      "owner": "sheawinkler",
+      "ticket": 304
+    },
+    {
+      "path": "plugins/kanban/dashboard/plugin_api.py",
+      "classification": "intentional_divergence",
+      "rationale": "Ultra retains the local kanban dashboard API shim against absent upstream hermes_cli Python sources; Rust kanban command behavior is tracked separately, so upstream's expanded Python dashboard endpoints are not copied wholesale.",
       "owner": "sheawinkler",
       "ticket": 304
     },
@@ -325,95 +360,25 @@
       "ticket": 304
     },
     {
-      "path": "skills/productivity",
-      "classification": "intentional_divergence",
-      "rationale": "Skill catalog content is curated locally while loader and execution contracts carry runtime parity.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
-      "path": "tests/acp",
+      "path": "plugins/observability",
       "classification": "functional",
-      "rationale": "ACP tests cover protocol compatibility and session behavior.",
+      "rationale": "Observability plugin differences affect telemetry/runtime diagnostics.",
       "owner": "sheawinkler",
       "ticket": 25
     },
     {
-      "path": "plugins/google_meet",
-      "classification": "functional",
-      "rationale": "Google Meet plugin differences affect connector/plugin runtime behavior.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
-      "path": "plugins/google_meet/__init__.py",
-      "classification": "policy_only",
-      "rationale": "The shared diff is realtime-capable documentation wording plus behavior-equivalent tuple membership for the supported-platform gate.",
-      "owner": "sheawinkler",
-      "ticket": 304
-    },
-    {
-      "path": "plugins/google_meet/cli.py",
+      "path": "plugins/observability/langfuse/README.md",
       "classification": "intentional_divergence",
-      "rationale": "Ultra uses the plugin-local Hermes home helper so the Google Meet CLI remains importable in the Rust-first tree without vendoring upstream hermes_constants; other shared diffs are behavior-equivalent tuple membership.",
+      "rationale": "Local Langfuse README intentionally documents the Hermes tools credential flow while preserving the manual enable path.",
       "owner": "sheawinkler",
       "ticket": 304
     },
     {
-      "path": "plugins/google_meet/meet_bot.py",
-      "classification": "policy_only",
-      "rationale": "The shared diff is behavior-equivalent tuple membership for headed-mode parsing and bot-speaker filtering.",
-      "owner": "sheawinkler",
-      "ticket": 304
-    },
-    {
-      "path": "plugins/google_meet/node/cli.py",
-      "classification": "policy_only",
-      "rationale": "The shared diff is behavior-equivalent tuple membership for node status and ping command dispatch.",
-      "owner": "sheawinkler",
-      "ticket": 304
-    },
-    {
-      "path": "plugins/google_meet/node/registry.py",
+      "path": "plugins/observability/langfuse/plugin.yaml",
       "classification": "intentional_divergence",
-      "rationale": "Ultra uses the plugin-local Hermes home helper so node registry storage remains importable in the Rust-first tree without vendoring upstream hermes_constants.",
+      "rationale": "Local Langfuse manifest intentionally advertises the Hermes tools enablement path in addition to manual plugin enablement.",
       "owner": "sheawinkler",
       "ticket": 304
-    },
-    {
-      "path": "plugins/google_meet/node/server.py",
-      "classification": "intentional_divergence",
-      "rationale": "Ultra keeps plugin-local Hermes home resolution plus remote realtime-mode passthrough and stricter meet_say validation for node-hosted meetings.",
-      "owner": "sheawinkler",
-      "ticket": 304
-    },
-    {
-      "path": "plugins/google_meet/process_manager.py",
-      "classification": "intentional_divergence",
-      "rationale": "Ultra uses the plugin-local Hermes home helper so local meeting state remains importable in the Rust-first tree without vendoring upstream hermes_constants.",
-      "owner": "sheawinkler",
-      "ticket": 304
-    },
-    {
-      "path": "plugins/google_meet/realtime/openai_client.py",
-      "classification": "policy_only",
-      "rationale": "The shared diff is behavior-equivalent tuple membership for terminal OpenAI Realtime response frame handling.",
-      "owner": "sheawinkler",
-      "ticket": 304
-    },
-    {
-      "path": "plugins/google_meet/tools.py",
-      "classification": "policy_only",
-      "rationale": "The shared diff is behavior-equivalent tuple membership for local platform and mode validation; tool behavior remains covered by Google Meet plugin tests.",
-      "owner": "sheawinkler",
-      "ticket": 304
-    },
-    {
-      "path": "plugins/image_gen",
-      "classification": "functional",
-      "rationale": "Image generation plugin differences affect media tool routing, packaging, and runtime connector behavior.",
-      "owner": "sheawinkler",
-      "ticket": 25
     },
     {
       "path": "plugins/platforms",
@@ -486,13 +451,6 @@
       "ticket": 304
     },
     {
-      "path": "tests/plugins",
-      "classification": "functional",
-      "rationale": "Plugin tests cover loader, hook, and runtime integration behavior.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
       "path": "plugins/teams_pipeline",
       "classification": "functional",
       "rationale": "Teams pipeline plugin differences affect platform integration behavior.",
@@ -528,107 +486,58 @@
       "ticket": 304
     },
     {
-      "path": "tests/cron",
+      "path": "plugins/video_gen",
       "classification": "functional",
-      "rationale": "Cron tests cover scheduling/runtime behavior.",
+      "rationale": "Video generation plugin differences affect media tool routing and provider packaging behavior.",
       "owner": "sheawinkler",
       "ticket": 25
     },
     {
-      "path": "tests/providers",
-      "classification": "functional",
-      "rationale": "Provider tests cover model transport compatibility and error handling.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
-      "path": "plugins/kanban",
-      "classification": "functional",
-      "rationale": "Kanban plugin differences affect plugin runtime behavior.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
-      "path": "plugins/kanban/dashboard/dist/index.js",
+      "path": "plugins/video_gen/xai/__init__.py",
       "classification": "intentional_divergence",
-      "rationale": "Ultra intentionally keeps the local kanban dashboard bundle as a legacy Python-dashboard shim while the Rust CLI owns kanban runtime behavior; upstream's expanded i18n, bulk drag/delete, and Python kanban_db API additions are not vendored into this Rust-first tree.",
+      "rationale": "Local xAI video generation wording intentionally refers to the SuperGrok subscription credential path while preserving shared xAI credential resolution behavior.",
       "owner": "sheawinkler",
       "ticket": 304
     },
     {
-      "path": "plugins/kanban/dashboard/dist/style.css",
+      "path": "plugins/web",
       "classification": "intentional_divergence",
-      "rationale": "Ultra intentionally preserves the local kanban dashboard layout and theme overrides instead of adopting upstream's newer multi-drag/trash CSS, because the corresponding Python dashboard interactions are not vendored in the Rust-first runtime.",
+      "rationale": "The upstream Python web plugin is superseded by Hermes's Rust-native HTTP/WebSocket stack; web-browsing capability is covered by the hermes-http crate and MCP tool integration.",
       "owner": "sheawinkler",
-      "ticket": 304
+      "ticket": 305
     },
     {
-      "path": "plugins/kanban/dashboard/plugin_api.py",
+      "path": "scripts/install.sh",
       "classification": "intentional_divergence",
-      "rationale": "Ultra retains the local kanban dashboard API shim against absent upstream hermes_cli Python sources; Rust kanban command behavior is tracked separately, so upstream's expanded Python dashboard endpoints are not copied wholesale.",
+      "rationale": "Installer intentionally downloads or builds Hermes Agent Ultra Rust release binaries instead of cloning upstream's Python/uv environment; installer contracts cover release assets, symlinks, PATH guard, Termux pathing, and post-install probes.",
       "owner": "sheawinkler",
-      "ticket": 304
+      "ticket": 305
     },
     {
-      "path": "plugins/observability",
-      "classification": "functional",
-      "rationale": "Observability plugin differences affect telemetry/runtime diagnostics.",
+      "path": "skills/autonomous-ai-agents",
+      "classification": "intentional_divergence",
+      "rationale": "Autonomous-agent skill catalog content is curated locally while runtime behavior is governed by Hermes Ultra's native skill loader and execution contracts.",
       "owner": "sheawinkler",
       "ticket": 25
     },
     {
-      "path": "plugins/observability/langfuse/README.md",
+      "path": "skills/creative",
       "classification": "intentional_divergence",
-      "rationale": "Local Langfuse README intentionally documents the Hermes tools credential flow while preserving the manual enable path.",
-      "owner": "sheawinkler",
-      "ticket": 304
-    },
-    {
-      "path": "plugins/observability/langfuse/plugin.yaml",
-      "classification": "intentional_divergence",
-      "rationale": "Local Langfuse manifest intentionally advertises the Hermes tools enablement path in addition to manual plugin enablement.",
-      "owner": "sheawinkler",
-      "ticket": 304
-    },
-    {
-      "path": "website",
-      "classification": "policy_only",
-      "rationale": "Website top-level package, sidebar, localization, and static API files support documentation publishing and are not Rust runtime behavior unless covered by more specific functional classifications.",
+      "rationale": "Skill catalog content is curated locally while Rust runtime parity is tracked through native skill loader contracts.",
       "owner": "sheawinkler",
       "ticket": 25
-    },
-    {
-      "path": "website/scripts",
-      "classification": "policy_only",
-      "rationale": "Website build/generation scripts differ for local documentation publishing and do not affect Hermes runtime.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
-      "path": "plugins/example-dashboard",
-      "classification": "functional",
-      "rationale": "Example dashboard plugin differences affect plugin packaging and UI integration samples.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
-      "path": "plugins/example-dashboard/dashboard/manifest.json",
-      "classification": "intentional_divergence",
-      "rationale": "Local example dashboard intentionally advertises the sessions:top slot so the bundled SDK demo exercises page-scoped slot injection; contract tests verify the manifest and dist bundle stay aligned.",
-      "owner": "sheawinkler",
-      "ticket": 304
-    },
-    {
-      "path": "plugins/example-dashboard/dashboard/plugin_api.py",
-      "classification": "policy_only",
-      "rationale": "The shared diff is module docstring wording only; the /hello route behavior remains unchanged and is covered by the example dashboard contract test.",
-      "owner": "sheawinkler",
-      "ticket": 304
     },
     {
       "path": "skills/devops",
       "classification": "intentional_divergence",
       "rationale": "Skill catalog content is curated locally while runtime skill contracts remain tracked separately.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "skills/productivity",
+      "classification": "intentional_divergence",
+      "rationale": "Skill catalog content is curated locally while loader and execution contracts carry runtime parity.",
       "owner": "sheawinkler",
       "ticket": 25
     },
@@ -640,9 +549,86 @@
       "ticket": 25
     },
     {
+      "path": "tests",
+      "classification": "functional",
+      "rationale": "Top-level test differences can encode behavior contracts and must be mapped to Rust-native or local contract-test coverage before being cleared.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "tests/acp",
+      "classification": "functional",
+      "rationale": "ACP tests cover protocol compatibility and session behavior.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "tests/agent",
+      "classification": "functional",
+      "rationale": "Agent tests cover model routing, provider, memory, and loop semantics.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "tests/cli",
+      "classification": "functional",
+      "rationale": "CLI test deltas cover command contracts and user-visible runtime behavior.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "tests/cron",
+      "classification": "functional",
+      "rationale": "Cron tests cover scheduling/runtime behavior.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "tests/gateway",
+      "classification": "functional",
+      "rationale": "Gateway test deltas exercise platform adapter behavior and must be reviewed as runtime parity coverage.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "tests/hermes_cli",
+      "classification": "functional",
+      "rationale": "CLI tests define user-facing command and setup behavior and must stay parity-reviewed.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
       "path": "tests/honcho_plugin",
       "classification": "functional",
       "rationale": "Honcho plugin tests cover memory/plugin behavior.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "tests/integration",
+      "classification": "intentional_divergence",
+      "rationale": "Upstream Python integration test suite is replaced by Rust workspace integration tests; parity contracts cover equivalent behavioral coverage.",
+      "owner": "sheawinkler",
+      "ticket": 305
+    },
+    {
+      "path": "tests/plugins",
+      "classification": "functional",
+      "rationale": "Plugin tests cover loader, hook, and runtime integration behavior.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "tests/providers",
+      "classification": "functional",
+      "rationale": "Provider tests cover model transport compatibility and error handling.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "tests/run_agent",
+      "classification": "functional",
+      "rationale": "Run-agent tests cover orchestration and provider execution semantics.",
       "owner": "sheawinkler",
       "ticket": 25
     },
@@ -661,46 +647,67 @@
       "ticket": 25
     },
     {
+      "path": "tests/tools",
+      "classification": "functional",
+      "rationale": "Tool tests cover command, policy, and backend semantics that affect runtime parity.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "tests/tui_gateway",
+      "classification": "functional",
+      "rationale": "TUI gateway test deltas exercise upstream's TUI-side gateway parity surface. Hermes does not ship a TUI gateway; deltas tracked for future TUI parity work but not blocking runtime parity today.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "ui-tui",
+      "classification": "functional",
+      "rationale": "TUI package and documentation deltas can affect distributed interactive UX behavior and must be reviewed against Hermes Ultra's Rust-primary UX surface.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "ui-tui/packages",
+      "classification": "functional",
+      "rationale": "TUI package differences affect distributed interactive UI behavior.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "ui-tui/src",
+      "classification": "functional",
+      "rationale": "TUI source differences affect interactive UX/runtime surfaces.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "website",
+      "classification": "policy_only",
+      "rationale": "Website top-level package, sidebar, localization, and static API files support documentation publishing and are not Rust runtime behavior unless covered by more specific functional classifications.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "website/docs",
+      "classification": "policy_only",
+      "rationale": "Documentation-site content differs by project positioning and release policy; runtime behavior is unaffected.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
+      "path": "website/scripts",
+      "classification": "policy_only",
+      "rationale": "Website build/generation scripts differ for local documentation publishing and do not affect Hermes runtime.",
+      "owner": "sheawinkler",
+      "ticket": 25
+    },
+    {
       "path": "website/src",
       "classification": "policy_only",
       "rationale": "Website source differs for documentation/product presentation and does not change Rust runtime behavior.",
       "owner": "sheawinkler",
       "ticket": 25
-    },
-    {
-      "path": ".gitattributes",
-      "classification": "policy_only",
-      "rationale": "Repository metadata affects text normalization and generated artifact handling, not runtime behavior.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
-      "path": ".github/workflows/uv-lockfile-check.yml",
-      "classification": "intentional_divergence",
-      "rationale": "The upstream Python uv lock check is retained but adapted to skip cleanly when this Rust-first repo has no root pyproject.toml or uv.lock, while still failing partial uv project files.",
-      "owner": "sheawinkler",
-      "ticket": 305
-    },
-    {
-      "path": ".github/workflows",
-      "classification": "functional",
-      "rationale": "CI workflow differences affect release and parity gate enforcement.",
-      "owner": "sheawinkler",
-      "ticket": 25
-    },
-    {
-      "path": "plugins/web",
-      "classification": "intentional_divergence",
-      "rationale": "The upstream Python web plugin is superseded by Hermes's Rust-native HTTP/WebSocket stack; web-browsing capability is covered by the hermes-http crate and MCP tool integration.",
-      "owner": "sheawinkler",
-      "ticket": 305
-    },
-    {
-      "path": "tests/integration",
-      "classification": "intentional_divergence",
-      "rationale": "Upstream Python integration test suite is replaced by Rust workspace integration tests; parity contracts cover equivalent behavioral coverage.",
-      "owner": "sheawinkler",
-      "ticket": 305
     }
   ]
 }
