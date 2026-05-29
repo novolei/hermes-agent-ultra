@@ -398,3 +398,32 @@ describe('AppShell + AgentView banners (Plan 2b.2.c.4.b)', () => {
     }
   })
 })
+
+// ---------------------------------------------------------------------------
+// J. AppShell + AgentView STT (Plan 2b.2.c.4.c) — 3 cases
+// ---------------------------------------------------------------------------
+describe('AppShell + AgentView STT (Plan 2b.2.c.4.c)', () => {
+  beforeEach(() => localStorage.clear())
+  afterEach(() => cleanup())
+
+  it('no [data-deferred-to="4.c"] stubs remain in the DOM', () => {
+    const { container } = mountAppShell()
+    expect(container.querySelectorAll('[data-deferred-to="4.c"]').length).toBe(0)
+  })
+
+  it('remaining stubs are only 4.d/4.e (banners + STT now real)', () => {
+    const { container } = mountAppShell()
+    const stubs = container.querySelectorAll('[data-stub]')
+    stubs.forEach((s) => {
+      const plan = (s as HTMLElement).getAttribute('data-deferred-to')
+      expect(['4.d', '4.e']).toContain(plan)
+    })
+  })
+
+  it('SpeechButton is mounted in AgentView composer toolbar', () => {
+    const { container } = mountAppShell()
+    // SpeechButton renders a Button with aria-label="语音输入" (see speech-button.tsx line 83)
+    const speechButton = container.querySelector('button[aria-label="语音输入"]')
+    expect(speechButton).not.toBeNull()
+  })
+})
