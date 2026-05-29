@@ -26,6 +26,27 @@ vi.mock('@tauri-apps/api/event', () => ({
   listen: vi.fn().mockResolvedValue(() => {}),
 }))
 
+// Mock the bridge stubs that PermissionModeSelector now invokes during mount
+// (Plan 4.b promoted PermissionModeSelector from a stub to a real component
+// in agent-view's JSX). Without these mocks the real getSafetyPolicy stub
+// throws NOT_IMPLEMENTED and pollutes the test stderr with unhandled-rejection
+// noise — tests still pass because the .catch() fires async, but the noise
+// violates the zero-console-error invariant. Returning a sane SafetyPolicy
+// shape keeps the selector quiet.
+vi.mock('@/features/chat-agent/lib/tauri-bridge-stub', async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>
+  return {
+    ...actual,
+    getSafetyPolicy: vi.fn().mockResolvedValue({
+      globalMode: 'ask',
+      toolOverrides: {},
+      autoApprovedTools: [],
+      blockedTools: [],
+    }),
+    setSafetyMode: vi.fn().mockResolvedValue(undefined),
+  }
+})
+
 function Wrapper({ children }: { children: React.ReactNode }) {
   return (
     <Provider>

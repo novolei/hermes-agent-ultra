@@ -22,6 +22,12 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import type { AskUserRequest, ExitPlanModeRequest, AgentSessionMeta, WorkspaceCapabilities, AgentSendInput, AgentMessage } from './agent-types'
 import type { ConversationMeta, UserProfile } from './chat-types'
 
+/**
+ * SafetyMode wire type — mirrors the Rust enum's serde shape.
+ * Used by PermissionModeSelector + PermissionBanner to display/set the global safety policy.
+ */
+export type SafetyModeWire = 'ask' | 'acceptedits' | 'plan' | 'supervised' | 'yolo'
+
 /** Toggle the pinned state of an agent session. Returns the new pinnedAt timestamp or null. */
 export async function togglePinAgentSession(_sessionId: string): Promise<void> {
   throw new Error('togglePinAgentSession: not implemented in Plan 2b.2.a (state-machine port)')
@@ -356,4 +362,62 @@ export function onQueuedConsumed(
   _cb: (payload: { sessionId: string; uuid: string }) => void
 ): CleanupFn {
   return () => { /* no-op stub */ }
+}
+
+// ─── Plan 2b.2.c.4.b: banner IPC stubs ────────────────────────────────────
+// All throw NOT_IMPLEMENTED until the Rust agent-session backend ships the
+// corresponding Tauri commands. Real implementations arrive in Plan 4.x
+// (backend) once permission/safety/ask-user flow is wired.
+
+/** Respond to an exit-plan-mode request from the agent. Plan 4.x stub. */
+export async function respondExitPlanMode(_input: {
+  requestId: string
+  decision: 'accept_and_auto' | 'accept_keep_plan' | 'reject'
+  feedback?: string
+  allowedPrompts?: string[]
+  sessionId: string
+}): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: respondExitPlanMode')
+}
+
+/** Respond to an ask-user request with answers. Plan 4.x stub. */
+export async function respondAskUser(_input: { requestId: string; answers: Record<string, string> }): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: respondAskUser')
+}
+
+/** Respond to a permission request. Plan 4.x stub. */
+export async function respondPermission(_input: any): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: respondPermission')
+}
+
+/** Respond to a plan-mode-suggest event. Plan 4.x stub. */
+export async function respondPlanModeSuggest(
+  _eventId: string,
+  _outcome: 'accepted' | 'skipped' | 'silenced' | 'aborted',
+  _declineReason?: string,
+): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: respondPlanModeSuggest')
+}
+
+/** Get the current global safety policy. Plan 4.x stub. */
+export async function getSafetyPolicy(): Promise<SafetyPolicyResponse> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: getSafetyPolicy')
+}
+
+/** Set the global safety mode. Plan 4.x stub. */
+export async function setSafetyMode(_input: SetSafetyModeInput): Promise<SafetyPolicyResponse> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: setSafetyMode')
+}
+
+/** Safety policy response from the backend. */
+export interface SafetyPolicyResponse {
+  globalMode: SafetyModeWire
+  toolOverrides: Record<string, SafetyModeWire>
+  autoApprovedTools: string[]
+  blockedTools: string[]
+}
+
+/** Input to set the global safety mode. */
+export interface SetSafetyModeInput {
+  mode: SafetyModeWire
 }

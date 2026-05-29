@@ -10,7 +10,7 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { Pencil, Check, X, PanelRight } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
-import { ChatAppearancePopover } from '@/features/chat-agent/lib/agentview-bridge-stub'
+import { ChatAppearancePopover } from '@/features/chat-agent/components/chat/chat-appearance-popover'
 import { agentSessionsAtom, agentSidePanelOpenMapAtom, workspaceFilesVersionAtom } from '@/features/chat-agent/atoms/agent-atoms'
 import { updateAgentSessionTitle, listAgentSessions } from '@/features/chat-agent/lib/tauri-bridge-stub'
 

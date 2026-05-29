@@ -19,29 +19,32 @@ import { toast } from 'sonner'
 import { Bot, CornerDownLeft, Square, Settings, Paperclip, X, Copy, Check, Brain, Map as MapIcon, Sparkles, AlertTriangle } from 'lucide-react'
 import { AgentMessages } from '@/features/chat-agent/components/agent/agent-messages'
 import { AgentHeader } from '@/features/chat-agent/components/agent/agent-header'
+// Real component imports (Plan 4.b)
+import { AgentHeartbeatBanner } from '@/features/chat-agent/components/agent/agent-heartbeat-banner'
+import { AskUserBanner } from '@/features/chat-agent/components/agent/ask-user-banner'
+import { ExitPlanModeBanner } from '@/features/chat-agent/components/agent/exit-plan-mode-banner'
+import { PlanModeSuggestBanner } from '@/features/chat-agent/components/agent/plan-mode-suggest-banner'
+import { AutomationRunBanner } from '@/features/chat-agent/components/agent/automation-run-banner'
+import { PlanModeDashedBorder } from '@/features/chat-agent/components/agent/plan-mode-dashed-border'
+import { PermissionBanner } from '@/features/chat-agent/components/agent/permission-banner'
+import { QueuedMessagesBanner } from '@/features/chat-agent/components/agent/queued-messages-banner'
+import { PermissionModeSelector } from '@/features/chat-agent/components/agent/permission-mode-selector'
+import { StrategyPresetSelector } from '@/features/chat-agent/components/agent/strategy-preset-selector'
+import { AgentStatusBar } from '@/features/chat-agent/components/agent/agent-status-bar'
+import { ChatAppearancePopover } from '@/features/chat-agent/components/chat/chat-appearance-popover'
+// Remaining stubs (Plan 4.c/4.d/4.e)
 import {
-  BrowserPreviewOverlay,
-  AutoPreviewPopover,
-  StrategyPresetSelector,
-  PermissionBanner,
-  AgentHeartbeatBanner,
-  PermissionModeSelector,
-  AgentStatusBar,
-  AskUserBanner,
-  ExitPlanModeBanner,
-  PlanModeSuggestBanner,
-  AutomationRunBanner,
-  PlanModeDashedBorder,
-  PetWidget,
-  ProviderModelSelector,
-  FeishuNotifyToggle,
-  GitChipsRow,
   SttModal,
   FirstRunDialog,
   SpeechButton,
   modelStatusAtom,
   smartJoin,
-  QueuedMessagesBanner,
+  PetWidget,
+  BrowserPreviewOverlay,
+  AutoPreviewPopover,
+  ProviderModelSelector,
+  FeishuNotifyToggle,
+  GitChipsRow,
 } from '@/features/chat-agent/lib/agentview-bridge-stub'
 import { ContextUsageBadge } from '@/features/chat-agent/components/agent/context-usage-badge'
 import { AttachmentPreviewItem } from '@/features/chat-agent/components/chat/attachment-preview-item'

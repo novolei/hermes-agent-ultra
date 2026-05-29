@@ -102,6 +102,8 @@ vi.mock('@/features/chat-agent/lib/tauri-bridge-stub', () => ({
   forkAgentSession: vi.fn().mockResolvedValue(null),
   rewindSession: vi.fn().mockResolvedValue(null),
   saveFilesToAgentSession: vi.fn().mockResolvedValue(null),
+  getSafetyPolicy: vi.fn().mockResolvedValue({ globalMode: 'ask', toolOverrides: {} }),
+  setSafetyMode: vi.fn().mockResolvedValue({ globalMode: 'ask', toolOverrides: {} }),
 }))
 
 // ---------------------------------------------------------------------------
@@ -357,5 +359,42 @@ describe('AppShell + AgentView cross-cutting (Plan 2b.2.c.4.a Task E3)', () => {
     // Just smoke-mount; the stubbed AgentStatusBar renders the same regardless
     const { container } = mountAppShell()
     expect(container.querySelector('[data-testid="agent-view"]')).not.toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// I. AppShell + AgentView banners (Plan 2b.2.c.4.b) — 3 cases
+// ---------------------------------------------------------------------------
+describe('AppShell + AgentView banners (Plan 2b.2.c.4.b)', () => {
+  beforeEach(() => localStorage.clear())
+  afterEach(() => cleanup())
+
+  it('no [data-deferred-to="4.b"] stubs remain in the DOM', () => {
+    const { container } = mountAppShell()
+    expect(container.querySelectorAll('[data-deferred-to="4.b"]').length).toBe(0)
+  })
+
+  it('only 4.c/4.d/4.e stubs render visible markers', () => {
+    const { container } = mountAppShell()
+    const stubs = container.querySelectorAll('[data-stub]')
+    stubs.forEach((s) => {
+      const plan = (s as HTMLElement).getAttribute('data-deferred-to')
+      expect(['4.c', '4.d', '4.e']).toContain(plan)
+    })
+  })
+
+  it('end-to-end mount with 4.b banners real produces zero console.error calls', () => {
+    const errs: unknown[][] = []
+    const orig = console.error
+    console.error = (...args: unknown[]) => {
+      errs.push(args)
+      orig(...args)
+    }
+    try {
+      mountAppShell()
+      expect(errs).toEqual([])
+    } finally {
+      console.error = orig
+    }
   })
 })

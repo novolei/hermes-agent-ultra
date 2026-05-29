@@ -1,38 +1,38 @@
 # Parity Matrix
 
-Generated: `2026-05-29T02:53:05.029850+00:00`
+Generated: `2026-05-29T04:44:56.962441+00:00`
 
 ## Scope
 
-- Local ref: `HEAD` (`e452d976c50ba3d81ffcef14e23ea5e80649ebd0`)
-- Upstream ref: `upstream/main` (`a618789dbabf396a00fb061a491f54e12f536a45`)
+- Local ref: `HEAD` (`d3f4e6efaf955e394cb34ea3d4012929a87750bb`)
+- Upstream ref: `upstream/main` (`a30480bd2b15ffd942ae3a24f1f993f575c89af2`)
 - Merge base: `none (history divergence)`
 
 ## Summary
 
 | Metric | Value |
 | --- | ---: |
-| Commits behind local (`upstream` ancestry only) | 9831 |
-| Commits ahead local (`local` ancestry only) | 968 |
-| Upstream commits missing by patch-id (`git cherry local upstream`, `+`) | 8984 |
+| Commits behind local (`upstream` ancestry only) | 9848 |
+| Commits ahead local (`local` ancestry only) | 975 |
+| Upstream commits missing by patch-id (`git cherry local upstream`, `+`) | 9001 |
 | Upstream commits represented by patch-id (`git cherry local upstream`, `-`) | 6 |
-| Local commits unique by patch-id (`git cherry upstream local`, `+`) | 852 |
-| Files only in upstream tree | 1444 |
-| Files only in local tree | 959 |
-| Shared files identical content | 1967 |
-| Shared files different content | 751 |
-| Total files changed (`local` vs `upstream`) | 3151 |
-| Insertions (`local` vs `upstream`) | 726291 |
-| Deletions (`local` vs `upstream`) | 338486 |
+| Local commits unique by patch-id (`git cherry upstream local`, `+`) | 859 |
+| Files only in upstream tree | 1448 |
+| Files only in local tree | 993 |
+| Shared files identical content | 1965 |
+| Shared files different content | 753 |
+| Total files changed (`local` vs `upstream`) | 3191 |
+| Insertions (`local` vs `upstream`) | 727958 |
+| Deletions (`local` vs `upstream`) | 342899 |
 
 ## Top 40 upstream-only buckets
 
 | Bucket | Files |
 | --- | ---: |
 | `website/i18n` | 332 |
-| `tests/hermes_cli` | 82 |
+| `tests/hermes_cli` | 83 |
 | `web/src` | 77 |
-| `tests/agent` | 51 |
+| `tests/agent` | 52 |
 | `gateway/platforms` | 39 |
 | `tests/gateway` | 38 |
 | `skills/creative` | 36 |
@@ -75,7 +75,7 @@ Generated: `2026-05-29T02:53:05.029850+00:00`
 | Bucket | Files |
 | --- | ---: |
 | `website/docs` | 133 |
-| `tests/gateway` | 119 |
+| `tests/gateway` | 120 |
 | `tests/tools` | 88 |
 | `tests/hermes_cli` | 81 |
 | `ui-tui/src` | 57 |
@@ -90,8 +90,8 @@ Generated: `2026-05-29T02:53:05.029850+00:00`
 | `tests/plugins` | 9 |
 | `skills/productivity` | 7 |
 | `tests/acp` | 7 |
+| `plugins/model-providers` | 6 |
 | `tests/cron` | 6 |
-| `plugins/model-providers` | 5 |
 | `plugins/teams_pipeline` | 4 |
 | `plugins/web` | 4 |
 | `tests/honcho_plugin` | 4 |
@@ -119,7 +119,7 @@ Generated: `2026-05-29T02:53:05.029850+00:00`
 
 | Bucket | Files |
 | --- | ---: |
-| `desktop/src` | 322 |
+| `desktop/src` | 355 |
 | `crates/hermes-tools` | 74 |
 | `crates/hermes-agent` | 48 |
 | `crates/hermes-gateway` | 45 |
@@ -127,7 +127,7 @@ Generated: `2026-05-29T02:53:05.029850+00:00`
 | `crates/hermes-intelligence` | 37 |
 | `docs/parity` | 37 |
 | `desktop/src-tauri` | 36 |
-| `docs/superpowers` | 24 |
+| `docs/superpowers` | 25 |
 | `crates/hermes-config` | 18 |
 | `crates/hermes-eval` | 15 |
 | `crates/hermes-parity-tests` | 15 |
@@ -164,19 +164,19 @@ Generated: `2026-05-29T02:53:05.029850+00:00`
 
 | Workstream | Issue | Name | Upstream-only | Shared-different | Risk | Effort |
 | --- | ---: | --- | ---: | ---: | --- | --- |
-| `WS6` | #10 | Tests and CI parity | 304 | 432 | high | XL |
-| `WS5` | #9 | UX parity | 489 | 224 | high | XL |
+| `WS6` | #10 | Tests and CI parity | 307 | 433 | high | XL |
+| `WS5` | #9 | UX parity | 490 | 224 | high | XL |
 | `WS8` | #12 | Compatibility and divergence policy | 388 | 12 | high | L |
-| `WS3` | #7 | Tools and adapters parity | 111 | 51 | high | L |
+| `WS3` | #7 | Tools and adapters parity | 111 | 52 | high | L |
 | `WS4` | #8 | Skills parity | 90 | 32 | medium | L |
 | `WS2` | #6 | Core runtime parity | 62 | 0 | critical | M |
 | `WS7` | #11 | Security/secrets/store/webhook parity | 0 | 0 | critical | S |
 
 ## Commit Mapping
 
-- Upstream missing by patch-id: `8984`
+- Upstream missing by patch-id: `9001`
 - Upstream represented by patch-id: `6`
-- Local unique by patch-id: `852`
+- Local unique by patch-id: `859`
 - Intentional divergence tracked items: `7` (covered files: `868`)
 - Merge base is absent; patch-id mapping is used as primary commit equivalence signal.
 

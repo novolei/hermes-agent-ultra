@@ -83,6 +83,8 @@ vi.mock('@/features/chat-agent/lib/tauri-bridge-stub', () => ({
   forkAgentSession: vi.fn().mockResolvedValue(null),
   rewindSession: vi.fn().mockResolvedValue(null),
   saveFilesToAgentSession: vi.fn().mockResolvedValue(null),
+  getSafetyPolicy: vi.fn().mockResolvedValue({ globalMode: 'ask', toolOverrides: {} }),
+  setSafetyMode: vi.fn().mockResolvedValue({ globalMode: 'ask', toolOverrides: {} }),
 }))
 
 describe('App', () => {
