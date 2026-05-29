@@ -103,7 +103,7 @@ describe('DockItem', () => {
   })
 
   it('does NOT render a colored slot backplate around the icon', () => {
-    const { container } = render(
+    render(
       <DockItem
         icon={<Bot size={18} />}
         label="Agent"

@@ -10,10 +10,6 @@ import {
   browserStateAtom,
   isBrowserLoadingAtom,
   type ScreencastFrameEntry,
-  type DOMStateEntry,
-  type NavStateEntry,
-  type BrowserTaskRunEntry,
-  type BrowserState,
 } from './browser-atoms'
 
 describe('browser-atoms', () => {

@@ -7,10 +7,10 @@
  * 从 Proma 迁移。
  */
 
-import { useEffect, useCallback, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useAtomValue } from 'jotai'
 import { shortcutOverridesAtom } from '../atoms/shortcut-atoms'
-import { getShortcutForPlatform, type ShortcutDefinition } from '../lib/shortcut-defaults'
+import { getShortcutForPlatform } from '../lib/shortcut-defaults'
 
 /**
  * 判断当前是否为 Mac 平台
