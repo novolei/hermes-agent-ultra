@@ -7,11 +7,11 @@ import { ScrollArea } from '@/shared/ui/scroll-area'
 import { ToolsTab } from './tools-tab'
 import { GeneralTab } from './general-tab'
 import { ConnectivityTab } from './connectivity-tab'
+import { IntelligenceTab } from './intelligence-tab'
+import { MemoryRecallTab } from './memory-recall-tab'
+import { LearnedProfileTab } from './learned-profile-tab'
+import { ShortcutSettings } from './shortcut-settings'
 import {
-  IntelligenceTab,
-  ShortcutSettings,
-  MemoryRecallTab,
-  LearnedProfileTab,
   ImChannelsSettings,
   SttSettings,
   PetSettings,
