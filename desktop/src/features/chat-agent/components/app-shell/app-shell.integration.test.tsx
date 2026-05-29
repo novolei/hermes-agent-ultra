@@ -92,7 +92,7 @@ vi.mock('@/features/chat-agent/lib/tauri-bridge-stub', () => ({
   getAgentSessionMessages: vi.fn().mockResolvedValue([]),
   sendAgentMessage: vi.fn().mockResolvedValue(undefined),
   stopAgent: vi.fn().mockResolvedValue(undefined),
-  openFileDialog: vi.fn().mockResolvedValue({ paths: [] }),
+  openFileDialog: vi.fn().mockResolvedValue({ files: [] }),
   getPathForFile: vi.fn().mockReturnValue(null),
   checkPathsType: vi.fn().mockResolvedValue({ directories: [], files: [] }),
   attachSessionDirectory: vi.fn().mockResolvedValue([]),

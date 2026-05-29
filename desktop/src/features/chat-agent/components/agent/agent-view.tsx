@@ -221,13 +221,6 @@ function AgentThinkingPopover({ agentThinking, onToggle }: AgentThinkingPopoverP
 }
 
 export function AgentView({ sessionId }: { sessionId: string }): React.ReactElement {
-  // [FLASH-DEBUG] 渲染计数器
-  const renderCountRef = React.useRef(0)
-  renderCountRef.current++
-  if (renderCountRef.current % 50 === 0) {
-    console.log(`[FLASH-DEBUG] AgentView(${sessionId.slice(0, 8)}) render #${renderCountRef.current}`)
-  }
-
   const [messages, setMessages] = React.useState<AgentMessage[]>([])
   const setStreamingStates = useSetAtom(agentStreamingStatesAtom)
   const streamingStates = useAtomValue(agentStreamingStatesAtom)

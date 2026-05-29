@@ -20,7 +20,6 @@ import * as React from 'react'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { LeftSidebar } from './left-sidebar'
 import { AgentView } from '@/features/chat-agent/components/agent/agent-view'
-import { AgentSessionProvider } from '@/features/chat-agent/contexts/session-context'
 import { BottomDockHoverRegion } from '@/features/chat-agent/components/dock/bottom-dock-hover-region'
 import { TooltipProvider } from '@/shared/ui/tooltip'
 import { cn } from '@/shared/lib/cn'
@@ -51,9 +50,12 @@ export function AppShell(): React.ReactElement {
       >
         <LeftSidebar />
         <main data-testid="app-shell-main" className="flex flex-1 flex-col overflow-hidden">
-          <AgentSessionProvider sessionId={sessionId}>
-            <AgentView sessionId={sessionId} />
-          </AgentSessionProvider>
+          {/*
+            NOTE: AgentView internally mounts its own AgentSessionProvider with
+            the sessionId prop. AppShell threads sessionId in as a prop only —
+            no need for an outer Provider here. (Plan 2b.2.c.4.a code review.)
+          */}
+          <AgentView sessionId={sessionId} />
         </main>
         {bottomDockEnabled ? (
           // BottomDockHoverRegion has an empty props interface (forwardRef with no
