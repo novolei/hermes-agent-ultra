@@ -32,13 +32,14 @@ import { PermissionModeSelector } from '@/features/chat-agent/components/agent/p
 import { StrategyPresetSelector } from '@/features/chat-agent/components/agent/strategy-preset-selector'
 import { AgentStatusBar } from '@/features/chat-agent/components/agent/agent-status-bar'
 import { ChatAppearancePopover } from '@/features/chat-agent/components/chat/chat-appearance-popover'
-// Remaining stubs (Plan 4.c/4.d/4.e)
+// Real STT imports (Plan 4.c)
+import { SttModal } from '@/features/chat-agent/components/stt/stt-modal'
+import { FirstRunDialog } from '@/features/chat-agent/components/stt/first-run-dialog'
+import { SpeechButton } from '@/features/chat-agent/components/ai-elements/speech-button'
+import { modelStatusAtom } from '@/features/chat-agent/atoms/stt-atoms'
+import { smartJoin } from '@/features/chat-agent/lib/stt/punctuation'
+// Remaining stubs (Plan 4.d/4.e)
 import {
-  SttModal,
-  FirstRunDialog,
-  SpeechButton,
-  modelStatusAtom,
-  smartJoin,
   PetWidget,
   BrowserPreviewOverlay,
   AutoPreviewPopover,

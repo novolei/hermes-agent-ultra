@@ -4,8 +4,6 @@
  * Verifies:
  *   1. Sufficient number of component stub exports exist (future-proof count check)
  *   2. Key component stubs render a hidden placeholder with the expected data-stub attr
- *   3. modelStatusAtom is a jotai atom with 'idle' default
- *   4. smartJoin stub throws NOT_IMPLEMENTED
  */
 
 import { describe, it, expect } from 'vitest'
@@ -19,17 +17,12 @@ describe('agentview-bridge-stub', () => {
       const v = (stubs as Record<string, unknown>)[k]
       return typeof v === 'function' && k[0] === k[0].toUpperCase()
     })
-    // 4.b (12) stubs removed — now real components.
-    // Remaining: 4.c (3) + 4.d (4) + 4.e (2) = 9 component stubs
-    // (modelStatusAtom is NOT a component — threshold is conservative)
-    expect(componentKeys.length).toBeGreaterThanOrEqual(9)
+    // 4.b (12) + 4.c (3) stubs removed — now real components.
+    // Remaining: 4.d (4) + 4.e (2) = 6 component stubs
+    expect(componentKeys.length).toBeGreaterThanOrEqual(6)
   })
 
   it.each([
-    // 4.c STT
-    'SttModal',
-    'FirstRunDialog',
-    'SpeechButton',
     // 4.d
     'PetWidget',
     'BrowserPreviewOverlay',
@@ -44,17 +37,5 @@ describe('agentview-bridge-stub', () => {
     const { container } = render(<Comp />)
     const el = container.querySelector(`[data-stub="${name}"]`)
     expect(el, `[data-stub="${name}"] should be in DOM`).not.toBeNull()
-  })
-
-  it('modelStatusAtom is a jotai atom with idle default', () => {
-    // Jotai atoms have an `init` property holding the initial value
-    expect(stubs.modelStatusAtom).toBeDefined()
-    // Verify it quacks like a jotai atom (has toString / read)
-    expect(typeof stubs.modelStatusAtom).toBe('object')
-    expect(stubs.modelStatusAtom).not.toBeNull()
-  })
-
-  it('smartJoin stub throws NOT_IMPLEMENTED', () => {
-    expect(() => stubs.smartJoin('hello', ',')).toThrow('NOT_IMPLEMENTED')
   })
 })
