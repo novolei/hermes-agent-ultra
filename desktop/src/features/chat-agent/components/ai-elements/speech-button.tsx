@@ -14,7 +14,7 @@ import { useAtomValue } from 'jotai'
 import { Button } from '@/shared/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
 import { cn } from '@/shared/lib/cn'
-import { useShortcut } from '@/features/chat-agent/hooks/useShortcut'
+import { useShortcut } from '@/features/chat-agent/hooks/use-shortcut'
 import {
   modelStatusAtom,
   sttModalStateAtom,

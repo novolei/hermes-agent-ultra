@@ -13,7 +13,7 @@
 import * as React from 'react'
 import { useAtom, useSetAtom, useAtomValue } from 'jotai'
 import { toast } from 'sonner'
-import { Pin, PinOff, Settings, Plus, Trash2, Pencil, ChevronDown, ChevronRight, Plug, Zap, ArrowRightLeft, Search, Archive, ArchiveRestore, ArrowLeft, Hammer, LoaderCircle, Bot, Palmtree } from 'lucide-react'
+import { Pin, PinOff, Settings, Plus, Trash2, Pencil, ChevronDown, ChevronRight, Plug, Zap, Search, Archive, ArchiveRestore, ArrowLeft, Bot, Palmtree } from 'lucide-react'
 import { cn } from '@/shared/lib/cn'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/ui/tooltip'
 import { useWorkspaceSwipe } from '@/features/chat-agent/hooks/use-workspace-swipe'
@@ -24,7 +24,6 @@ import { appModeAtom } from '@/features/chat-agent/atoms/app-mode'
 import { settingsTabAtom, settingsOpenAtom } from '@/features/chat-agent/atoms/settings-tab'
 import {
   conversationsAtom,
-  currentConversationIdAtom,
   selectedModelAtom,
   streamingConversationIdsAtom,
   conversationModelsAtom,
@@ -35,7 +34,6 @@ import {
 import {
   agentSessionsAtom,
   currentAgentSessionIdAtom,
-  agentSessionIndicatorMapAtom,
   unviewedCompletedSessionIdsAtom,
   workingDoneSessionIdsAtom,
   agentChannelIdAtom,
@@ -49,7 +47,6 @@ import {
   agentSessionAttachedDirsMapAtom,
   workspaceAttachedDirsMapAtom,
 } from '@/features/chat-agent/atoms/agent-atoms'
-import type { SessionIndicatorStatus } from '@/features/chat-agent/atoms/agent-atoms'
 import {
   tabsAtom,
   activeTabIdAtom,
@@ -61,7 +58,7 @@ import { sidebarViewModeAtom, agentSidebarTopHeightAtom } from '@/features/chat-
 import { searchPaletteOpenAtom } from '@/features/chat-agent/atoms/search-atoms'
 import { hasUpdateAtom } from '@/features/chat-agent/atoms/updater'
 import { draftSessionIdsAtom } from '@/features/chat-agent/atoms/draft-session-atoms'
-import { workingSessionGroupsAtom, workingSessionIdsSetAtom } from '@/features/chat-agent/atoms/working-atoms'
+import { workingSessionIdsSetAtom } from '@/features/chat-agent/atoms/working-atoms'
 import { hasEnvironmentIssuesAtom } from '@/features/chat-agent/atoms/environment'
 import { promptConfigAtom, selectedPromptIdAtom, conversationPromptIdAtom } from '@/features/chat-agent/atoms/system-prompt-atoms'
 import { useOpenSession } from '@/features/chat-agent/hooks/use-open-session'
@@ -166,12 +163,8 @@ import {
   toggleArchiveConversation,
   deleteConversation as deleteConversationIPC,
   createAgentSession,
-  updateAgentSessionTitle,
-  togglePinAgentSession,
-  toggleManualWorkingAgentSession,
 } from '@/features/chat-agent/lib/tauri-bridge-stub'
 import {
-  toggleArchiveAgentSession,
   deleteAgentSession,
 } from '@/lib/bridge/session'
 
@@ -359,16 +352,15 @@ export function LeftSidebar({ width }: LeftSidebarProps): React.ReactElement {
   const setTopLevelView = useSetAtom(topLevelViewAtom)
   const setKaleidoscopeModule = useSetAtom(kaleidoscopeModuleAtom)
   const [, setHomeOfficeOpen] = useAtom(homeOfficePanelOpenAtom)
-  const [activeItem, setActiveItem] = React.useState<SidebarItemId>('all-chats')
+  const [, setActiveItem] = React.useState<SidebarItemId>('all-chats')
   const [conversations, setConversations] = useAtom(conversationsAtom)
-  const [currentConversationId, setCurrentConversationId] = useAtom(currentConversationIdAtom)
   const draftSessionIds = useAtomValue(draftSessionIdsAtom)
   const setDraftSessionIds = useSetAtom(draftSessionIdsAtom)
   const [hoveredId, setHoveredId] = React.useState<string | null>(null)
   const [pendingDeleteId, setPendingDeleteId] = React.useState<string | null>(null)
   const [moveTargetId, setMoveTargetId] = React.useState<string | null>(null)
   const [pinnedExpanded, setPinnedExpanded] = React.useState(true)
-  const [agentSubTab, setAgentSubTab] = React.useState<'working' | 'pinned'>('working')
+  const [, setAgentSubTab] = React.useState<'working' | 'pinned'>('working')
   const [userProfile, setUserProfile] = useAtom(userProfileAtom)
   const selectedModel = useAtomValue(selectedModelAtom)
   const streamingIds = useAtomValue(streamingConversationIdsAtom)
@@ -380,7 +372,6 @@ export function LeftSidebar({ width }: LeftSidebarProps): React.ReactElement {
 
   const [agentSessions, setAgentSessions] = useAtom(agentSessionsAtom)
   const [currentAgentSessionId, setCurrentAgentSessionId] = useAtom(currentAgentSessionIdAtom)
-  const agentIndicatorMap = useAtomValue(agentSessionIndicatorMapAtom)
   const setUnviewedCompleted = useSetAtom(unviewedCompletedSessionIdsAtom)
   const agentChannelId = useAtomValue(agentChannelIdAtom)
   const agentModelId = useAtomValue(agentModelIdAtom)
@@ -403,7 +394,6 @@ export function LeftSidebar({ width }: LeftSidebarProps): React.ReactElement {
   const setSearchPaletteOpen = useSetAtom(searchPaletteOpenAtom)
   const [agentTopHeight, setAgentTopHeight] = useAtom(agentSidebarTopHeightAtom)
   const agentSplitContainerRef = React.useRef<HTMLDivElement>(null)
-  const agentTopResizing = React.useRef(false)
   const agentTopResizeCleanup = React.useRef<(() => void) | null>(null)
 
   React.useEffect(() => { return () => { agentTopResizeCleanup.current?.() } }, [])
@@ -463,12 +453,6 @@ export function LeftSidebar({ width }: LeftSidebarProps): React.ReactElement {
     syncWorkspaceSessions(agentSessions as any)
   }, [agentSessions, syncWorkspaceSessions])
 
-  const workspaceNameMap = React.useMemo(() => {
-    const map = new Map<string, string>()
-    for (const w of workspaces) map.set(w.id, w.name)
-    return map
-  }, [workspaces])
-
   React.useEffect(() => {
     if (!currentWorkspaceId || mode !== 'agent') { setCapabilities(null); return }
     getWorkspaceCapabilities(currentWorkspaceId).then(setCapabilities).catch(console.error)
@@ -479,9 +463,7 @@ export function LeftSidebar({ width }: LeftSidebarProps): React.ReactElement {
     [conversations, viewMode, draftSessionIds]
   )
 
-  const workingGroups = useAtomValue(workingSessionGroupsAtom)
   const workingSessionIds = useAtomValue(workingSessionIdsSetAtom)
-  const hasWorkingSessions = workingGroups.todo.length > 0 || workingGroups.running.length > 0 || workingGroups.done.length > 0
 
   const pinnedAgentSessions = React.useMemo(
     () => viewMode === 'active' ? agentSessions.filter((s) => s.pinned && !draftSessionIds.has(s.id) && !workingSessionIds.has(s.id) && (!currentWorkspaceId || s.workspaceId === currentWorkspaceId)) : [],
@@ -505,10 +487,6 @@ export function LeftSidebar({ width }: LeftSidebarProps): React.ReactElement {
   }, [conversations, viewMode, draftSessionIds])
 
   const archivedConversationCount = React.useMemo(() => conversations.filter((c) => c.archived).length, [conversations])
-  const archivedAgentSessionCount = React.useMemo(
-    () => agentSessions.filter((s) => s.archived && (!currentWorkspaceId || s.workspaceId === currentWorkspaceId)).length,
-    [agentSessions, currentWorkspaceId]
-  )
 
   // 初始加载 workspaces + active workspace ID
   React.useEffect(() => {
@@ -687,61 +665,6 @@ export function LeftSidebar({ width }: LeftSidebarProps): React.ReactElement {
     setUnviewedCompleted((prev: Set<string>) => { if (!prev.has(id)) return prev; const next = new Set(prev); next.delete(id); return next })
   }
 
-  const handleAgentRename = async (id: string, newTitle: string): Promise<void> => {
-    try {
-      const updated = await updateAgentSessionTitle(id, newTitle)
-      setAgentSessions((prev: any) => prev.map((s: any) => (s.id === updated.id ? updated : s)))
-      setTabs((prev) => updateTabTitle(prev, id, newTitle))
-    } catch (error) { console.error('[侧边栏] 重命名 Agent 会话失败:', error) }
-  }
-
-  const handleTogglePinAgent = async (id: string): Promise<void> => {
-    try {
-      const newPinnedAt = await togglePinAgentSession(id)
-      setAgentSessions((prev: any) => prev.map((s: any) => (s.id === id ? { ...s, pinnedAt: newPinnedAt } : s)))
-    } catch (error) { console.error('[侧边栏] 切换 Agent 会话置顶失败:', error) }
-  }
-
-  const handleToggleManualWorkingAgent = async (id: string): Promise<void> => {
-    try {
-      const isCurrentlyInWorking = workingSessionIds.has(id)
-      if (isCurrentlyInWorking) {
-        const session = agentSessions.find((s) => s.id === id)
-        if (session?.manualWorking) {
-          const updated = await toggleManualWorkingAgentSession(id)
-          setAgentSessions((prev: any) => prev.map((s: any) => (s.id === updated.id ? updated : s)))
-        }
-        setWorkingDone((prev) => { if (!prev.has(id)) return prev; const next = new Set(prev); next.delete(id); return next })
-      } else {
-        const original = agentSessions.find((s) => s.id === id)
-        const updated = await toggleManualWorkingAgentSession(id)
-        setAgentSessions((prev: any) => prev.map((s: any) => (s.id === updated.id ? updated : s)))
-        if (original?.archived && updated.manualWorking && !updated.archived) toast.success('已取消归档并标记为工作中')
-      }
-    } catch (error) { console.error('[Sidebar] Failed to toggle manual working:', error); toast.error('操作失败') }
-  }
-
-  const handleToggleArchiveAgent = async (id: string): Promise<void> => {
-    try {
-      const archivedAt = await toggleArchiveAgentSession(id)
-      const isNowArchived = archivedAt !== null
-      setAgentSessions((prev: any) => prev.map((s: any) => (s.id === id ? { ...s, archived: isNowArchived, archivedAt } : s)))
-      if (isNowArchived) {
-        const wasActive = activeTabId === id
-        const tabResult = closeTab(tabs, activeTabId, id)
-        setTabs(tabResult.tabs)
-        setActiveTabId(tabResult.activeTabId)
-        cleanupMapAtoms(id)
-        setWorkingDone((prev) => { if (!prev.has(id)) return prev; const next = new Set(prev); next.delete(id); return next })
-        if (wasActive) {
-          const newActiveTab = tabResult.activeTabId ? tabResult.tabs.find((t) => t.id === tabResult.activeTabId) ?? null : null
-          syncActiveTabSideEffects(newActiveTab)
-        }
-      }
-      toast.success(isNowArchived ? '已归档' : '已取消归档')
-    } catch (error) { console.error('[侧边栏] 切换 Agent 会话归档失败:', error) }
-  }
-
   const handleSessionMoved = (updatedSession: AgentSessionMeta, targetWorkspaceName: string): void => {
     setAgentSessions((prev: any) => prev.map((s: any) => (s.id === updatedSession.id ? updatedSession : s)))
     if (currentAgentSessionId === updatedSession.id) {
@@ -754,45 +677,6 @@ export function LeftSidebar({ width }: LeftSidebarProps): React.ReactElement {
     setMoveTargetId(null)
     toast.success('会话已迁移', { description: `已迁移到「${targetWorkspaceName}」，请切换工作区查看` })
   }
-
-  const filteredAgentSessions = React.useMemo(() => {
-    const byWorkspace = agentSessions.filter((s) => s.workspaceId === currentWorkspaceId && !draftSessionIds.has(s.id))
-    return viewMode === 'archived'
-      ? byWorkspace.filter((s) => s.archived)
-      : byWorkspace.filter((s) => !s.archived && !s.pinned && !workingSessionIds.has(s.id))
-  }, [agentSessions, currentWorkspaceId, viewMode, draftSessionIds, workingSessionIds])
-
-  const agentSessionGroups = React.useMemo(() => groupByDate(filteredAgentSessions), [filteredAgentSessions])
-
-  const handleAgentTopResizeStart = React.useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    const container = agentSplitContainerRef.current
-    if (!container) return
-    agentTopResizing.current = true
-    const startY = e.clientY
-    const startH = Math.max(0, agentTopHeight)
-    const containerHeight = container.getBoundingClientRect().height
-    const minH = 80
-    const maxH = Math.max(minH, Math.floor(containerHeight * 0.7))
-    const onMove = (ev: MouseEvent): void => {
-      if (!agentTopResizing.current) return
-      const delta = ev.clientY - startY
-      setAgentTopHeight(Math.min(maxH, Math.max(minH, startH + delta)))
-    }
-    const onUp = (): void => {
-      agentTopResizing.current = false
-      document.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseup', onUp)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-      agentTopResizeCleanup.current = null
-    }
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup', onUp)
-    document.body.style.cursor = 'row-resize'
-    document.body.style.userSelect = 'none'
-    agentTopResizeCleanup.current = onUp
-  }, [agentTopHeight, setAgentTopHeight])
 
   // ===== Delete-confirmation modal =====
   // Visual language mirrors the approval modal (PR #85): rounded-2xl
@@ -1164,100 +1048,3 @@ function ConversationItem({ conversation, active, hovered, streaming, showPinIco
   )
 }
 
-// ===== Agent 会话列表项 =====
-type SessionLeftAccent = 'orange' | 'blue' | 'green'
-const SESSION_LEFT_ACCENT_CLASS: Record<SessionLeftAccent, string> = { orange: 'bg-orange-500', blue: 'bg-blue-500', green: 'bg-green-500' }
-
-interface AgentSessionItemProps {
-  session: AgentSessionMeta
-  active: boolean
-  hovered: boolean
-  indicatorStatus: SessionIndicatorStatus
-  showPinIcon?: boolean
-  isInWorkingSection?: boolean
-  leftAccent?: SessionLeftAccent
-  workspaceName?: string
-  onSelect: () => void
-  onRequestDelete: () => void
-  onRequestMove: () => void
-  onRename: (id: string, newTitle: string) => Promise<void>
-  onTogglePin: (id: string) => Promise<void>
-  onToggleManualWorking: (id: string) => Promise<void>
-  onToggleArchive: (id: string) => Promise<void>
-  onMouseEnter: () => void
-  onMouseLeave: () => void
-}
-
-function AgentSessionItem({ session, active, hovered, indicatorStatus, showPinIcon, isInWorkingSection, leftAccent, workspaceName, onSelect, onRequestDelete, onRequestMove, onRename, onTogglePin, onToggleManualWorking, onToggleArchive, onMouseEnter, onMouseLeave }: AgentSessionItemProps): React.ReactElement {
-  const [editing, setEditing] = React.useState(false)
-  const [editTitle, setEditTitle] = React.useState('')
-  const inputRef = React.useRef<HTMLInputElement>(null)
-  const justStartedEditing = React.useRef(false)
-
-  const startEdit = (): void => {
-    setEditTitle(session.title); setEditing(true); justStartedEditing.current = true
-    setTimeout(() => { justStartedEditing.current = false; inputRef.current?.focus(); inputRef.current?.select() }, 300)
-  }
-  const saveTitle = async (): Promise<void> => {
-    if (justStartedEditing.current) return
-    const trimmed = editTitle.trim()
-    if (!trimmed || trimmed === session.title) { setEditing(false); return }
-    await onRename(session.id, trimmed); setEditing(false)
-  }
-  const handleKeyDown = (e: React.KeyboardEvent): void => { if (e.key === 'Enter') { e.preventDefault(); saveTitle() } else if (e.key === 'Escape') setEditing(false) }
-
-  return (
-    <div role="button" tabIndex={0} onClick={onSelect} onDoubleClick={(e) => { e.stopPropagation(); startEdit() }} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}
-      className={cn('relative w-full flex items-center gap-2 px-3 py-[7px] rounded-[10px] transition-colors duration-100 titlebar-no-drag text-left', active ? 'session-item-selected bg-primary/10 shadow-[0_1px_2px_0_rgba(0,0,0,0.05)]' : 'hover:bg-primary/5')}>
-      {leftAccent && <span className={cn('absolute left-1 top-1.5 bottom-1.5 w-[2px] rounded-full pointer-events-none', SESSION_LEFT_ACCENT_CLASS[leftAccent])} />}
-      <div className="flex-1 min-w-0">
-        {editing ? (
-          <input ref={inputRef} value={editTitle} onChange={(e) => setEditTitle(e.target.value)} onKeyDown={handleKeyDown} onBlur={saveTitle} onClick={(e) => e.stopPropagation()} className="w-full bg-transparent text-[13px] leading-5 text-foreground border-b border-primary/50 outline-none px-0 py-0" maxLength={100} />
-        ) : (
-          <div className={cn('truncate text-[13px] leading-5 flex items-center gap-1.5', active ? 'text-foreground' : 'text-foreground/80')}>
-            {showPinIcon && <Pin size={11} className="flex-shrink-0 text-primary/60" />}
-            <span className="flex-shrink-0 inline-flex items-center justify-center text-primary" style={{ width: '18px' }}>
-              {session.titlePending ? (
-                <LoaderCircle size={14} strokeWidth={2} className="animate-spin" />
-              ) : session.titleEmoji ? (
-                <span className="text-[14px] leading-none" style={{ fontFamily: "'Noto Emoji', sans-serif" }}>{session.titleEmoji}</span>
-              ) : null}
-            </span>
-            {session.titlePending ? (
-              <span className="flex-1 h-3 rounded bg-foreground/10 animate-pulse" />
-            ) : (
-              <span className="truncate">{session.title}</span>
-            )}
-            {workspaceName && !session.titlePending && (
-              <span className="flex-shrink-0 px-1.5 py-0 rounded-full bg-foreground/[0.06] text-[10px] leading-4 text-foreground/40 font-medium truncate max-w-[80px]">{workspaceName}</span>
-            )}
-          </div>
-        )}
-      </div>
-      {/* Always-visible running indicator — pulsing primary dot when this
-          session has an active agent loop. Lets the user spot in-flight
-          tasks even when looking at a different session's tab. */}
-      {indicatorStatus === 'running' && !editing && (
-        <span
-          className={cn(
-            'flex-shrink-0 size-2 rounded-full bg-primary',
-            'animate-pulse shadow-[0_0_8px_hsl(var(--primary))]',
-            // hide when the action icons appear on hover, to avoid double-rendering
-            hovered && 'opacity-0 transition-opacity',
-          )}
-          title="任务执行中"
-        />
-      )}
-      <div className={cn('flex items-center gap-0.5 flex-shrink-0 transition-all duration-100 overflow-hidden', hovered && !editing ? 'opacity-100' : 'opacity-0 w-0 pointer-events-none')}>
-        <Tooltip><TooltipTrigger asChild><button onClick={(e) => { e.stopPropagation(); onTogglePin(session.id) }} className="p-1 rounded-md text-foreground/30 hover:bg-foreground/[0.08] hover:text-foreground/60 transition-colors">{session.pinned ? <PinOff size={13} /> : <Pin size={13} />}</button></TooltipTrigger><TooltipContent side="top">{session.pinned ? '取消置顶' : '置顶会话'}</TooltipContent></Tooltip>
-        <Tooltip><TooltipTrigger asChild><button onClick={(e) => { e.stopPropagation(); if (indicatorStatus !== 'running') onToggleManualWorking(session.id) }} disabled={indicatorStatus === 'running'} className={cn('p-1 rounded-md transition-colors', indicatorStatus === 'running' ? 'text-primary/40 cursor-not-allowed' : (isInWorkingSection || session.manualWorking) ? 'text-primary hover:bg-foreground/[0.08]' : 'text-foreground/30 hover:bg-foreground/[0.08] hover:text-foreground/60')}><Hammer size={13} className={(isInWorkingSection || session.manualWorking) ? 'fill-current' : ''} /></button></TooltipTrigger><TooltipContent side="top">{indicatorStatus === 'running' ? '运行中无法移出' : (isInWorkingSection || session.manualWorking) ? '取消工作中' : '标记为工作中'}</TooltipContent></Tooltip>
-        {(indicatorStatus === 'idle' || indicatorStatus === 'completed') && (
-          <Tooltip><TooltipTrigger asChild><button onClick={(e) => { e.stopPropagation(); onRequestMove() }} className="p-1 rounded-md text-foreground/30 hover:bg-foreground/[0.08] hover:text-foreground/60 transition-colors"><ArrowRightLeft size={13} /></button></TooltipTrigger><TooltipContent side="top">迁移到其他工作区</TooltipContent></Tooltip>
-        )}
-        <Tooltip><TooltipTrigger asChild><button onClick={(e) => { e.stopPropagation(); startEdit() }} className="p-1 rounded-md text-foreground/30 hover:bg-foreground/[0.08] hover:text-foreground/60 transition-colors"><Pencil size={13} /></button></TooltipTrigger><TooltipContent side="top">重命名</TooltipContent></Tooltip>
-        <Tooltip><TooltipTrigger asChild><button onClick={(e) => { e.stopPropagation(); onToggleArchive(session.id) }} className="p-1 rounded-md text-foreground/30 hover:bg-foreground/[0.08] hover:text-foreground/60 transition-colors">{session.archived ? <ArchiveRestore size={13} /> : <Archive size={13} />}</button></TooltipTrigger><TooltipContent side="top">{session.archived ? '取消归档' : '归档'}</TooltipContent></Tooltip>
-        <Tooltip><TooltipTrigger asChild><button onClick={(e) => { e.stopPropagation(); onRequestDelete() }} className="p-1 rounded-md text-foreground/30 hover:bg-destructive/10 hover:text-destructive transition-colors"><Trash2 size={13} /></button></TooltipTrigger><TooltipContent side="top">删除会话</TooltipContent></Tooltip>
-      </div>
-    </div>
-  )
-}

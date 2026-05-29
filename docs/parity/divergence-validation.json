@@ -1,6 +1,6 @@
 {
-  "divergence_file": "/Users/ryanliu/Documents/hermes-agent-ultra/.worktrees/desktop-settings-search/docs/parity/intentional-divergence.json",
-  "generated_at_utc": "2026-05-29T10:52:16.935646+00:00",
+  "divergence_file": "/Users/ryanliu/Documents/hermes-agent-ultra/.worktrees/desktop-shortcuts-cleanup/docs/parity/intentional-divergence.json",
+  "generated_at_utc": "2026-05-29T12:51:27.880276+00:00",
   "items": [
     {
       "errors": [],
@@ -58,11 +58,14 @@
       "errors": [],
       "id": "rust-skills-catalog-governance",
       "last_reviewed": "2026-04-21",
-      "matched_files": 885,
+      "matched_files": 888,
       "matched_sample": [
         "optional-skills/DESCRIPTION.md",
         "optional-skills/autonomous-ai-agents/DESCRIPTION.md",
+        "optional-skills/autonomous-ai-agents/antigravity-cli/SKILL.md",
+        "optional-skills/autonomous-ai-agents/antigravity-cli/references/cli-docs.md",
         "optional-skills/autonomous-ai-agents/blackbox/SKILL.md",
+        "optional-skills/autonomous-ai-agents/grok/SKILL.md",
         "optional-skills/autonomous-ai-agents/honcho/SKILL.md",
         "optional-skills/autonomous-ai-agents/openhands/SKILL.md",
         "optional-skills/blockchain/base/SKILL.md",
@@ -76,10 +79,7 @@
         "optional-skills/communication/DESCRIPTION.md",
         "optional-skills/communication/one-three-one-rule/SKILL.md",
         "optional-skills/creative/DESCRIPTION.md",
-        "optional-skills/creative/blender-mcp/SKILL.md",
-        "optional-skills/creative/concept-diagrams/SKILL.md",
-        "optional-skills/creative/concept-diagrams/examples/apartment-floor-plan-conversion.md",
-        "optional-skills/creative/concept-diagrams/examples/automated-password-reset-flow.md"
+        "optional-skills/creative/blender-mcp/SKILL.md"
       ],
       "overdue": false,
       "owner": "sheawinkler",
@@ -124,7 +124,7 @@
       "errors": [],
       "id": "rust-cli-tui-primary-ux-surface",
       "last_reviewed": "2026-04-21",
-      "matched_files": 1175,
+      "matched_files": 1178,
       "matched_sample": [
         "ui-tui/.gitignore",
         "ui-tui/.prettierrc",
@@ -158,10 +158,10 @@
   "summary": {
     "errors": 0,
     "items": 7,
-    "local_paths": 3766,
+    "local_paths": 3769,
     "review_overdue": 0,
     "unowned": 0,
-    "upstream_paths": 4181,
+    "upstream_paths": 4189,
     "warnings": 0
   }
 }

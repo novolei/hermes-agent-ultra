@@ -7,7 +7,6 @@ import { TooltipProvider } from '@/shared/ui/tooltip'
 import { BottomDock } from './bottom-dock'
 import { bottomDockEnabledAtom, dockOrderAtom, type DockItemSpec } from '@/features/chat-agent/atoms/dock-atoms'
 import { conversationsAtom } from '@/features/chat-agent/atoms/chat-atoms'
-import { agentSessionsAtom } from '@/features/chat-agent/atoms/agent-atoms'
 import { workspacesAtom } from '@/features/chat-agent/atoms/workspace'
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn().mockResolvedValue({}) }))

@@ -16,7 +16,7 @@
 import * as React from 'react'
 import { useAtom, useAtomValue, useSetAtom, useStore } from 'jotai'
 import { toast } from 'sonner'
-import { Bot, CornerDownLeft, Square, Settings, Paperclip, X, Copy, Check, Brain, Map as MapIcon, Sparkles, AlertTriangle } from 'lucide-react'
+import { CornerDownLeft, Square, Settings, Paperclip, X, Brain, Map as MapIcon, Sparkles, AlertTriangle } from 'lucide-react'
 import { AgentMessages } from '@/features/chat-agent/components/agent/agent-messages'
 import { AgentHeader } from '@/features/chat-agent/components/agent/agent-header'
 // Real component imports (Plan 4.b)
@@ -31,7 +31,6 @@ import { QueuedMessagesBanner } from '@/features/chat-agent/components/agent/que
 import { PermissionModeSelector } from '@/features/chat-agent/components/agent/permission-mode-selector'
 import { StrategyPresetSelector } from '@/features/chat-agent/components/agent/strategy-preset-selector'
 import { AgentStatusBar } from '@/features/chat-agent/components/agent/agent-status-bar'
-import { ChatAppearancePopover } from '@/features/chat-agent/components/chat/chat-appearance-popover'
 // Real STT imports (Plan 4.c)
 import { SttModal } from '@/features/chat-agent/components/stt/stt-modal'
 import { FirstRunDialog } from '@/features/chat-agent/components/stt/first-run-dialog'
@@ -100,7 +99,6 @@ import {
   finalizeStreamingActivities,
   workspaceAttachedDirsMapAtom,
   agentSessionAttachedDirsMapAtom,
-  workspaceFilesVersionAtom,
   composerFocusedAtom,
   composerHasTextAtom,
   proactiveLearningEventsAtom,
@@ -266,7 +264,6 @@ export function AgentView({ sessionId }: { sessionId: string }): React.ReactElem
   // 保持 channelId 稳定：初始化前使用上次有效值，避免工具栏抖动
   const stableChannelIdRef = React.useRef(agentChannelId)
   if (agentChannelId) stableChannelIdRef.current = agentChannelId
-  const stableChannelId = agentChannelId ?? stableChannelIdRef.current
 
   // 已有会话首次打开时，从全局默认值初始化 per-session map
   React.useEffect(() => {
@@ -319,9 +316,6 @@ export function AgentView({ sessionId }: { sessionId: string }): React.ReactElem
   const setSessionAttachedMap = useSetAtom(agentSessionAttachedDirsMapAtom)
   const attachedDirs = sessionAttachedMap.get(sessionId) ?? []
   const wsAttachedDirs = currentWorkspaceId ? (wsAttachedMap.get(currentWorkspaceId) ?? []) : []
-  // Phase 3 (Task 7): file version bump for SidePanel refresh after native drops.
-  const setFilesVersion = useSetAtom(workspaceFilesVersionAtom)
-
   const draftsMap = useAtomValue(agentSessionDraftsAtom)
   const setDraftsMap = useSetAtom(agentSessionDraftsAtom)
   const inputContent = draftsMap.get(sessionId) ?? ''
@@ -372,7 +366,6 @@ export function AgentView({ sessionId }: { sessionId: string }): React.ReactElem
   const setSessionPathMap = useSetAtom(agentSessionPathMapAtom)
   const sessionPath = sessionPathMap.get(sessionId) ?? null
   const [isDragOver, setIsDragOver] = React.useState(false)
-  const [errorCopied, setErrorCopied] = React.useState(false)
 
   // STT state
   const [firstRunOpen, setFirstRunOpen] = React.useState(false)
@@ -410,8 +403,6 @@ export function AgentView({ sessionId }: { sessionId: string }): React.ReactElem
   // 渠道已选但模型未选时，自动选择第一个可用模型
   const globalChannels = useAtomValue(channelsAtom)
 
-  // 是否有可用模型：使用新的 Provider 体系（activeProviderModelAtom）
-  const hasAvailableModel = activeProviderModel !== null
   React.useEffect(() => {
     if (!agentChannelId || agentModelId) return
 
@@ -1385,19 +1376,6 @@ export function AgentView({ sessionId }: { sessionId: string }): React.ReactElem
       }
     }
     prevAgentError.current = agentError
-  }, [agentError])
-
-  /** 复制错误信息到剪贴板 */
-  const handleCopyError = React.useCallback(async (): Promise<void> => {
-    if (!agentError) return
-
-    try {
-      await navigator.clipboard.writeText(agentError.message)
-      setErrorCopied(true)
-      setTimeout(() => setErrorCopied(false), 2000)
-    } catch (error) {
-      console.error('[AgentView] 复制错误信息失败:', error)
-    }
   }, [agentError])
 
   /** 重试：在当前会话中重新发送最后一条用户消息 */
