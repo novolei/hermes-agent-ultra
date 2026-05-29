@@ -1,3 +1,9 @@
+/**
+ * AgentMessages — Agent 消息列表
+ *
+ * 复用 Chat 的 Conversation/Message 原语组件渲染持久化消息与流式气泡。
+ */
+
 import * as React from 'react'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { Bot, FileText, FileImage, AlertTriangle, RotateCw, ChevronDown, ChevronRight, Download, Zap, Brain } from 'lucide-react'
@@ -22,6 +28,7 @@ import {
   memoryRecallEventAtom,
   skillRecallsMapAtom,
 } from '@/features/chat-agent/atoms/agent-atoms'
+
 import { agentDisplayNameForAtom } from '@/features/chat-agent/atoms/agent-display-name'
 import { stickyUserMessageEnabledAtom } from '@/features/chat-agent/atoms/ui-preferences'
 import { saveImageAs, readAttachment } from '@/lib/bridge'
@@ -35,6 +42,9 @@ import {
   agentActivitiesToChatActivities,
   type AttachedFileRef,
 } from '@/features/chat-agent/lib/agent-messages-utils'
+// Re-exported per uclaw parity — DurationBadge callers import formatDuration/buildUsageTooltip
+// from this module (e.g. sdk-message-renderer).
+export { formatDuration, buildUsageTooltip } from '@/features/chat-agent/lib/agent-messages-utils'
 import { formatMessageTime } from '@/features/chat-agent/lib/format-message-time'
 import { ChatToolActivityIndicator } from '@/features/chat-agent/components/chat-tool-activity-indicator'
 import { ThinkingBlock } from '@/features/chat-agent/components/content-block'
@@ -62,9 +72,32 @@ import {
 } from '@/features/chat-agent/components/ai-elements/conversation'
 import type { MinimapItem } from '@/features/chat-agent/components/ai-elements/scroll-minimap'
 
-// ---- Small private helpers (Task 11) --------------------------------------
+/** AgentMessages 属性接口 */
+export interface AgentMessagesProps {
+  sessionId: string
+  /** 用户在前端选择的模型 ID（用于显示渠道配置的 Model Name） */
+  sessionModelId?: string
+  messages: AgentMessage[]
+  /** 消息是否已完成首次加载 */
+  messagesLoaded?: boolean
+  streaming: boolean
+  streamState?: AgentStreamState
+  /** 实时消息列表（流式期间累积，用于过渡状态判断） */
+  liveMessages?: any[]
+  /** 当前会话工作目录，用于解析相对文件路径 */
+  sessionPath?: string | null
+  /** 附加目录列表（与 sessionPath 一并用作相对路径解析候选） */
+  attachedDirs?: string[]
+  /** 最后一轮是否被用户中断 */
+  stoppedByUser?: boolean
+  onRetry?: () => void
+  onRetryInNewSession?: () => void
+  onFork?: (upToMessageUuid: string) => void
+  onRewind?: (assistantMessageUuid: string) => void
+  onCompact?: () => void
+}
 
-/** Welcome state delegate. */
+/** 空状态引导 — 使用 WelcomeEmptyState */
 function EmptyState(): React.ReactElement {
   return <WelcomeEmptyState />
 }
@@ -170,7 +203,7 @@ function AttachedFileChip({ file }: { file: AttachedFileRef }): React.ReactEleme
   )
 }
 
-/** Duration + token usage display, hidden when both missing. */
+/** 统一消息元信息栏 — 耗时 + token 用量合并为单行，单一 tooltip */
 function MessageMetaBar({ durationMs, usage }: { durationMs?: number; usage?: AgentEventUsage }): React.ReactElement | null {
   if (durationMs == null && usage == null) return null
 
@@ -209,9 +242,18 @@ function MessageMetaBar({ durationMs, usage }: { durationMs?: number; usage?: Ag
   )
 }
 
-// ---- Medium render components (Task 12) -----------------------------------
-
-/** Context-compaction fold card. */
+/**
+ * CompactionFoldCard — renders the M2-G fold synth message (the
+ * Markdown placeholder /compact inserts in place of the compacted
+ * messages) as a collapsible card with a single-line header instead
+ * of a regular user bubble.
+ *
+ * Replaces the prior "horizontal divider + a Markdown user bubble"
+ * dual-rendering that the user reported as "two compactions". The
+ * boundary marker + the fold content are now ONE card: header line
+ * shows the divider-style summary, expanding shows the structured
+ * Markdown body.
+ */
 function CompactionFoldCard({
   markdown,
   createdAt,
@@ -397,6 +439,7 @@ function RetryingNotice({ retrying }: { retrying: NonNullable<AgentStreamState['
   )
 }
 
+/** 单条重试尝试记录 */
 function RetryAttemptItem({
   attempt,
   isLatest,
@@ -489,7 +532,7 @@ function RetryAttemptItem({
   )
 }
 
-/** Public DurationBadge — exported (uclaw exports this). */
+/** 耗时徽章 — 悬浮显示 token 用量明细（SDKMessageRenderer 复用） */
 export function DurationBadge({ durationMs, usage }: { durationMs: number; usage?: AgentEventUsage }): React.ReactElement {
   return (
     <Tooltip>
@@ -505,6 +548,17 @@ export function DurationBadge({ durationMs, usage }: { durationMs: number; usage
   )
 }
 
+/**
+ * Agent 运行指示器 — 3×3 涟漪脉冲方块 + 运行时间 + 可选累积统计。
+ *
+ * Layer 3 of the agent status visibility upgrade. Lives inside the
+ * streaming bubble (in-conversation cursor of "this turn is in progress").
+ * Distinct visual rhythm from AgentStatusBar (which is the persistent
+ * sticky bar above input).
+ *
+ * Visual: the shared <Spinner> — a 3×3 grid of soft rounded squares that
+ * ripple-pulse outward from the centre, accent-coloured.
+ */
 function AgentRunningIndicator({
   startedAt,
   toolCount,
@@ -558,8 +612,6 @@ function AgentRunningIndicator({
     </div>
   )
 }
-
-// ---- Single-message renderer (Task 14) ------------------------------------
 
 /** AgentMessageItem 属性接口 */
 interface AgentMessageItemProps {
@@ -702,25 +754,6 @@ function AgentMessageItem({ message, sessionPath: _sessionPath, attachedDirs: _a
   }
 
   return null
-}
-
-/** AgentMessages props (mirrors uclaw verbatim). */
-export interface AgentMessagesProps {
-  sessionId: string
-  sessionModelId?: string
-  messages: AgentMessage[]
-  messagesLoaded?: boolean
-  streaming: boolean
-  streamState?: AgentStreamState
-  liveMessages?: unknown[]
-  sessionPath?: string | null
-  attachedDirs?: string[]
-  stoppedByUser?: boolean
-  onRetry?: () => void
-  onRetryInNewSession?: () => void
-  onFork?: (upToMessageUuid: string) => void
-  onRewind?: (assistantMessageUuid: string) => void
-  onCompact?: () => void
 }
 
 export function AgentMessages({ sessionId, sessionModelId, messages, messagesLoaded, streaming, streamState, liveMessages, sessionPath, attachedDirs, stoppedByUser: _stoppedByUser, onRetry: _onRetry, onRetryInNewSession: _onRetryInNewSession, onFork: _onFork, onRewind: _onRewind, onCompact: _onCompact }: AgentMessagesProps): React.ReactElement {
