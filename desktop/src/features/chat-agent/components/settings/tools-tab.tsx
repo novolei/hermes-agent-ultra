@@ -1,14 +1,27 @@
-import * as React from 'react'
-
 /**
- * ToolsTab — placeholder for Wave B. Wave E upgrades this to render
- * the real tools + permissions + skills sub-components.
+ * ToolsTab — composes ToolSettings + PermissionsSettings.
+ *
+ * 学得技能与 MCP 已迁至万花筒（技能 / 集成模块）。本 tab 只剩工作区
+ * skill 标签、活动技能调试面板、工具权限。
+ *
+ * Verbatim port of uclaw ToolsTab.tsx — Wave E upgrade from placeholder.
+ * Retargets:
+ *   ./ToolSettings → ./tool-settings
+ *   ./PermissionsSettings → ./permissions-settings
  */
+import * as React from 'react'
+import { ToolSettings } from './tool-settings'
+import { PermissionsSettings } from './permissions-settings'
+
 export function ToolsTab(): React.ReactElement {
   return (
-    <div data-deferred-to="3.5.s.a-wave-e" className="p-8 text-center text-muted-foreground">
-      <div className="text-lg font-medium mb-2">ToolsTab</div>
-      <p className="text-sm">Waiting for Wave E: tools + permissions + skills sub-components</p>
+    <div className="space-y-8">
+      <section data-settings-section="工具与 MCP">
+        <ToolSettings />
+      </section>
+      <section data-settings-section="工具权限">
+        <PermissionsSettings />
+      </section>
     </div>
   )
 }
