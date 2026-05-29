@@ -5,13 +5,14 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, waitFor } from '@testing-library/react'
 import { MemoryRecallSettings } from './memory-recall-settings'
+import type { MemoryRecallConfigDto } from '@/features/chat-agent/lib/tauri-bridge-stub'
 
 vi.mock('@/features/chat-agent/lib/tauri-bridge-stub', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/chat-agent/lib/tauri-bridge-stub')>()
   return {
     ...actual,
-    getMemoryRecallConfig: vi.fn(async () => ({})),
-    patchMemoryRecallConfig: vi.fn(async (input: unknown) => input),
+    getMemoryRecallConfig: vi.fn(async (): Promise<MemoryRecallConfigDto> => ({})),
+    patchMemoryRecallConfig: vi.fn(async (input: MemoryRecallConfigDto) => input),
   }
 })
 
