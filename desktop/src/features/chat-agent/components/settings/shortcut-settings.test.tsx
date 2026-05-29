@@ -9,10 +9,8 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import * as React from 'react'
-import { createStore } from 'jotai'
-import { Provider } from 'jotai'
-import { fireEvent, render } from '@testing-library/react'
-import { screen } from '@testing-library/react'
+import { createStore, Provider } from 'jotai'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { ShortcutSettings } from './shortcut-settings'
 import { shortcutOverridesAtom } from '@/features/chat-agent/atoms/shortcut-atoms'
 import { SHORTCUT_DEFINITIONS } from '@/features/chat-agent/lib/shortcut-defaults'

@@ -1382,7 +1382,7 @@ export async function memoryLearningDemoteFacet(
 // shortcuts to the backend whenever the user overrides a binding that appears
 // in GLOBAL_SHORTCUT_IDS. Throws NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND until
 // the Rust global-shortcut registration backend ships.
-// Source: uclaw `@/lib/tauri-bridge`.
+// Source: uclaw `@/lib/tauri-bridge` lines 2535–2537.
 
 /**
  * Notify the backend of a new key combo for a globally-registered shortcut.
