@@ -6,10 +6,6 @@
  *   - <AgentView />          main pane (Plan 2b.2.c.4.a)
  *   - <BottomDockHoverRegion /> dock pin row + connection indicator (Plan 3.3 B7)
  *
- * NOTE: The slim ChatAgentView (Plan 2b.2.c.3) stays in
- * desktop/src/features/chat-agent/components/chat-agent-view.tsx as a
- * rollback target until Plan 2b.2.c.4.d retires it.
- *
  * Deferred from uclaw's 441-LOC AppShell — out of scope for Plan 3.3:
  *   - RightSidePanel, MainArea tabs       → Plan 2b.2.c.4
  *   - SettingsDialog, SearchPalette       → Plan 3.5
