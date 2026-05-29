@@ -78,14 +78,13 @@ describe('AgentView', () => {
     expect(container.querySelector('[data-testid="agent-view"]')).not.toBeNull()
   })
 
-  it('stubbed banners render hidden placeholders (aria-hidden)', () => {
+  it('zero [data-stub] placeholders remain (Wave D complete — all stubs replaced by real components)', () => {
     const { container } = render(
       <Wrapper>
         <AgentView sessionId="test-session" />
       </Wrapper>,
     )
     const stubs = container.querySelectorAll('[data-stub]')
-    expect(stubs.length).toBeGreaterThan(0)
-    stubs.forEach((s) => expect((s as HTMLElement).getAttribute('aria-hidden')).toBe('true'))
+    expect(stubs.length).toBe(0)
   })
 })
