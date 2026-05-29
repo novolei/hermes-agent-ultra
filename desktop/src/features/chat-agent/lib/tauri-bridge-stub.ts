@@ -625,3 +625,430 @@ export async function listSpaces(): Promise<SpaceSummary[]> {
 export async function searchFragments(_query: string): Promise<FragmentSearchHit[]> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_BACKEND: searchFragments')
 }
+
+// ─── Plan 3.5.s.a Wave C — GeneralSettings + PromptSettings IPC stubs ────────
+// GeneralSettings calls getSettings/patchSettings (language, theme).
+// PromptSettings calls system-prompt CRUD (create/update/delete/setDefault/versions).
+// All throw NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND until the Rust backend ships
+// the corresponding Tauri commands. Source: uclaw `@/lib/tauri-bridge`.
+
+/** Global app settings payload. Mirrors uclaw lib/types.ts Settings. */
+export interface Settings {
+  language: string
+  theme: string
+  configPath: string
+  dataPath: string
+  monthlyBudgetUsd?: number | null
+}
+
+/** Partial patch for global app settings. Mirrors uclaw lib/types.ts PatchSettingsInput. */
+export interface PatchSettingsInput {
+  language?: string
+  theme?: string
+  /** Send `null` to clear; omit to leave unchanged. */
+  monthlyBudgetUsd?: number | null
+}
+
+/**
+ * Fetch global app settings (language, theme, paths, etc.).
+ * Plan 3.5.s.a Wave C stub.
+ */
+export async function getSettings(): Promise<Settings> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getSettings')
+}
+
+/**
+ * Patch (update) global app settings.
+ * Plan 3.5.s.a Wave C stub.
+ */
+export async function patchSettings(_input: PatchSettingsInput): Promise<Settings> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: patchSettings')
+}
+
+/**
+ * Fetch the full system prompt config (list of prompts + defaultPromptId).
+ * Plan 3.5.s.a Wave C stub.
+ */
+export async function getSystemPromptConfig(): Promise<import('./chat-types').SystemPromptConfig> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getSystemPromptConfig')
+}
+
+/**
+ * Create a new system prompt.
+ * Plan 3.5.s.a Wave C stub.
+ */
+export async function createSystemPrompt(
+  _input: import('./chat-types').SystemPromptCreateInput,
+): Promise<import('./chat-types').SystemPrompt> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: createSystemPrompt')
+}
+
+/**
+ * Update an existing system prompt (name and/or content).
+ * Plan 3.5.s.a Wave C stub.
+ */
+export async function updateSystemPrompt(
+  _id: string,
+  _input: import('./chat-types').SystemPromptUpdateInput,
+): Promise<import('./chat-types').SystemPrompt> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: updateSystemPrompt')
+}
+
+/**
+ * Delete a system prompt by id.
+ * Plan 3.5.s.a Wave C stub.
+ */
+export async function deleteSystemPrompt(_id: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: deleteSystemPrompt')
+}
+
+/**
+ * Set the default system prompt.
+ * Plan 3.5.s.a Wave C stub.
+ */
+export async function setDefaultPrompt(_id: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: setDefaultPrompt')
+}
+
+/**
+ * Fetch version history for a system prompt.
+ * Plan 3.5.s.a Wave C stub.
+ */
+export async function getSystemPromptVersions(
+  _promptId: string,
+): Promise<import('./chat-types').SystemPromptVersion[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getSystemPromptVersions')
+}
+
+// ─── Plan 3.5.s.a Wave D — Connectivity tab: Channel + Usage IPC stubs ────────
+// ChannelSettings calls provider CRUD (list/get/configure/remove/test/models).
+// UsageSettings calls cost dashboard queries + onTurnCost event.
+// All throw NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND until the Rust backend ships
+// the corresponding Tauri commands. Source: uclaw `@/lib/tauri-bridge`.
+
+import type {
+  ProviderInfo,
+  ProviderConfigResponse,
+  ProviderConfigureInput,
+  ModelInfo,
+  TestConnectionInput,
+  TestResultInfo,
+  ListModelsInput,
+  DailyCostRollup,
+  ModelCostRollup,
+  SessionCostRollup,
+  WorkspaceCostRollup,
+  TurnCost,
+} from './agent-types'
+
+// Re-export types so callers can import from the stub module.
+export type {
+  ProviderInfo,
+  ProviderConfigResponse,
+  ProviderConfigureInput,
+  ModelInfo,
+  TestConnectionInput,
+  TestResultInfo,
+  ListModelsInput,
+  DailyCostRollup,
+  ModelCostRollup,
+  SessionCostRollup,
+  WorkspaceCostRollup,
+  TurnCost,
+}
+
+/**
+ * List all known providers (configured or not).
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function listProviders(): Promise<ProviderInfo[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: listProviders')
+}
+
+/**
+ * List IDs of providers that have been configured with API keys.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function listConfiguredProviders(): Promise<string[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: listConfiguredProviders')
+}
+
+/**
+ * Get the stored configuration for a single provider.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function getProviderConfig(_providerId: string): Promise<ProviderConfigResponse | null> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getProviderConfig')
+}
+
+/**
+ * Save/update a provider configuration alongside its selected model IDs.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function configureProviderWithModels(_input: ProviderConfigureInput): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: configureProviderWithModels')
+}
+
+/**
+ * Remove a provider's stored configuration.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function removeProviderConfig(_providerId: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: removeProviderConfig')
+}
+
+/**
+ * Test connectivity to a provider endpoint.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function testProviderConnection(_input: TestConnectionInput): Promise<TestResultInfo> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: testProviderConnection')
+}
+
+/**
+ * Fetch the list of models available from a provider.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function listProviderModels(_input: ListModelsInput): Promise<ModelInfo[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: listProviderModels')
+}
+
+/**
+ * Get the list of model IDs configured (selected) for a specific provider.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function getConfiguredModels(_providerId: string): Promise<string[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getConfiguredModels')
+}
+
+/**
+ * Subscribe to agent:turn_cost events from the Tauri backend.
+ * Each event fires after every LLM turn with cost + token data.
+ * Plan 3.5.s.a Wave D stub — returns a no-op unlisten.
+ */
+export async function onTurnCost(_cb: (payload: TurnCost) => void): Promise<UnlistenFn> {
+  return () => {}
+}
+
+/**
+ * Fetch daily cost rollups for the last N days.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function getDailyCosts(_daysBack = 30): Promise<DailyCostRollup[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getDailyCosts')
+}
+
+/**
+ * Fetch per-model cost rollups for the last N days.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function getModelCosts(_daysBack = 30): Promise<ModelCostRollup[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getModelCosts')
+}
+
+/**
+ * Fetch per-session cost rollups for the last N days (most recent first).
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function getSessionCosts(_daysBack = 30, _limit = 50): Promise<SessionCostRollup[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getSessionCosts')
+}
+
+/**
+ * Fetch the total cost in USD for all sessions since a given epoch ms timestamp.
+ * Used by the monthly rollup in cost atoms.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function getMonthCostTotal(_sinceMs: number): Promise<number> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getMonthCostTotal')
+}
+
+/**
+ * Fetch per-workspace cost rollups since a given epoch ms timestamp.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function listWorkspaceCostRollup(_sinceMs: number): Promise<WorkspaceCostRollup[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: listWorkspaceCostRollup')
+}
+
+// ─── Plan 3.5.s.a Wave E — Tools tab: ActiveManifestSkill + Permission types ─
+// ToolSettings calls listActiveManifestSkills.
+// PermissionsSettings calls listPermissionRules, createPermissionRule,
+//   deletePermissionRule, listPermissionAudit, removeAutoApprovedTool, unblockTool.
+//   getSafetyPolicy is already stubbed above (Wave 2b.2.c.4.b).
+// WorkspaceSkillTagsEditor calls getWorkspaceSkillTags, setWorkspaceSkillTags.
+// WorkspaceSandboxSettings calls listAlwaysAllowedPaths, addAlwaysAllowedPath,
+//   removeAlwaysAllowedPath, listSessionAllowedPaths, promoteSessionPathToGlobal, openFolderDialog.
+// All throw NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND.
+
+/** An entry in the active skill manifest injected into the agent system prompt. */
+export interface ActiveManifestSkill {
+  rank: number
+  name: string
+  summary: string
+  provenance: 'bundled' | 'user' | 'project' | 'learned'
+  citedCount: number
+}
+
+/** A per-session or per-pattern permission rule. */
+export interface PermissionRule {
+  id: string
+  scope: 'session' | 'pattern'
+  sessionId?: string
+  toolName: string
+  /** For pattern scope: argument prefix to match. */
+  target?: string
+  mode: 'allow' | 'block' | 'ask'
+  createdAt: number
+}
+
+/** A single permission audit log entry. */
+export interface PermissionAuditEntry {
+  id: string
+  sessionId: string
+  toolName: string
+  argsHash: string
+  decision: 'auto_approve' | 'user_approve' | 'user_deny' | 'blocked'
+  ruleId?: string
+  createdAt: number
+}
+
+/** Input for creating a new permission rule. */
+export interface CreatePermissionRuleInput {
+  scope: 'session' | 'pattern'
+  sessionId?: string
+  toolName: string
+  target?: string
+  mode: 'allow' | 'block' | 'ask'
+}
+
+/**
+ * List the active skill manifest rows that will be injected into the agent system prompt.
+ * Plan 3.5.s.a Wave E stub.
+ */
+export async function listActiveManifestSkills(): Promise<ActiveManifestSkill[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: listActiveManifestSkills')
+}
+
+/**
+ * List all permission rules (session + pattern scopes).
+ * Plan 3.5.s.a Wave E stub.
+ */
+export async function listPermissionRules(): Promise<PermissionRule[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: listPermissionRules')
+}
+
+/**
+ * Create a new permission rule.
+ * Plan 3.5.s.a Wave E stub.
+ */
+export async function createPermissionRule(
+  _input: CreatePermissionRuleInput,
+): Promise<PermissionRule> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: createPermissionRule')
+}
+
+/**
+ * Delete a permission rule by id.
+ * Plan 3.5.s.a Wave E stub.
+ */
+export async function deletePermissionRule(_id: string): Promise<boolean> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: deletePermissionRule')
+}
+
+/**
+ * List the most recent N permission audit entries across all sessions.
+ * Plan 3.5.s.a Wave E stub.
+ */
+export async function listPermissionAudit(
+  _sessionId: string | undefined,
+  _limit: number,
+): Promise<PermissionAuditEntry[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: listPermissionAudit')
+}
+
+/**
+ * Remove a tool from the global auto-approved (whitelist) list.
+ * Plan 3.5.s.a Wave E stub.
+ */
+export async function removeAutoApprovedTool(_input: { toolName: string }): Promise<SafetyPolicyResponse> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: removeAutoApprovedTool')
+}
+
+/**
+ * Remove a tool from the global blocked list.
+ * Plan 3.5.s.a Wave E stub.
+ */
+export async function unblockTool(_input: { toolName: string }): Promise<SafetyPolicyResponse> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: unblockTool')
+}
+
+/**
+ * Get the skill tags for a specific workspace.
+ * Plan 3.5.s.a Wave E stub.
+ */
+export async function getWorkspaceSkillTags(_workspaceId: string): Promise<string[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getWorkspaceSkillTags')
+}
+
+/**
+ * Set the skill tags for a specific workspace. Returns normalized tag list.
+ * Plan 3.5.s.a Wave E stub.
+ */
+export async function setWorkspaceSkillTags(
+  _workspaceId: string,
+  _tags: string[],
+): Promise<string[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: setWorkspaceSkillTags')
+}
+
+/**
+ * List global always-allowed sandbox paths.
+ * Plan 3.5.s.a Wave E stub.
+ */
+export async function listAlwaysAllowedPaths(): Promise<string[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: listAlwaysAllowedPaths')
+}
+
+/**
+ * Add a path to the global always-allowed sandbox list.
+ * Plan 3.5.s.a Wave E stub.
+ */
+export async function addAlwaysAllowedPath(_path: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: addAlwaysAllowedPath')
+}
+
+/**
+ * Remove a path from the global always-allowed sandbox list.
+ * Plan 3.5.s.a Wave E stub.
+ */
+export async function removeAlwaysAllowedPath(_path: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: removeAlwaysAllowedPath')
+}
+
+/**
+ * List session-scoped temporarily allowed sandbox paths.
+ * Plan 3.5.s.a Wave E stub.
+ */
+export async function listSessionAllowedPaths(_sessionId: string): Promise<string[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: listSessionAllowedPaths')
+}
+
+/**
+ * Promote a session-scoped allowed path to the global always-allowed list.
+ * Plan 3.5.s.a Wave E stub.
+ */
+export async function promoteSessionPathToGlobal(
+  _sessionId: string,
+  _path: string,
+): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: promoteSessionPathToGlobal')
+}
+
+/**
+ * Open a native folder picker dialog. Returns null if user cancels.
+ * Plan 3.5.s.a Wave E stub.
+ */
+export async function openFolderDialog(): Promise<{ path: string; name: string } | null> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: openFolderDialog')
+}

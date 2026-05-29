@@ -1,6 +1,6 @@
 {
-  "divergence_file": "/Users/ryanliu/Documents/hermes-agent-ultra/.worktrees/desktop-shortcuts-cleanup/docs/parity/intentional-divergence.json",
-  "generated_at_utc": "2026-05-29T12:51:27.880276+00:00",
+  "divergence_file": "/Users/ryanliu/Documents/hermes-agent-ultra/.worktrees/desktop-settings-dialog/docs/parity/intentional-divergence.json",
+  "generated_at_utc": "2026-05-29T16:15:42.042274+00:00",
   "items": [
     {
       "errors": [],
@@ -158,7 +158,7 @@
   "summary": {
     "errors": 0,
     "items": 7,
-    "local_paths": 3769,
+    "local_paths": 3812,
     "review_overdue": 0,
     "unowned": 0,
     "upstream_paths": 4189,
