@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { fireEvent, waitFor } from '@testing-library/react'
 import { render, screen } from '@testing-library/react'
 import { Provider, createStore } from 'jotai'
-import React from 'react'
 import { FirstRunDialog } from './first-run-dialog'
 import { modelStatusAtom } from '@/features/chat-agent/atoms/stt-atoms'
 

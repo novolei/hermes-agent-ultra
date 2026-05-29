@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { Provider, createStore } from 'jotai'
-import React from 'react'
 import { sttModalStateAtom } from '@/features/chat-agent/atoms/stt-atoms'
 import { SttModal } from './stt-modal'
 

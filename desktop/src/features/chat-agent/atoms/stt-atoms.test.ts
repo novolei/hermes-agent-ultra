@@ -7,7 +7,6 @@ import {
   sttModalStateAtom,
   type SttSettings,
   type ModelStatus,
-  type SttModalState,
 } from './stt-atoms'
 
 describe('stt-atoms', () => {

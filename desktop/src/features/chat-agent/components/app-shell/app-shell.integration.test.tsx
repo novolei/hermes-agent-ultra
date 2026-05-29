@@ -374,12 +374,12 @@ describe('AppShell + AgentView banners (Plan 2b.2.c.4.b)', () => {
     expect(container.querySelectorAll('[data-deferred-to="4.b"]').length).toBe(0)
   })
 
-  it('only 4.c/4.d/4.e stubs render visible markers', () => {
+  it('only 4.d/4.e stubs render visible markers', () => {
     const { container } = mountAppShell()
     const stubs = container.querySelectorAll('[data-stub]')
     stubs.forEach((s) => {
       const plan = (s as HTMLElement).getAttribute('data-deferred-to')
-      expect(['4.c', '4.d', '4.e']).toContain(plan)
+      expect(['4.d', '4.e']).toContain(plan)
     })
   })
 
