@@ -421,3 +421,26 @@ export interface SafetyPolicyResponse {
 export interface SetSafetyModeInput {
   mode: SafetyModeWire
 }
+
+// ─── Plan 2b.2.c.4.c — STT Rust IPC surface (documentation only) ──────────
+// The STT components (SpeechButton, SttModal, FirstRunDialog) call the
+// following Tauri commands and listen for these events DIRECTLY via
+// @tauri-apps/api/{core,event}, NOT through our typed bridge wrappers.
+// Until the Rust STT backend ships, invoke() rejects with "command not
+// found" and listen() never fires. This is the expected stub behavior:
+// click SpeechButton → SttModal mounts → invoke('stt_start_listen')
+// rejects → SttModal shows error toast → modal closes.
+//
+// Tauri commands required (Rust backend checklist):
+//   - stt_download_model({ request: { preset: 'quantized', force: false } }): Promise<string>
+//     Downloads the SenseVoice quantized model, returns the model directory path.
+//
+//   - stt_transcribe({ request: { audio_bytes_base64: string, language: string | null, sample_rate: 16000 } }): Promise<{ text: string }>
+//     Transcribes PCM audio (base64-encoded) at 16kHz to text. language can be null for auto-detection.
+//
+// Tauri events emitted (Rust backend checklist):
+//   - stt:openflow-download-progress
+//     Payload: { file: string, downloaded: number, total: number | null, percent: number, source?: 'hf' | 'mirror' }
+//     Fired during model download to report per-file progress and mirror fallback events.
+//
+// No typed wrappers exported here — components use raw invoke()/listen().
