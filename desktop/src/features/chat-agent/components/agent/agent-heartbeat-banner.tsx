@@ -433,7 +433,7 @@ export function AgentHeartbeatBanner({ sessionId }: AgentHeartbeatBannerProps) {
               animation:
                 beat.lastActivityMsAgo > 10_000
                   ? 'none'
-                  : 'uclaw-heartbeat-pulse 1.6s ease-in-out infinite',
+                  : 'hermes-heartbeat-pulse 1.6s ease-in-out infinite',
             }}
           />
           <span>
@@ -449,7 +449,7 @@ export function AgentHeartbeatBanner({ sessionId }: AgentHeartbeatBannerProps) {
       {/* Inline keyframes so we don't depend on global CSS for the dot
           pulse animation. Scoped per-instance, harmless if duplicated. */}
       <style>{`
-        @keyframes uclaw-heartbeat-pulse {
+        @keyframes hermes-heartbeat-pulse {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.4; transform: scale(0.85); }
         }
