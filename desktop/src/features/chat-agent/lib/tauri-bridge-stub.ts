@@ -1376,3 +1376,20 @@ export async function memoryLearningDemoteFacet(
 ): Promise<LearningSetStateOutcome> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: memoryLearningDemoteFacet')
 }
+
+// ─── Wave E — ShortcutSettings IPC stub ──────────────────────────────────────
+// ShortcutSettings calls updateGlobalShortcut to sync global OS-registered
+// shortcuts to the backend whenever the user overrides a binding that appears
+// in GLOBAL_SHORTCUT_IDS. Throws NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND until
+// the Rust global-shortcut registration backend ships.
+// Source: uclaw `@/lib/tauri-bridge`.
+
+/**
+ * Notify the backend of a new key combo for a globally-registered shortcut.
+ * Called when the user overrides (or resets) a shortcut in GLOBAL_SHORTCUT_IDS.
+ * Pass an empty string to unregister the shortcut.
+ * Plan 3.5.s.b Wave E stub.
+ */
+export async function updateGlobalShortcut(_shortcutId: string, _newCombo: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: updateGlobalShortcut')
+}
