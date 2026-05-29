@@ -1,14 +1,23 @@
-import * as React from 'react'
-
 /**
- * GeneralTab — placeholder for Wave B. Wave C upgrades this to render
- * the real GeneralSettings + PromptSettings + AppearanceSettings sub-components.
+ * GeneralTab — composes GeneralSettings + PromptSettings + AppearanceSettings.
  */
+import * as React from 'react'
+import { GeneralSettings } from './general-settings'
+import { PromptSettings } from './prompt-settings'
+import { AppearanceSettings } from './appearance-settings'
+
 export function GeneralTab(): React.ReactElement {
   return (
-    <div data-deferred-to="3.5.s.a-wave-c" className="p-8 text-center text-muted-foreground">
-      <div className="text-lg font-medium mb-2">GeneralTab</div>
-      <p className="text-sm">Waiting for Wave C: GeneralSettings + PromptSettings + AppearanceSettings</p>
+    <div className="space-y-8">
+      <section data-settings-section="通用偏好">
+        <GeneralSettings />
+      </section>
+      <section data-settings-section="系统提示词">
+        <PromptSettings />
+      </section>
+      <section data-settings-section="主题与字体">
+        <AppearanceSettings />
+      </section>
     </div>
   )
 }
