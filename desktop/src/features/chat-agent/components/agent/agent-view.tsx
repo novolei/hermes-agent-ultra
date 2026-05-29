@@ -39,14 +39,15 @@ import { SpeechButton } from '@/features/chat-agent/components/ai-elements/speec
 import { modelStatusAtom } from '@/features/chat-agent/atoms/stt-atoms'
 import { smartJoin } from '@/features/chat-agent/lib/stt/punctuation'
 // Remaining stubs (Plan 4.d/4.e)
-import {
-  PetWidget,
-  BrowserPreviewOverlay,
-  AutoPreviewPopover,
-  ProviderModelSelector,
-  FeishuNotifyToggle,
-  GitChipsRow,
-} from '@/features/chat-agent/lib/agentview-bridge-stub'
+// Plan 4.d real ports
+import { PetWidget } from '@/features/chat-agent/components/agent/pet-widget'
+import { BrowserPreviewOverlay } from '@/features/chat-agent/components/agent/browser-preview-overlay'
+import { AutoPreviewPopover } from '@/features/chat-agent/components/agent/auto-preview-popover'
+import { ProviderModelSelector } from '@/features/chat-agent/components/chat/provider-model-selector'
+
+// Plan 4.e rollup real ports
+import { FeishuNotifyToggle } from '@/features/chat-agent/components/chat/feishu-notify-toggle'
+import { GitChipsRow } from '@/features/chat-agent/components/chat/git/git-chips-row'
 import { ContextUsageBadge } from '@/features/chat-agent/components/agent/context-usage-badge'
 import { AttachmentPreviewItem } from '@/features/chat-agent/components/chat/attachment-preview-item'
 import { RichTextInput } from '@/features/chat-agent/components/ai-elements/rich-text-input'
@@ -1838,7 +1839,7 @@ export function AgentView({ sessionId }: { sessionId: string }): React.ReactElem
                 />
                 <StrategyPresetSelector sessionId={sessionId} />
                 <AutoPreviewPopover />
-                {/* <FeishuNotifyToggle sessionId={sessionId} /> */}
+                <FeishuNotifyToggle sessionId={sessionId} />
 
                 <GitChipsRow />
                 <SpeechButton

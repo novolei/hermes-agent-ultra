@@ -10,6 +10,7 @@
  */
 
 import { atom } from 'jotai'
+import { atomWithStorage } from 'jotai/utils'
 
 // ── Tab types ──────────────────────────────────────────────────────────
 
@@ -41,6 +42,10 @@ export interface PreviewTabItem {
 export const previewTabsAtom = atom<PreviewTabItem[]>([])
 export const activePreviewTabKeyAtom = atom<string | null>(null)
 export const previewPanelOpenAtom = atom<boolean>(false)
+export const autoPreviewEnabledAtom = atomWithStorage<boolean>(
+  'hermes-auto-preview-enabled',
+  true,
+)
 
 // ── Helpers ────────────────────────────────────────────────────────────
 

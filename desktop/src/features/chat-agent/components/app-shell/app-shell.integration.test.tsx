@@ -311,14 +311,13 @@ describe('AppShell + AgentView cross-cutting (Plan 2b.2.c.4.a Task E3)', () => {
   beforeEach(() => localStorage.clear())
   afterEach(() => cleanup())
 
-  it('H1: Plan 4.b/c/d stub components render aria-hidden placeholders, not visible UI noise', () => {
+  it('H1: Plan 4.d completed all stubs — zero [data-stub] elements remain in AgentView', () => {
+    // Wave D (Plan 2b.2.c.4.d) shipped all previously-stubbed components as real
+    // implementations. The original H1 asserted stubs.length > 0; that assertion
+    // was correct through Plan 4.c but is superseded by Group K (Plan 4.d) below.
     const { container } = mountAppShell()
     const stubs = container.querySelectorAll('[data-stub]')
-    // Expect at least a handful of stubs visible from AgentView's mount
-    expect(stubs.length).toBeGreaterThan(0)
-    stubs.forEach((s) => {
-      expect((s as HTMLElement).getAttribute('aria-hidden')).toBe('true')
-    })
+    expect(stubs.length).toBe(0)
   })
 
   it('H2: end-to-end mount with no atom overrides produces zero console.error calls', () => {
@@ -425,5 +424,23 @@ describe('AppShell + AgentView STT (Plan 2b.2.c.4.c)', () => {
     // SpeechButton renders a Button with aria-label="语音输入" (see speech-button.tsx line 83)
     const speechButton = container.querySelector('button[aria-label="语音输入"]')
     expect(speechButton).not.toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// K. AppShell + AgentView final state (Plan 2b.2.c.4.d — stack complete)
+// ---------------------------------------------------------------------------
+describe('AppShell + AgentView final state (Plan 2b.2.c.4.d — stack complete)', () => {
+  beforeEach(() => localStorage.clear())
+  afterEach(() => cleanup())
+
+  it('zero [data-stub] elements remain — AgentView is fully real', () => {
+    const { container } = mountAppShell()
+    expect(container.querySelectorAll('[data-stub]').length).toBe(0)
+  })
+
+  it('zero [data-deferred-to] elements remain', () => {
+    const { container } = mountAppShell()
+    expect(container.querySelectorAll('[data-deferred-to]').length).toBe(0)
   })
 })

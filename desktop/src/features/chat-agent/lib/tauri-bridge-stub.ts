@@ -20,7 +20,7 @@
 
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import type { AskUserRequest, ExitPlanModeRequest, AgentSessionMeta, WorkspaceCapabilities, AgentSendInput, AgentMessage } from './agent-types'
-import type { ConversationMeta, UserProfile } from './chat-types'
+import type { ConversationMeta, UserProfile, FeishuNotifyMode } from './chat-types'
 
 /**
  * SafetyMode wire type — mirrors the Rust enum's serde shape.
@@ -220,7 +220,7 @@ export async function getWorkspaceCapabilities(_workspaceId: string): Promise<Wo
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3_E1: getWorkspaceCapabilities')
 }
 
-// ─── Plan 3.3 C2: git stubs for SidebarGitActions ─────────────────────────
+// ─── Plan 3.3 C2: git stubs for SidebarGitActions + BranchPicker ──────────
 
 /**
  * Probe if the workspace directory is a git repository.
@@ -236,6 +236,67 @@ export async function gitIsRepo(_cwd: string): Promise<boolean> {
  */
 export async function gitCurrentBranch(_cwd: string): Promise<string> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: gitCurrentBranch')
+}
+
+/**
+ * List all branches in the repository (raw output).
+ * Plan 3.3 C2 extension for BranchPicker port.
+ */
+export async function gitBranches(_cwd: string): Promise<string> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: gitBranches')
+}
+
+/**
+ * Get the git status output for uncommitted change detection.
+ * Plan 3.3 C2 extension for BranchPicker port.
+ */
+export async function gitStatus(_cwd: string): Promise<string> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: gitStatus')
+}
+
+/**
+ * Checkout a branch by name.
+ * Plan 3.3 C2 extension for BranchPicker port.
+ */
+export async function gitCheckoutBranch(_cwd: string, _branch: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: gitCheckoutBranch')
+}
+
+/**
+ * Create and checkout a new branch.
+ * Plan 3.3 C2 extension for BranchPicker port.
+ */
+export async function gitCreateBranch(_cwd: string, _branch: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: gitCreateBranch')
+}
+
+/**
+ * Initialize a git repository.
+ * Plan 3.3 C2 extension for BranchPicker port.
+ */
+export async function gitInitRepo(_cwd: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: gitInitRepo')
+}
+
+/**
+ * Parse raw git branch list output into structured data.
+ * Pure utility function for BranchPicker.
+ */
+export interface BranchListItem {
+  name: string
+  isCurrent: boolean
+}
+
+export function parseBranchList(_raw: string): BranchListItem[] {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: parseBranchList')
+}
+
+/**
+ * Extract uncommitted file count from git status output.
+ * Pure utility function for BranchPicker.
+ */
+export function uncommittedFromStatus(_statusRaw: string | null): number {
+  return 0 // Default to no uncommitted files in stub
 }
 
 // ─── Plan 3.3 C3: session move stub for MoveSessionDialog ──────────────────
@@ -422,6 +483,40 @@ export interface SetSafetyModeInput {
   mode: SafetyModeWire
 }
 
+// ─── Plan 2b.2.c.4.d A3: Browser screencast stubs ────────────────────────
+// useBrowserScreencast hook (Wave B2) consumes these IPC wrappers.
+// Real implementations land in Plan 4+ (browser backend).
+
+export interface ScreencastFramePayload {
+  sessionId: string
+  tabId: string
+  dataB64: string
+  pageWidth: number
+  pageHeight: number
+}
+
+/** Subscribe to live screencast frames from the browser backend. Plan 4+ stub. */
+export function listenScreencastFrames(
+  _handler: (payload: ScreencastFramePayload) => void
+): Promise<() => void> {
+  return Promise.resolve(() => { /* no-op stub */ })
+}
+
+/** Start a screencast for a specific session + tab. Plan 4+ stub. */
+export async function browserStartScreencast(_sessionId: string, _tabId: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_PLUS: browserStartScreencast')
+}
+
+/** Stop the screencast for a specific session + tab. Plan 4+ stub. */
+export async function browserStopScreencast(_sessionId: string, _tabId: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_PLUS: browserStopScreencast')
+}
+
+/** Capture a single screenshot from a specific session + tab. Plan 4+ stub. */
+export async function browserCaptureScreenshot(_sessionId: string, _tabId: string): Promise<string> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_PLUS: browserCaptureScreenshot')
+}
+
 // ─── Plan 2b.2.c.4.c — STT Rust IPC surface (documentation only) ──────────
 // The STT components (SpeechButton, SttModal, FirstRunDialog) call the
 // following Tauri commands and listen for these events DIRECTLY via
@@ -444,3 +539,31 @@ export interface SetSafetyModeInput {
 //     Fired during model download to report per-file progress and mirror fallback events.
 //
 // No typed wrappers exported here — components use raw invoke()/listen().
+
+// ─── Plan 2b.2.c.4.d/4.e — ProviderModelSelector + BrowserPreviewOverlay + FeishuNotifyToggle IPC stubs ───
+// All throw NOT_IMPLEMENTED until the Rust model-provider + browser + feishu backends ship.
+
+/** Get all configured provider/model pairs. ProviderModelSelector consumes. Plan 4.d/4.e stub. */
+export async function getAllConfiguredModels(): Promise<[string, string[]][]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: getAllConfiguredModels')
+}
+
+/** Set the active model for a given provider. ProviderModelSelector consumes. Plan 4.d/4.e stub. */
+export async function setActiveModel(_providerId: string, _modelId: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: setActiveModel')
+}
+
+/** Set the model for a given role. ProviderModelSelector consumes. Plan 4.d/4.e stub. */
+export async function setRoleModel(_role: string, _modelRef: string | null): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: setRoleModel')
+}
+
+/** Open a URL externally. BrowserPreviewOverlay consumes. Plan 4.d/4.e stub. */
+export async function openExternal(_url: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: openExternal')
+}
+
+/** Set Feishu session notification mode. FeishuNotifyToggle consumes. Plan 4.d/4.e stub. */
+export async function setFeishuSessionNotify(_sessionId: string, _mode: FeishuNotifyMode): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_X_BACKEND: setFeishuSessionNotify')
+}

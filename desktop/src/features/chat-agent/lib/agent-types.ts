@@ -390,3 +390,13 @@ export function migratePermissionMode(mode: string): string {
   }
   return mode
 }
+
+// ─────────────────────────────────────────────────────────
+// Model Selection Types (Plan 4.d/4.e)
+// ─────────────────────────────────────────────────────────
+
+/** Provider + active model selection (returned by getActiveModel) */
+export interface ModelSelectionInfo {
+  providerId: string
+  modelId: string
+}
