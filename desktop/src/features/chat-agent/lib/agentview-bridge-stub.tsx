@@ -16,7 +16,6 @@
  */
 
 import * as React from 'react'
-import { atom } from 'jotai'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -43,36 +42,6 @@ function makeStubFn(symbol: string, plan: string) {
     throw new Error(`NOT_IMPLEMENTED_IN_PLAN_2_B_2_C_4_A:${symbol} (deferred to ${plan})`)
   }
 }
-
-// ────────────────────────────────────────────────────────────────────────────
-// Plan 2b.2.c.4.c — speech-to-text (STT)
-// ────────────────────────────────────────────────────────────────────────────
-
-/** Full-screen overlay modal for in-progress STT transcription */
-export const SttModal = makeStubComponent('SttModal', '4.c')
-
-/** First-run dialog that prompts users to configure STT on first use */
-export const FirstRunDialog = makeStubComponent('FirstRunDialog', '4.c')
-
-/** Mic button that triggers STT recording in the composer toolbar */
-export const SpeechButton = makeStubComponent('SpeechButton', '4.c')
-
-/**
- * Jotai atom tracking the STT model download / readiness status.
- * Real implementation lives in `@/atoms/stt-atoms` in the uclaw source.
- * Stub defaults to 'idle' so AgentView renders without crashing.
- */
-export const modelStatusAtom = atom<'idle' | 'loading' | 'ready' | 'error'>('idle')
-
-/**
- * Joins a word and its following punctuation, collapsing the space that the
- * STT engine emits between them (e.g. "Hello ," → "Hello,").
- * Real implementation in `@/lib/stt/punctuation`.
- */
-export const smartJoin = makeStubFn('smartJoin', '4.c') as (
-  word: string,
-  punct: string,
-) => string
 
 // ────────────────────────────────────────────────────────────────────────────
 // Plan 2b.2.c.4.d — pet widget + browser preview + model selector
