@@ -625,3 +625,97 @@ export async function listSpaces(): Promise<SpaceSummary[]> {
 export async function searchFragments(_query: string): Promise<FragmentSearchHit[]> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_BACKEND: searchFragments')
 }
+
+// ─── Plan 3.5.s.a Wave C — GeneralSettings + PromptSettings IPC stubs ────────
+// GeneralSettings calls getSettings/patchSettings (language, theme).
+// PromptSettings calls system-prompt CRUD (create/update/delete/setDefault/versions).
+// All throw NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND until the Rust backend ships
+// the corresponding Tauri commands. Source: uclaw `@/lib/tauri-bridge`.
+
+/** Global app settings payload. Mirrors uclaw lib/types.ts Settings. */
+export interface Settings {
+  language: string
+  theme: string
+  configPath: string
+  dataPath: string
+  monthlyBudgetUsd?: number | null
+}
+
+/** Partial patch for global app settings. Mirrors uclaw lib/types.ts PatchSettingsInput. */
+export interface PatchSettingsInput {
+  language?: string
+  theme?: string
+  /** Send `null` to clear; omit to leave unchanged. */
+  monthlyBudgetUsd?: number | null
+}
+
+/**
+ * Fetch global app settings (language, theme, paths, etc.).
+ * Plan 3.5.s.a Wave C stub.
+ */
+export async function getSettings(): Promise<Settings> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getSettings')
+}
+
+/**
+ * Patch (update) global app settings.
+ * Plan 3.5.s.a Wave C stub.
+ */
+export async function patchSettings(_input: PatchSettingsInput): Promise<Settings> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: patchSettings')
+}
+
+/**
+ * Fetch the full system prompt config (list of prompts + defaultPromptId).
+ * Plan 3.5.s.a Wave C stub.
+ */
+export async function getSystemPromptConfig(): Promise<import('./chat-types').SystemPromptConfig> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getSystemPromptConfig')
+}
+
+/**
+ * Create a new system prompt.
+ * Plan 3.5.s.a Wave C stub.
+ */
+export async function createSystemPrompt(
+  _input: import('./chat-types').SystemPromptCreateInput,
+): Promise<import('./chat-types').SystemPrompt> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: createSystemPrompt')
+}
+
+/**
+ * Update an existing system prompt (name and/or content).
+ * Plan 3.5.s.a Wave C stub.
+ */
+export async function updateSystemPrompt(
+  _id: string,
+  _input: import('./chat-types').SystemPromptUpdateInput,
+): Promise<import('./chat-types').SystemPrompt> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: updateSystemPrompt')
+}
+
+/**
+ * Delete a system prompt by id.
+ * Plan 3.5.s.a Wave C stub.
+ */
+export async function deleteSystemPrompt(_id: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: deleteSystemPrompt')
+}
+
+/**
+ * Set the default system prompt.
+ * Plan 3.5.s.a Wave C stub.
+ */
+export async function setDefaultPrompt(_id: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: setDefaultPrompt')
+}
+
+/**
+ * Fetch version history for a system prompt.
+ * Plan 3.5.s.a Wave C stub.
+ */
+export async function getSystemPromptVersions(
+  _promptId: string,
+): Promise<import('./chat-types').SystemPromptVersion[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getSystemPromptVersions')
+}
