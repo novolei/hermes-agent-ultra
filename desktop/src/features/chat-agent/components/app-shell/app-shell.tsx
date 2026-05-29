@@ -27,6 +27,8 @@ import { tabsAtom, activeTabIdAtom, openTab } from '@/features/chat-agent/atoms/
 import { appModeAtom } from '@/features/chat-agent/atoms/app-mode'
 import { currentConversationIdAtom } from '@/features/chat-agent/atoms/chat-atoms'
 import { settingsOpenAtom, settingsTabAtom } from '@/features/chat-agent/atoms/settings-tab'
+import { searchPaletteOpenAtom } from '@/features/chat-agent/atoms/search-atoms'
+import { useShortcut } from '@/features/chat-agent/hooks/use-shortcut'
 import type { SearchPaletteProps } from '@/features/chat-agent/components/search/search-palette'
 
 export function AppShell(): React.ReactElement {
@@ -52,6 +54,15 @@ export function AppShell(): React.ReactElement {
   const selectWorkspace = useSetAtom(selectWorkspaceAtom)
   const setSettingsOpen = useSetAtom(settingsOpenAtom)
   const setSettingsTab = useSetAtom(settingsTabAtom)
+  const setSearchPaletteOpen = useSetAtom(searchPaletteOpenAtom)
+
+  // Wire Cmd+K (Ctrl+K on non-mac) to open SearchPalette — closes the
+  // M2 gap surfaced by the shortcuts-cleanup Group M integration test.
+  // The shortcut definition lives in shortcut-defaults.ts as 'global-search'.
+  useShortcut({
+    id: 'global-search',
+    handler: () => setSearchPaletteOpen(true),
+  })
 
   React.useEffect(() => {
     void refreshWorkspaces()
