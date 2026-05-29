@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { Provider, createStore } from 'jotai'
-import * as React from 'react'
 import { PermissionModeSelector } from './permission-mode-selector'
 import { safetyModeAtom } from '@/features/chat-agent/atoms/safety-atoms'
 

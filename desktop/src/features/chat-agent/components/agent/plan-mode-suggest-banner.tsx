@@ -21,7 +21,7 @@
  */
 
 import * as React from 'react'
-import { useAtom, useSetAtom } from 'jotai'
+import { useAtom } from 'jotai'
 import { listen } from '@tauri-apps/api/event'
 import { Button } from '@/shared/ui/button'
 import {

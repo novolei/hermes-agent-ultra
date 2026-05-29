@@ -3,7 +3,7 @@
  *
  * Hydrated on mount by `PermissionModeSelector` from
  * `get_safety_policy`; mutated via `set_safety_mode`. Persisted on the
- * backend in `~/.uclaw/safety_policy.json`.
+ * backend in `~/.hermes/safety_policy.json`.
  *
  * For per-session / per-pattern rules + audit log see `safety/permissions.rs`
  * (P6) and the Settings → 工具权限 tab.

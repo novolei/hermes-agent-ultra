@@ -1,5 +1,4 @@
 import { describe, it, expect, vi } from 'vitest'
-import * as React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import { PermissionModeMenu, MODE_ITEMS } from './permission-mode-menu'
 

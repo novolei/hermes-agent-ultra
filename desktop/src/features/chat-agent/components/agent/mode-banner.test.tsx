@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import * as React from 'react'
 import { render, screen } from '@testing-library/react'
 import { Provider, createStore } from 'jotai'
 import { ModeBanner } from './mode-banner'

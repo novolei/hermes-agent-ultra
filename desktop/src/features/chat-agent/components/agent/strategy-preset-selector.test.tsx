@@ -1,4 +1,3 @@
-import * as React from 'react'
 import { describe, it, expect } from 'vitest'
 import { createStore } from 'jotai'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -6,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { Provider as JotaiProvider } from 'jotai'
 import { TooltipProvider } from '@/shared/ui/tooltip'
 import { StrategyPresetSelector } from './strategy-preset-selector'
-import { agentSessionStrategyMapAtom } from '@/features/chat-agent/atoms/agent-atoms'
+import { agentSessionStrategyMapAtom, type AgentStrategy } from '@/features/chat-agent/atoms/agent-atoms'
 
 const SESSION_ID = 'test-session-123'
 
@@ -37,7 +36,7 @@ describe('StrategyPresetSelector', () => {
 
   it('reflects the current strategy from the atom map', () => {
     const store = createStore()
-    store.set(agentSessionStrategyMapAtom, new Map([[SESSION_ID, 'repair']]))
+    store.set(agentSessionStrategyMapAtom, new Map<string, AgentStrategy>([[SESSION_ID, 'repair']]))
     renderWithProviders(<StrategyPresetSelector sessionId={SESSION_ID} />, store)
     expect(screen.getByRole('button', { name: /🔧 修 bug/i })).toBeInTheDocument()
   })
@@ -60,7 +59,7 @@ describe('StrategyPresetSelector', () => {
 
   it('removes the session from the map when balanced is selected', async () => {
     const store = createStore()
-    store.set(agentSessionStrategyMapAtom, new Map([[SESSION_ID, 'repair']]))
+    store.set(agentSessionStrategyMapAtom, new Map<string, AgentStrategy>([[SESSION_ID, 'repair']]))
     const { user } = renderWithProviders(<StrategyPresetSelector sessionId={SESSION_ID} />, store)
 
     await user.click(screen.getByRole('button', { name: /🔧 修 bug/i }))
