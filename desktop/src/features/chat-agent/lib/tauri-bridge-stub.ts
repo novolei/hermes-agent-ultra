@@ -1254,3 +1254,47 @@ export async function updatePersonaBadgeVisibility(
 ): Promise<PersonaRelationshipTimeline> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: updatePersonaBadgeVisibility')
 }
+
+// === Plan 3.5.s.b additions ===
+// ─── Wave C — MemoryRecallSettings IPC stubs ──────────────────────────────────
+// MemoryRecallSettings calls getMemoryRecallConfig + patchMemoryRecallConfig.
+// All throw NOT_IMPLEMENTED_IN_3_5_S_B_BACKEND until the Rust backend ships.
+// Source: uclaw `@/lib/tauri-bridge` lines 374-397.
+
+/** The memory recall config DTO. Mirrors uclaw lib/tauri-bridge.ts MemoryRecallConfigDto. */
+export interface MemoryRecallConfigDto {
+  bootLimit?: number
+  triggerLimit?: number
+  seedLimit?: number
+  expansionLimit?: number
+  recentLimit?: number
+  fusionStrategy?: 'rrf' | 'weighted'
+  rrfK?: number
+  ftsWeight?: number
+  vectorWeight?: number
+  bootLearnedSkillsLimit?: number
+  tokenBudget?: number
+  layerExpandedSeedTake?: number
+  layerExpandedMaxDepth?: number
+  timeDecayHalfLifeDays?: number
+  ftsFallbackLimitMultiplier?: number
+  bootUserProfileLimit?: number
+}
+
+/**
+ * Fetch the current memory recall config from the backend.
+ * Plan 3.5.s.b Wave C stub.
+ */
+export async function getMemoryRecallConfig(): Promise<MemoryRecallConfigDto> {
+  throw new Error('NOT_IMPLEMENTED_IN_3_5_S_B_BACKEND: getMemoryRecallConfig')
+}
+
+/**
+ * Patch (update) the memory recall config. Returns the persisted config.
+ * Plan 3.5.s.b Wave C stub.
+ */
+export async function patchMemoryRecallConfig(
+  _input: MemoryRecallConfigDto,
+): Promise<MemoryRecallConfigDto> {
+  throw new Error('NOT_IMPLEMENTED_IN_3_5_S_B_BACKEND: patchMemoryRecallConfig')
+}
