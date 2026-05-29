@@ -18,6 +18,7 @@ import { LeftSidebar } from './left-sidebar'
 import { AgentView } from '@/features/chat-agent/components/agent/agent-view'
 import { BottomDockHoverRegion } from '@/features/chat-agent/components/dock/bottom-dock-hover-region'
 import { SearchPalette } from '@/features/chat-agent/components/search/search-palette'
+import { SettingsDialog } from '@/features/chat-agent/components/settings/settings-dialog'
 import { TooltipProvider } from '@/shared/ui/tooltip'
 import { cn } from '@/shared/lib/cn'
 import { bottomDockEnabledAtom } from '@/features/chat-agent/atoms/dock-atoms'
@@ -163,6 +164,8 @@ export function AppShell(): React.ReactElement {
         ) : null}
         {/* Plan 3.5 C1 — always-mounted; visibility gated by searchPaletteOpenAtom */}
         <SearchPalette onSelect={handleSearchResultSelect} />
+        {/* Plan 3.5.s.a — always-mounted; visibility gated by settingsOpenAtom */}
+        <SettingsDialog />
       </div>
     </TooltipProvider>
   )
