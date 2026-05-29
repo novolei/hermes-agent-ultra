@@ -422,6 +422,40 @@ export interface SetSafetyModeInput {
   mode: SafetyModeWire
 }
 
+// ─── Plan 2b.2.c.4.d A3: Browser screencast stubs ────────────────────────
+// useBrowserScreencast hook (Wave B2) consumes these IPC wrappers.
+// Real implementations land in Plan 4+ (browser backend).
+
+export interface ScreencastFramePayload {
+  sessionId: string
+  tabId: string
+  dataB64: string
+  pageWidth: number
+  pageHeight: number
+}
+
+/** Subscribe to live screencast frames from the browser backend. Plan 4+ stub. */
+export function listenScreencastFrames(
+  _handler: (payload: ScreencastFramePayload) => void
+): Promise<() => void> {
+  return Promise.resolve(() => { /* no-op stub */ })
+}
+
+/** Start a screencast for a specific session + tab. Plan 4+ stub. */
+export async function browserStartScreencast(_sessionId: string, _tabId: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_PLUS: browserStartScreencast')
+}
+
+/** Stop the screencast for a specific session + tab. Plan 4+ stub. */
+export async function browserStopScreencast(_sessionId: string, _tabId: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_PLUS: browserStopScreencast')
+}
+
+/** Capture a single screenshot from a specific session + tab. Plan 4+ stub. */
+export async function browserCaptureScreenshot(_sessionId: string, _tabId: string): Promise<string> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_4_PLUS: browserCaptureScreenshot')
+}
+
 // ─── Plan 2b.2.c.4.c — STT Rust IPC surface (documentation only) ──────────
 // The STT components (SpeechButton, SttModal, FirstRunDialog) call the
 // following Tauri commands and listen for these events DIRECTLY via
