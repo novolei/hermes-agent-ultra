@@ -1,4 +1,3 @@
-import React from 'react'
 import { cn } from '@/shared/lib/cn'
 import { safeParseDate } from '@/features/chat-agent/lib/date-utils'
 import * as Dialog from '@radix-ui/react-dialog'

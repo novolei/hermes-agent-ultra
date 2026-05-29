@@ -263,9 +263,16 @@ describe('SearchPalette', () => {
 // ===== Cross-workspace grouped render =====
 
 function ws(id: string, name: string): WorkspaceInfo {
+  // Match the generated WorkspaceInfo shape from desktop/src/lib/bridge/generated.ts
   return {
-    id, name, icon: 'Folder', path: `/${id}`, attachedDirs: [],
-    sortOrder: 0, createdAt: '', updatedAt: '',
+    id,
+    name,
+    icon: 'Folder',
+    cwd: null,
+    color: null,
+    position: 0,
+    created_at: null,
+    updated_at: null,
   }
 }
 

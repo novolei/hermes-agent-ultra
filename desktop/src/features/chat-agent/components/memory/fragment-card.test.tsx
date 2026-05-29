@@ -10,7 +10,7 @@ describe('FragmentCard', () => {
       title: 'Test Fragment',
       content: 'This is test content',
       source: 'text',
-      createdAt: new Date().toISOString(),
+      createdAt: Date.now(),
       subtype: 'daily',
       tags: [],
     }
@@ -29,7 +29,7 @@ describe('FragmentCard', () => {
       title: 'Compact Test',
       content: 'Compact content',
       source: 'voice',
-      createdAt: new Date().toISOString(),
+      createdAt: Date.now(),
       subtype: 'reminder',
       tags: [],
     }
@@ -56,7 +56,7 @@ describe('FragmentCard', () => {
       title: 'Click Test',
       content: 'Click me',
       source: 'clipboard',
-      createdAt: new Date().toISOString(),
+      createdAt: Date.now(),
       subtype: 'bookmark',
       tags: [],
     }

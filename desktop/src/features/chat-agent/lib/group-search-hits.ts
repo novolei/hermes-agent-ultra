@@ -32,7 +32,9 @@ export interface SearchHitGroup {
 interface WorkspaceLike {
   id: string
   name: string
-  icon: string
+  // Matches the generated WorkspaceInfo binding which allows null here;
+  // groupHitsByWorkspace falls back to FALLBACK_WORKSPACE_ICON via `?? ?? ` chain.
+  icon: string | null
 }
 
 const VISIBLE_PER_GROUP = 5

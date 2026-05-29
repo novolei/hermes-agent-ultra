@@ -576,7 +576,7 @@ export interface FragmentItem {
   tags: string[]
   subtype?: string
   createdAt: number
-  reviewStatus?: string
+  reviewStatus?: { completed: boolean; reviewCount: number }
 }
 
 // ─── Plan 2b.2.c.4.d/4.e — ProviderModelSelector + BrowserPreviewOverlay + FeishuNotifyToggle IPC stubs ───

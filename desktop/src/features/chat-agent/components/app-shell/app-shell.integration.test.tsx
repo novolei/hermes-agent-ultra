@@ -482,13 +482,12 @@ describe('AppShell + SearchPalette (Plan 3.5-slim)', () => {
         <AppShell />
       </Provider>,
     )
-    // When open, SearchPalette renders the cmdk root with data-search-palette.
-    // cmdk may use a portal; check both container and document.body.
+    // SearchPalette renders the cmdk root with data-search-palette directly
+    // into container (no portal). Body-level fallback covers the edge case
+    // where cmdk portals during certain interaction states.
     const palette =
       container.querySelector('[data-search-palette]') ??
-      container.querySelector('[data-cmdk-root]') ??
-      document.body.querySelector('[data-search-palette]') ??
-      document.body.querySelector('[role="dialog"]')
+      document.body.querySelector('[data-search-palette]')
     expect(palette).not.toBeNull()
   })
 

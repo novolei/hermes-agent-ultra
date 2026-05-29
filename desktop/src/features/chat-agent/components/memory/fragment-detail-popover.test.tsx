@@ -18,7 +18,7 @@ describe('FragmentDetailPopover', () => {
       title: 'Test Fragment',
       content: 'This is test content for the popover',
       source: 'text',
-      createdAt: new Date().toISOString(),
+      createdAt: Date.now(),
       subtype: 'daily',
       tags: ['daily'],
     }
@@ -37,7 +37,7 @@ describe('FragmentDetailPopover', () => {
       title: 'Voice Fragment',
       content: 'Voice recorded content',
       source: 'voice',
-      createdAt: new Date().toISOString(),
+      createdAt: Date.now(),
       subtype: 'reminder',
       tags: ['reminder'],
     }
@@ -56,7 +56,7 @@ describe('FragmentDetailPopover', () => {
       title: 'Fragment with Review',
       content: 'Content with review status',
       source: 'clipboard',
-      createdAt: new Date().toISOString(),
+      createdAt: Date.now(),
       subtype: 'bookmark',
       tags: ['bookmark'],
       reviewStatus: {
@@ -78,7 +78,7 @@ describe('FragmentDetailPopover', () => {
       title: 'Close Test',
       content: 'Test closing the popover',
       source: 'text',
-      createdAt: new Date().toISOString(),
+      createdAt: Date.now(),
       subtype: 'daily',
       tags: [],
     }
