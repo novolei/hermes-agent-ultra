@@ -1,14 +1,24 @@
-import * as React from 'react'
-
 /**
- * ConnectivityTab — placeholder for Wave B. Wave D upgrades this to render
- * the real provider + usage sub-components.
+ * ConnectivityTab — composes ChannelSettings + UsageSettings as
+ * vertically-stacked sub-sections within a single tab.
+ *
+ * Each child component already provides its own SettingsSection
+ * headings, so this wrapper is pure composition + data-section
+ * anchor markers for the breadcrumb's IntersectionObserver.
  */
+import * as React from 'react'
+import { ChannelSettings } from './channel-settings'
+import { UsageSettings } from './usage-settings'
+
 export function ConnectivityTab(): React.ReactElement {
   return (
-    <div data-deferred-to="3.5.s.a-wave-d" className="p-8 text-center text-muted-foreground">
-      <div className="text-lg font-medium mb-2">ConnectivityTab</div>
-      <p className="text-sm">Waiting for Wave D: provider + usage sub-components</p>
+    <div className="space-y-8">
+      <section data-settings-section="服务商">
+        <ChannelSettings />
+      </section>
+      <section data-settings-section="用量与预算">
+        <UsageSettings />
+      </section>
     </div>
   )
 }
