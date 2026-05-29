@@ -1,25 +1,25 @@
 {
-  "generated_at_utc": "2026-05-29T08:30:01.825891+00:00",
+  "generated_at_utc": "2026-05-29T10:52:12.430646+00:00",
   "refs": {
     "local_ref": "HEAD",
-    "local_sha": "6f9c852c2ef5168dcbf06daf67620c77e30cc744",
+    "local_sha": "5af11fd99b454fad0cfc0edeb3bb2d717399762b",
     "upstream_ref": "upstream/main",
-    "upstream_sha": "e28a668b40d3888fb69a624ef5fcb4dd59c9e5ff",
+    "upstream_sha": "3171845479f459ed95d052770b35b38254d4a71a",
     "merge_base": null
   },
   "summary": {
-    "commits_behind": 9883,
-    "commits_ahead": 971,
-    "upstream_patch_missing": 9036,
+    "commits_behind": 9902,
+    "commits_ahead": 966,
+    "upstream_patch_missing": 9055,
     "upstream_patch_represented": 6,
-    "local_patch_unique": 855,
-    "files_only_upstream": 1455,
-    "files_only_local": 1038,
+    "local_patch_unique": 850,
+    "files_only_upstream": 1463,
+    "files_only_local": 1048,
     "files_shared_identical": 1708,
     "files_shared_different": 1010,
-    "tree_files_changed": 3500,
-    "tree_insertions": 731602,
-    "tree_deletions": 349107
+    "tree_files_changed": 3518,
+    "tree_insertions": 734731,
+    "tree_deletions": 351534
   },
   "top_upstream_only": [
     {
@@ -51,16 +51,16 @@
       "count": 36
     },
     {
+      "path": "tests/tools",
+      "count": 34
+    },
+    {
       "path": "optional-skills/research",
       "count": 33
     },
     {
-      "path": "tests/tools",
-      "count": 32
-    },
-    {
       "path": "website/docs",
-      "count": 30
+      "count": 31
     },
     {
       "path": "tests/plugins",
@@ -348,7 +348,7 @@
   "top_local_only": [
     {
       "path": "desktop/src",
-      "count": 398
+      "count": 407
     },
     {
       "path": "crates/hermes-tools",
@@ -380,7 +380,7 @@
     },
     {
       "path": "docs/superpowers",
-      "count": 27
+      "count": 28
     },
     {
       "path": "crates/hermes-config",
@@ -537,16 +537,16 @@
       "count": 36
     },
     {
+      "path": "tests/tools",
+      "count": 34
+    },
+    {
       "path": "optional-skills/research",
       "count": 33
     },
     {
-      "path": "tests/tools",
-      "count": 32
-    },
-    {
       "path": "website/docs",
-      "count": 30
+      "count": 31
     },
     {
       "path": "tests/plugins",
@@ -672,7 +672,7 @@
   "top_unique_to_local": [
     {
       "path": "desktop/src",
-      "count": 398
+      "count": 407
     },
     {
       "path": "crates/hermes-tools",
@@ -704,7 +704,7 @@
     },
     {
       "path": "docs/superpowers",
-      "count": 27
+      "count": 28
     },
     {
       "path": "crates/hermes-config",
@@ -836,7 +836,7 @@
       "workstream": "WS6",
       "issue": 10,
       "name": "Tests and CI parity",
-      "upstream_only": 313,
+      "upstream_only": 315,
       "shared_different": 681,
       "local_only": 34,
       "risk": "high",
@@ -846,9 +846,9 @@
       "workstream": "WS5",
       "issue": 9,
       "name": "UX parity",
-      "upstream_only": 490,
+      "upstream_only": 491,
       "shared_different": 225,
-      "local_only": 101,
+      "local_only": 102,
       "risk": "high",
       "effort": "XL"
     },
@@ -856,17 +856,17 @@
       "workstream": "WS8",
       "issue": 12,
       "name": "Compatibility and divergence policy",
-      "upstream_only": 388,
+      "upstream_only": 391,
       "shared_different": 12,
-      "local_only": 640,
+      "local_only": 649,
       "risk": "high",
-      "effort": "L"
+      "effort": "XL"
     },
     {
       "workstream": "WS3",
       "issue": 7,
       "name": "Tools and adapters parity",
-      "upstream_only": 112,
+      "upstream_only": 114,
       "shared_different": 54,
       "local_only": 99,
       "risk": "high",
@@ -904,9 +904,9 @@
     }
   ],
   "commit_mapping": {
-    "upstream_patch_missing": 9036,
+    "upstream_patch_missing": 9055,
     "upstream_patch_represented": 6,
-    "local_patch_unique": 855,
+    "local_patch_unique": 850,
     "local_patch_equivalent_to_upstream": 1,
     "upstream_patch_missing_sample": [
       "21d80ca68346dfdb8d3556015a723a9217f8566f",
@@ -964,7 +964,7 @@
       "6b69de4772eac5f982c097553dc6bcfeb60350e6"
     ],
     "intentional_divergence_items": 7,
-    "intentional_divergence_covered_files": 875
+    "intentional_divergence_covered_files": 876
   },
   "intentional_divergence": [
     {
@@ -1060,7 +1060,7 @@
       "status": "approved",
       "workstream": "WS5",
       "summary": "Treat Rust CLI/TUI and gateway as primary UX surface; upstream web/ui-tui trees are tracked as intentional divergence unless explicitly ported.",
-      "matched_files": 719,
+      "matched_files": 720,
       "matched_sample": [
         "ui-tui/README.md",
         "ui-tui/babel.compiler.config.cjs",
