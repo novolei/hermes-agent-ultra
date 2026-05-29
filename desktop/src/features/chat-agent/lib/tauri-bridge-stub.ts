@@ -719,3 +719,154 @@ export async function getSystemPromptVersions(
 ): Promise<import('./chat-types').SystemPromptVersion[]> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getSystemPromptVersions')
 }
+
+// ─── Plan 3.5.s.a Wave D — Connectivity tab: Channel + Usage IPC stubs ────────
+// ChannelSettings calls provider CRUD (list/get/configure/remove/test/models).
+// UsageSettings calls cost dashboard queries + onTurnCost event.
+// All throw NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND until the Rust backend ships
+// the corresponding Tauri commands. Source: uclaw `@/lib/tauri-bridge`.
+
+import type {
+  ProviderInfo,
+  ProviderConfigResponse,
+  ProviderConfigureInput,
+  ModelInfo,
+  TestConnectionInput,
+  TestResultInfo,
+  ListModelsInput,
+  DailyCostRollup,
+  ModelCostRollup,
+  SessionCostRollup,
+  WorkspaceCostRollup,
+  TurnCost,
+} from './agent-types'
+
+// Re-export types so callers can import from the stub module.
+export type {
+  ProviderInfo,
+  ProviderConfigResponse,
+  ProviderConfigureInput,
+  ModelInfo,
+  TestConnectionInput,
+  TestResultInfo,
+  ListModelsInput,
+  DailyCostRollup,
+  ModelCostRollup,
+  SessionCostRollup,
+  WorkspaceCostRollup,
+  TurnCost,
+}
+
+/**
+ * List all known providers (configured or not).
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function listProviders(): Promise<ProviderInfo[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: listProviders')
+}
+
+/**
+ * List IDs of providers that have been configured with API keys.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function listConfiguredProviders(): Promise<string[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: listConfiguredProviders')
+}
+
+/**
+ * Get the stored configuration for a single provider.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function getProviderConfig(_providerId: string): Promise<ProviderConfigResponse | null> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getProviderConfig')
+}
+
+/**
+ * Save/update a provider configuration alongside its selected model IDs.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function configureProviderWithModels(_input: ProviderConfigureInput): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: configureProviderWithModels')
+}
+
+/**
+ * Remove a provider's stored configuration.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function removeProviderConfig(_providerId: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: removeProviderConfig')
+}
+
+/**
+ * Test connectivity to a provider endpoint.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function testProviderConnection(_input: TestConnectionInput): Promise<TestResultInfo> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: testProviderConnection')
+}
+
+/**
+ * Fetch the list of models available from a provider.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function listProviderModels(_input: ListModelsInput): Promise<ModelInfo[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: listProviderModels')
+}
+
+/**
+ * Get the list of model IDs configured (selected) for a specific provider.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function getConfiguredModels(_providerId: string): Promise<string[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getConfiguredModels')
+}
+
+/**
+ * Subscribe to agent:turn_cost events from the Tauri backend.
+ * Each event fires after every LLM turn with cost + token data.
+ * Plan 3.5.s.a Wave D stub — returns a no-op unlisten.
+ */
+export async function onTurnCost(_cb: (payload: TurnCost) => void): Promise<UnlistenFn> {
+  return () => {}
+}
+
+/**
+ * Fetch daily cost rollups for the last N days.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function getDailyCosts(_daysBack = 30): Promise<DailyCostRollup[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getDailyCosts')
+}
+
+/**
+ * Fetch per-model cost rollups for the last N days.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function getModelCosts(_daysBack = 30): Promise<ModelCostRollup[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getModelCosts')
+}
+
+/**
+ * Fetch per-session cost rollups for the last N days (most recent first).
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function getSessionCosts(_daysBack = 30, _limit = 50): Promise<SessionCostRollup[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getSessionCosts')
+}
+
+/**
+ * Fetch the total cost in USD for all sessions since a given epoch ms timestamp.
+ * Used by the monthly rollup in cost atoms.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function getMonthCostTotal(_sinceMs: number): Promise<number> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getMonthCostTotal')
+}
+
+/**
+ * Fetch per-workspace cost rollups since a given epoch ms timestamp.
+ * Plan 3.5.s.a Wave D stub.
+ */
+export async function listWorkspaceCostRollup(_sinceMs: number): Promise<WorkspaceCostRollup[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: listWorkspaceCostRollup')
+}

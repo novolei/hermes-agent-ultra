@@ -400,3 +400,123 @@ export interface ModelSelectionInfo {
   providerId: string
   modelId: string
 }
+
+// ─────────────────────────────────────────────────────────
+// Wave D: Provider / Channel Types (Plan 3.5.s.a)
+// ─────────────────────────────────────────────────────────
+
+/** Provider info returned by listProviders. Mirrors uclaw lib/types.ts ProviderInfo. */
+export interface ProviderInfo {
+  id: string
+  displayName: string
+  authType: string
+  defaultBaseUrl: string
+  defaultApi: string
+  serviceCategory: string
+  geoCategory: string
+  supportsModels: boolean
+}
+
+/** Per-provider configuration response. Mirrors uclaw lib/types.ts ProviderConfigResponse. */
+export interface ProviderConfigResponse {
+  providerId: string
+  displayName: string
+  hasApiKey: boolean
+  maskedKey?: string | null
+  baseUrl?: string | null
+  api?: string | null
+}
+
+/** Input for configuring a provider with model IDs. Mirrors uclaw ProviderConfigureInput. */
+export interface ProviderConfigureInput {
+  providerId: string
+  displayName: string
+  apiKey?: string | null
+  baseUrl?: string | null
+  api?: string | null
+  modelIds: string[]
+}
+
+/** Model info returned by listProviderModels. Mirrors uclaw lib/types.ts ModelInfo. */
+export interface ModelInfo {
+  id: string
+  name: string
+  contextWindow?: number | null
+  maxTokens?: number | null
+  modality: string
+  reasoning: boolean
+  supportsReasoningEffort: boolean
+}
+
+/** Input for testing a provider connection. */
+export interface TestConnectionInput {
+  providerId: string
+  baseUrl: string
+  apiKey?: string | null
+}
+
+/** Result of a provider connection test. */
+export interface TestResultInfo {
+  success: boolean
+  message: string
+  latencyMs?: number | null
+  details?: string | null
+}
+
+/** Input for listing available models from a provider. */
+export interface ListModelsInput {
+  providerId: string
+  baseUrl: string
+  apiKey?: string | null
+}
+
+// ─────────────────────────────────────────────────────────
+// Wave D: Cost / Usage Types (Plan 3.5.s.a)
+// ─────────────────────────────────────────────────────────
+
+/** Daily cost rollup row. Mirrors uclaw lib/types.ts DailyCostRollup. */
+export interface DailyCostRollup {
+  day: string // YYYY-MM-DD
+  inputTokens: number
+  outputTokens: number
+  costUsd: number
+  turnCount: number
+}
+
+/** Per-model cost rollup row. Mirrors uclaw lib/types.ts ModelCostRollup. */
+export interface ModelCostRollup {
+  model: string
+  inputTokens: number
+  outputTokens: number
+  costUsd: number
+  turnCount: number
+}
+
+/** Per-session cost rollup row. Mirrors uclaw lib/types.ts SessionCostRollup. */
+export interface SessionCostRollup {
+  sessionId: string
+  title: string
+  inputTokens: number
+  outputTokens: number
+  costUsd: number
+  turnCount: number
+  lastUsedAt: number
+}
+
+/** Per-workspace monthly cost rollup. Mirrors uclaw lib/types.ts WorkspaceCostRollup. */
+export interface WorkspaceCostRollup {
+  workspaceId: string
+  workspaceName: string
+  workspaceIcon: string
+  totalCostUsd: number
+  totalTokens: number
+}
+
+/** Payload for agent:turn_cost event. Mirrors uclaw lib/types.ts TurnCost. */
+export interface TurnCost {
+  sessionId: string
+  costUsd: number
+  inputTokens: number
+  outputTokens: number
+  model: string
+}
