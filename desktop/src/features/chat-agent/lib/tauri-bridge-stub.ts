@@ -220,7 +220,7 @@ export async function getWorkspaceCapabilities(_workspaceId: string): Promise<Wo
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3_E1: getWorkspaceCapabilities')
 }
 
-// ─── Plan 3.3 C2: git stubs for SidebarGitActions ─────────────────────────
+// ─── Plan 3.3 C2: git stubs for SidebarGitActions + BranchPicker ──────────
 
 /**
  * Probe if the workspace directory is a git repository.
@@ -236,6 +236,67 @@ export async function gitIsRepo(_cwd: string): Promise<boolean> {
  */
 export async function gitCurrentBranch(_cwd: string): Promise<string> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: gitCurrentBranch')
+}
+
+/**
+ * List all branches in the repository (raw output).
+ * Plan 3.3 C2 extension for BranchPicker port.
+ */
+export async function gitBranches(_cwd: string): Promise<string> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: gitBranches')
+}
+
+/**
+ * Get the git status output for uncommitted change detection.
+ * Plan 3.3 C2 extension for BranchPicker port.
+ */
+export async function gitStatus(_cwd: string): Promise<string> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: gitStatus')
+}
+
+/**
+ * Checkout a branch by name.
+ * Plan 3.3 C2 extension for BranchPicker port.
+ */
+export async function gitCheckoutBranch(_cwd: string, _branch: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: gitCheckoutBranch')
+}
+
+/**
+ * Create and checkout a new branch.
+ * Plan 3.3 C2 extension for BranchPicker port.
+ */
+export async function gitCreateBranch(_cwd: string, _branch: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: gitCreateBranch')
+}
+
+/**
+ * Initialize a git repository.
+ * Plan 3.3 C2 extension for BranchPicker port.
+ */
+export async function gitInitRepo(_cwd: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: gitInitRepo')
+}
+
+/**
+ * Parse raw git branch list output into structured data.
+ * Pure utility function for BranchPicker.
+ */
+export interface BranchListItem {
+  name: string
+  isCurrent: boolean
+}
+
+export function parseBranchList(_raw: string): BranchListItem[] {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_3: parseBranchList')
+}
+
+/**
+ * Extract uncommitted file count from git status output.
+ * Pure utility function for BranchPicker.
+ */
+export function uncommittedFromStatus(_statusRaw: string | null): number {
+  return 0 // Default to no uncommitted files in stub
 }
 
 // ─── Plan 3.3 C3: session move stub for MoveSessionDialog ──────────────────
