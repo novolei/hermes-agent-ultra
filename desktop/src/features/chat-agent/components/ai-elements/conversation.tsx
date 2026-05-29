@@ -150,8 +150,8 @@ export function Conversation({ resize, className, children }: ConversationProps)
       if (!found) return
       scrollToMessage(ce.detail.messageId)
     }
-    window.addEventListener('uclaw:scroll-to-message', handler as EventListener)
-    return () => window.removeEventListener('uclaw:scroll-to-message', handler as EventListener)
+    window.addEventListener('hermes:scroll-to-message', handler as EventListener)
+    return () => window.removeEventListener('hermes:scroll-to-message', handler as EventListener)
   }, [scrollToMessage])
 
   // Suppress unused-variable lint warning for computeIsAtBottom (kept for
