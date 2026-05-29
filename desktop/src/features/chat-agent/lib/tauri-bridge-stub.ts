@@ -1299,7 +1299,6 @@ export async function patchMemoryRecallConfig(
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: patchMemoryRecallConfig')
 }
 
-// === Plan 3.5.s.b Wave D additions ===
 // ─── Wave D — LearnedProfileTab IPC stubs ─────────────────────────────────────
 // LearnedProfileTab calls memoryLearningListFacets + memoryLearningDismissFacet +
 //   memoryLearningRebuildNow + memoryLearningPromoteFacet + memoryLearningDemoteFacet.

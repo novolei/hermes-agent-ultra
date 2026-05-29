@@ -1,7 +1,7 @@
 /**
  * LearnedProfileTab — Sprint 2.2 visual smoke + interaction tests.
  *
- * Mocks the three Tauri IPC wrappers so the component can render
+ * Mocks the five Tauri IPC wrappers so the component can render
  * without a backend. Verifies:
  *  - empty state when list returns [].
  *  - grouped rendering of returned facets, one section per class.
@@ -61,6 +61,9 @@ const demoteMock = bridge.memoryLearningDemoteFacet as unknown as ReturnType<
   typeof vi.fn
 >
 
+// LearnedProfileTab uses no atoms/tooltips/motion; bare jotai Provider
+// suffices. (uclaw's renderWithProviders also wrapped MotionConfig +
+// TooltipProvider — both unused by this component.)
 function renderWithProviders(ui: React.ReactElement) {
   return render(<Provider>{ui}</Provider>)
 }
