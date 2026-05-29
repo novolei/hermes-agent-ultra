@@ -9,7 +9,10 @@ const bridge = vi.hoisted(() => ({
   browserCaptureScreenshot: vi.fn(() => Promise.resolve('png-b64')),
   browserStartScreencast: vi.fn(() => Promise.resolve()),
   browserStopScreencast: vi.fn(() => Promise.resolve()),
-  listenScreencastFrames: vi.fn(() => Promise.resolve(vi.fn())),
+  listenScreencastFrames: vi.fn(
+    (_handler: (payload: import('@/features/chat-agent/lib/tauri-bridge-stub').ScreencastFramePayload) => void) =>
+      Promise.resolve(() => { /* no-op unlisten */ }),
+  ),
 }))
 
 vi.mock('@/features/chat-agent/lib/tauri-bridge-stub', () => bridge)

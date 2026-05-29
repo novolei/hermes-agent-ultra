@@ -1839,7 +1839,7 @@ export function AgentView({ sessionId }: { sessionId: string }): React.ReactElem
                 />
                 <StrategyPresetSelector sessionId={sessionId} />
                 <AutoPreviewPopover />
-                {/* <FeishuNotifyToggle sessionId={sessionId} /> */}
+                <FeishuNotifyToggle sessionId={sessionId} />
 
                 <GitChipsRow />
                 <SpeechButton

@@ -59,7 +59,7 @@ export function AutoPreviewPopover(): React.ReactElement {
             <Switch
               id="auto-preview-toggle"
               checked={enabled}
-              onCheckedChange={setEnabled}
+              onCheckedChange={(v) => setEnabled(v)}
             />
           </div>
           <p className="text-[11px] leading-relaxed text-muted-foreground">
