@@ -4,16 +4,12 @@ import * as React from 'react'
 import * as stubs from './settings-bridge-stub'
 
 describe('settings-bridge-stub', () => {
-  it('exports 7 deferred-tab stub components', () => {
+  it('exports 3 deferred-tab stub components', () => {
     const exportedFunctions = Object.values(stubs).filter((v) => typeof v === 'function')
-    expect(exportedFunctions.length).toBe(7)
+    expect(exportedFunctions.length).toBe(3)
   })
 
   it.each([
-    ['SttSettings', '3.5.s.c'],
-    ['ImChannelsSettings', '3.5.s.c'],
-    ['PetSettings', '3.5.s.c'],
-    ['BrowserRuntimeSettings', '3.5.s.c'],
     ['ProxySetting', '3.5.s.d'],
     ['SystemTab', '3.5.s.d'],
     ['AboutSettings', '3.5.s.d'],
@@ -27,8 +23,8 @@ describe('settings-bridge-stub', () => {
   })
 
   it('placeholder content includes the symbol name and the plan reference', () => {
-    const { container } = render(<stubs.SttSettings />)
-    expect(container.textContent).toContain('SttSettings')
-    expect(container.textContent).toContain('3.5.s.c')
+    const { container } = render(<stubs.ProxySetting />)
+    expect(container.textContent).toContain('ProxySetting')
+    expect(container.textContent).toContain('3.5.s.d')
   })
 })
