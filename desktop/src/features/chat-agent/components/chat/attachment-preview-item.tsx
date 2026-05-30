@@ -6,7 +6,7 @@ import * as React from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/shared/lib/cn'
 import { ImageLightbox } from '@/shared/ui/image-lightbox'
-import { FileTypeIcon } from '@/features/chat-agent/lib/file-type-icon-stub'
+import { FileTypeIcon } from '@/features/chat-agent/components/file-browser/file-type-icon'
 
 interface AttachmentPreviewItemProps {
   filename: string
