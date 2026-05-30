@@ -31,6 +31,7 @@ import { Wrench, Brain, Globe, Settings, ImagePlus } from 'lucide-react'
 import { chatToolsAtom, hasActiveToolsAtom } from '@/features/chat-agent/atoms/chat-tool-atoms'
 import { settingsTabAtom, settingsOpenAtom } from '@/features/chat-agent/atoms/settings-tab'
 import { updateChatToolState, getChatTools } from '@/features/chat-agent/lib/tauri-bridge-stub'
+import type { ChatToolInfo } from '@/features/chat-agent/lib/chat-types'
 
 /** 工具 ID 到图标的映射 */
 function getToolIcon(iconName?: string): React.ReactElement {
@@ -59,7 +60,7 @@ export function ToolSelectorPopover(): React.ReactElement {
     try {
       await updateChatToolState(toolId, { enabled: !currentEnabled })
       const updated = await getChatTools()
-      setChatTools(updated as import('@/features/chat-agent/lib/chat-types').ChatToolInfo[])
+      setChatTools(updated as ChatToolInfo[])
     } catch (err) {
       console.error('[ToolSelectorPopover] 切换工具失败:', err)
     }

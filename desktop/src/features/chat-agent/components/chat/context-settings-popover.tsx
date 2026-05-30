@@ -12,6 +12,7 @@
  *       @/shared/ui/slider (API-compatible with shadcn Slider).
  */
 
+import * as React from 'react'
 import { useState } from 'react'
 import { Button } from '@/shared/ui/button'
 import {
