@@ -407,13 +407,10 @@ export async function estimateSessionContext(_sessionId: string): Promise<{
 /** Type alias for cleanup functions returned by event listeners. */
 type CleanupFn = () => void
 
-/**
- * Subscribe to the chat:stream-complete event (fired when an agent turn finishes).
- * Plan 4.a D3+ stub — returns a no-op cleanup.
- */
-export function onStreamComplete(_cb: (payload: { conversationId: string }) => void): CleanupFn {
-  return () => { /* no-op stub */ }
-}
+// onStreamComplete is a REAL chat:stream-complete listener — see the
+// makeChatListener-based wrappers below (Plan chat.c Wave A2). It serves both
+// agent-view (Plan 4.a consumer) and useGlobalChatListeners (chat consumer),
+// matching uclaw's single onStreamComplete for the shared event.
 
 /**
  * Subscribe to the agent:queued-consumed event (backend confirmed a queued message
@@ -1929,6 +1926,9 @@ function makeChatListener(event: string, cb: (payload: any) => void): () => void
     unlisten?.()
   }
 }
+
+export const onStreamComplete = (cb: (event: any) => void): (() => void) =>
+  makeChatListener('chat:stream-complete', cb)
 
 export const onStreamChunk = (cb: (event: any) => void): (() => void) =>
   makeChatListener('chat:stream-chunk', cb)

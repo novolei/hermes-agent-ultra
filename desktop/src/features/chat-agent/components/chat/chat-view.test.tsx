@@ -51,6 +51,17 @@ vi.mock('@/features/chat-agent/lib/tauri-bridge-stub', () => ({
   readAttachment: vi.fn().mockResolvedValue(''),
 }))
 
+// Mock raw Tauri APIs that sub-components (AgentRecommendBanner, etc.) call on
+// mount — without these jsdom throws `transformCallback is undefined` unhandled
+// rejections (Tauri runtime absent in tests).
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn().mockResolvedValue(() => {}),
+  emit: vi.fn().mockResolvedValue(undefined),
+}))
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn().mockResolvedValue(undefined),
+}))
+
 // ─── Inline renderWithProviders ───────────────────────────────────────────────
 function renderWithProviders(ui: React.ReactElement, opts?: { store?: ReturnType<typeof createStore> }) {
   return render(<Provider store={opts?.store}><TooltipProvider>{ui}</TooltipProvider></Provider>)
