@@ -1,17 +1,20 @@
 // Verbatim from uclaw ui/src/components/settings/SttSettings.test.tsx (Plan 3.5.s.c Wave B1)
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import * as React from 'react'
+import { createStore, Provider } from 'jotai'
 import { render, screen } from '@testing-library/react'
-import { Provider } from 'jotai'
 import { SttSettings } from './stt-settings'
-import { createStore } from 'jotai'
 import { modelStatusAtom } from '@/features/chat-agent/atoms/stt-atoms'
 
-// SttSettings uses no atoms requiring store injection / no MotionConfig / no TooltipProvider;
-// bare jotai Provider suffices. (uclaw's renderWithProviders also wraps MotionConfig +
-// TooltipProvider — both unused by this component.)
-function renderWithProviders(ui: React.ReactElement, options: { store?: ReturnType<typeof createStore> } = {}) {
-  const { store = createStore() } = options
-  return render(<Provider store={store}>{ui}</Provider>)
+// SttSettings uses modelStatusAtom; tests seed it via an explicit store. No
+// MotionConfig / TooltipProvider needed (uclaw's renderWithProviders also wraps
+// both — neither is consumed by this component). Matches the Wave D shape from
+// 3.5.s.b (shortcut-settings.test.tsx).
+function renderWithProviders(
+  ui: React.ReactElement,
+  opts?: { store?: ReturnType<typeof createStore> },
+) {
+  return render(<Provider store={opts?.store}>{ui}</Provider>)
 }
 
 const invokeMock = vi.fn()
@@ -40,7 +43,7 @@ describe('SttSettings', () => {
     expect(screen.getAllByText(/自动/).length).toBeGreaterThan(0)
   })
 
-  it('shows shortcut hint linking to keyboard settings', () => {
+  it('renders shortcut hint for toggle-stt-recording action', () => {
     const store = createStore()
     renderWithProviders(<SttSettings />, { store })
     expect(screen.getByText(/Alt\+S|⌥S/)).not.toBeNull()
