@@ -1687,3 +1687,68 @@ export interface DirectoryEntry {
 export async function listDirectoryEntries(_path: string): Promise<DirectoryEntry[]> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_FB_BACKEND: list_directory_entries')
 }
+
+// === Plan FB.b additions ===
+// ─── files-rail IPC stubs ─────────────────────────────────────────────────────
+// files-rail/ components + useFileTree call these. All throw
+// NOT_IMPLEMENTED_IN_PLAN_FB_BACKEND until the Rust commands ship.
+// MountRoot + TreeNode types are imported from the atom/util files (source of truth).
+
+import type { MountRoot } from '../atoms/files-rail-atoms'
+import type { TreeNode } from '../utils/tree-patch'
+
+export interface RenameArtifactInput {
+  spaceId: string
+  oldPath: string
+  newPath: string
+}
+
+export interface MoveArtifactInput {
+  spaceId: string
+  srcPath: string
+  destPath: string
+}
+
+export async function filesRailListMounts(_sessionId: string | null): Promise<MountRoot[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_FB_BACKEND: files_rail_list_mounts')
+}
+
+export async function filesRailReadDir(_mountId: string, _relPath: string, _sessionId?: string | null): Promise<TreeNode[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_FB_BACKEND: files_rail_read_dir')
+}
+
+export async function filesRailWatchStart(_mountId: string, _sessionId?: string | null): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_FB_BACKEND: files_rail_watch_start')
+}
+
+export async function filesRailWatchStop(_mountId: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_FB_BACKEND: files_rail_watch_stop')
+}
+
+export async function renameArtifact(_input: RenameArtifactInput): Promise<boolean> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_FB_BACKEND: rename_artifact')
+}
+
+export async function moveArtifact(_input: MoveArtifactInput): Promise<boolean> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_FB_BACKEND: move_artifact')
+}
+
+export async function deleteArtifactRecursive(_spaceId: string, _path: string): Promise<boolean> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_FB_BACKEND: delete_artifact_recursive')
+}
+
+export async function attachWorkspaceDirectory(_workspaceId: string, _dirPath: string): Promise<string[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_FB_BACKEND: attach_workspace_directory')
+}
+
+export async function detachWorkspaceDirectory(_workspaceId: string, _dirPath: string): Promise<string[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_FB_BACKEND: detach_workspace_directory')
+}
+
+export async function detachSessionDirectory(_sessionId: string, _dirPath: string): Promise<string[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_FB_BACKEND: detach_session_directory')
+}
+
+export async function copyFileIntoWorkspace(_workspaceId: string, _sourcePath: string): Promise<string> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_FB_BACKEND: copy_file_into_workspace')
+}
