@@ -1763,3 +1763,32 @@ export async function getActiveWorkspaceId(): Promise<string | null> {
 export async function setActiveWorkspaceId(_id: string): Promise<void> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_FB_BACKEND: set_active_workspace_id')
 }
+
+// === Plan chat.a additions ===
+// ─── chat leaf-component IPC stubs ────────────────────────────────────────────
+// ModelSelector/ToolSelectorPopover/AgentRecommendBanner/MigrateToAgentButton call
+// these. All throw NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND until the Rust commands ship.
+// Signatures from uclaw lib/tauri-bridge.ts.
+// Channel type is imported from chat-types (already declared there).
+
+import type { Channel } from './chat-types'
+export type { Channel }
+
+export async function listChannels(): Promise<Channel[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: list_channels')
+}
+export async function updateConversationModel(_conversationId: string, _modelId: string, _channelId: string): Promise<unknown> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: update_conversation_model')
+}
+export async function migrateChatToAgent(_conversationId: string, _sessionId: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: migrate_chat_to_agent')
+}
+export async function getChatTools(): Promise<unknown[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: get_chat_tools')
+}
+export async function updateChatToolState(_toolId: string, _patch: unknown): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: update_chat_tool_state')
+}
+export async function updateAppendSetting(_enabled: boolean): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: update_append_setting')
+}
