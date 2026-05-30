@@ -79,7 +79,23 @@ vi.mock('@tauri-apps/plugin-process', () => ({
 }))
 
 vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn().mockResolvedValue(null),
+  invoke: vi.fn().mockImplementation((cmd: string) => {
+    // Plan 3.5.s.c Wave F — STT + IM + BrowserRuntime IPC mocks
+    if (cmd === 'stt_model_status') return Promise.resolve({ kind: 'unknown' })
+    if (cmd === 'list_im_channels') return Promise.resolve([])
+    if (cmd === 'get_im_channel_statuses') return Promise.resolve([])
+    if (cmd === 'list_spaces') return Promise.resolve([])
+    if (cmd === 'get_browser_runtime_control_center') return Promise.resolve(null)
+    if (cmd === 'get_browser_runtime_status') return Promise.resolve(null)
+    if (cmd === 'list_browser_identities') return Promise.resolve({
+      profiles: [],
+      authorizedCount: 0,
+      revokedCount: 0,
+      activeTaskCount: 0,
+      activeTasks: [],
+    })
+    return Promise.resolve(null)
+  }),
 }))
 
 vi.mock('@tauri-apps/api/event', () => ({
@@ -183,6 +199,31 @@ vi.mock('@/features/chat-agent/lib/tauri-bridge-stub', () => ({
   onTurnCost: vi.fn().mockResolvedValue(() => {}),
   getMonthCostTotal: vi.fn().mockResolvedValue(0),
   listWorkspaceCostRollup: vi.fn().mockResolvedValue([]),
+  // Plan 3.5.s.c Wave F — STT + IM + BrowserRuntime IPC mocks
+  sttModelStatus: vi.fn().mockResolvedValue({ kind: 'unknown' }),
+  listImChannels: vi.fn().mockResolvedValue([]),
+  getImChannelStatuses: vi.fn().mockResolvedValue([]),
+  getBrowserRuntimeControlCenter: vi.fn().mockResolvedValue(null),
+  // Minimal valid StartupRuntimePackStatusReport shape — the component reads
+  // report.controlCenter after this resolves, so returning null would throw
+  // (currently silently caught by browser-runtime-settings.tsx:102 catch{}).
+  getBrowserRuntimeStatus: vi.fn().mockResolvedValue({
+    manifestPackVersion: '0.0.0-test',
+    doctor: { state: 'unknown' },
+    primaryAction: 'auto_setup',
+    operationPlan: { steps: [], blockers: [] },
+    ready: false,
+    canRunBrowserTasks: false,
+    eventNames: [],
+    controlCenter: undefined,
+  }),
+  listBrowserIdentities: vi.fn().mockResolvedValue({
+    profiles: [],
+    authorizedCount: 0,
+    revokedCount: 0,
+    activeTaskCount: 0,
+    activeTasks: [],
+  }),
 }))
 
 // ---------------------------------------------------------------------------
@@ -663,12 +704,12 @@ describe('AppShell + SettingsDialog (Plan 3.5.s.a)', () => {
     expect(document.body.querySelector('[data-settings-section]')).not.toBeNull()
   })
 
-  it('N3: deferred tabs (e.g., stt) show data-deferred-to placeholders', () => {
+  it('N3: deferred tabs (e.g., proxy) show data-deferred-to placeholders', () => {
     const store = createStore()
     store.set(settingsOpenAtom, true)
-    store.set(settingsTabAtom, 'stt')
+    store.set(settingsTabAtom, 'proxy')
     render(<Provider store={store}><AppShell /></Provider>)
-    expect(document.body.querySelector('[data-deferred-to="3.5.s.c"]')).not.toBeNull()
+    expect(document.body.querySelector('[data-deferred-to="3.5.s.d"]')).not.toBeNull()
   })
 
   it('N4: closed-state DOM has zero [data-stub] elements (no regression from prior K/L assertions)', () => {
@@ -726,11 +767,60 @@ describe('AppShell + SettingsDialog 3.5.s.b tabs (real ports)', () => {
     expect(document.body.querySelector('[data-deferred-to="3.5.s.b"]')).toBeNull()
   })
 
-  it('O5: 3.5.s.c stubs still render for their respective tabs', () => {
+  it('O5: 3.5.s.d stubs still render for their respective tabs', () => {
+    const store = createStore()
+    store.set(settingsOpenAtom, true)
+    store.set(settingsTabAtom, 'proxy')
+    render(<Provider store={store}><AppShell /></Provider>)
+    expect(document.body.querySelector('[data-deferred-to="3.5.s.d"]')).not.toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// P. AppShell + SettingsDialog 3.5.s.c real ports — 5 cases
+// ---------------------------------------------------------------------------
+
+describe('AppShell + SettingsDialog 3.5.s.c tabs (real ports)', () => {
+  beforeEach(() => localStorage.clear())
+  afterEach(() => cleanup())
+
+  it('P1: stt tab opens with real SttSettings content (no stub marker)', () => {
     const store = createStore()
     store.set(settingsOpenAtom, true)
     store.set(settingsTabAtom, 'stt')
     render(<Provider store={store}><AppShell /></Provider>)
-    expect(document.body.querySelector('[data-deferred-to="3.5.s.c"]')).not.toBeNull()
+    expect(document.body.querySelector('[data-deferred-to="3.5.s.c"]')).toBeNull()
+  })
+
+  it('P2: imChannels tab is real (no stub marker)', () => {
+    const store = createStore()
+    store.set(settingsOpenAtom, true)
+    store.set(settingsTabAtom, 'imChannels')
+    render(<Provider store={store}><AppShell /></Provider>)
+    expect(document.body.querySelector('[data-deferred-to="3.5.s.c"]')).toBeNull()
+  })
+
+  it('P3: pet tab is real', () => {
+    const store = createStore()
+    store.set(settingsOpenAtom, true)
+    store.set(settingsTabAtom, 'pet')
+    render(<Provider store={store}><AppShell /></Provider>)
+    expect(document.body.querySelector('[data-deferred-to="3.5.s.c"]')).toBeNull()
+  })
+
+  it('P4: browserRuntime tab is real', () => {
+    const store = createStore()
+    store.set(settingsOpenAtom, true)
+    store.set(settingsTabAtom, 'browserRuntime')
+    render(<Provider store={store}><AppShell /></Provider>)
+    expect(document.body.querySelector('[data-deferred-to="3.5.s.c"]')).toBeNull()
+  })
+
+  it('P5: 3.5.s.d stubs still render for their respective tabs (regression guard)', () => {
+    const store = createStore()
+    store.set(settingsOpenAtom, true)
+    store.set(settingsTabAtom, 'system')
+    render(<Provider store={store}><AppShell /></Provider>)
+    expect(document.body.querySelector('[data-deferred-to="3.5.s.d"]')).not.toBeNull()
   })
 })

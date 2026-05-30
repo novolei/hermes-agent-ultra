@@ -11,15 +11,11 @@ import { IntelligenceTab } from './intelligence-tab'
 import { MemoryRecallTab } from './memory-recall-tab'
 import { LearnedProfileTab } from './learned-profile-tab'
 import { ShortcutSettings } from './shortcut-settings'
-import {
-  ImChannelsSettings,
-  SttSettings,
-  PetSettings,
-  ProxySetting,
-  BrowserRuntimeSettings,
-  SystemTab,
-  AboutSettings,
-} from '@/features/chat-agent/lib/settings-bridge-stub'
+import { ProxySetting, SystemTab, AboutSettings } from '@/features/chat-agent/lib/settings-bridge-stub'
+import { SttSettings } from './stt-settings'
+import { ImChannelsSettings } from './im-channels-settings'
+import { PetSettings } from './pet-settings'
+import { BrowserRuntimeSettings } from './browser-runtime-settings'
 import { SettingsNav } from './settings-nav'
 import { SettingsBreadcrumb } from './settings-breadcrumb'
 

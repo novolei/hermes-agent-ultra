@@ -1393,3 +1393,246 @@ export async function memoryLearningDemoteFacet(
 export async function updateGlobalShortcut(_shortcutId: string, _newCombo: string): Promise<void> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: updateGlobalShortcut')
 }
+
+// === Plan 3.5.s.c additions ===
+
+// ─── Wave A — STT IPC stubs ────────────────────────────────────────────────────
+// SttSettings calls stt_model_status + stt_download_model.
+// All throw NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND until the Rust backend ships.
+// Source: uclaw `@/lib/tauri-bridge` (these are raw invoke() calls in SttSettings, not wrapped).
+
+/** Mirrors uclaw `stt-atoms.ts` ModelStatus shape. */
+export type SttModelStatusKind = 'unknown' | 'not-downloaded' | 'downloading' | 'ready' | 'error'
+
+export interface SttModelStatusReport {
+  kind: SttModelStatusKind
+  progress?: number
+  bytesDownloaded?: number
+  bytesTotal?: number
+  message?: string
+  dir?: string
+}
+
+/** Plan 3.5.s.c Wave A stub — replaced by Rust `stt_model_status` command. */
+export async function sttModelStatus(): Promise<SttModelStatusReport> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: stt_model_status')
+}
+
+/** Plan 3.5.s.c Wave A stub — replaced by Rust `stt_download_model` command. */
+export async function sttDownloadModel(_args: { targetDir?: string | null }): Promise<string> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: stt_download_model')
+}
+
+// ─── Wave A — IM Channel IPC stubs ────────────────────────────────────────────
+// ImChannelsSettings + ImChannelAccordionRow + ImChannelForm + WechatIlinkBindingPanel
+// call these. All throw NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND. The `im_channel_status_changed`
+// event is consumed via Tauri `listen()` — no stub needed; the listen call gracefully
+// no-ops in test/non-Tauri envs.
+
+// Re-export canonical types from im-channel-atoms (avoids duplicate declarations
+// with divergent shapes — the atoms file is the source of truth, ported verbatim
+// from uclaw atoms/im-channel-atoms.ts).
+import type {
+  ImChannelRow as ImChannelRowAtom,
+  ImChannelInput as ImChannelInputAtom,
+  ImChannelStatus as ImChannelStatusAtom,
+} from '../atoms/im-channel-atoms'
+export type ImChannelRow = ImChannelRowAtom
+export type ImChannelInput = ImChannelInputAtom
+export type ImChannelStatus = ImChannelStatusAtom
+
+/** Plan 3.5.s.c Wave A stub. */
+export async function listImChannels(): Promise<ImChannelRow[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: list_im_channels')
+}
+
+/** Plan 3.5.s.c Wave A stub. */
+export async function getImChannelStatuses(): Promise<ImChannelStatus[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: get_im_channel_statuses')
+}
+
+/** Plan 3.5.s.c Wave A stub. */
+export async function toggleImChannel(_args: { id: string; enabled: boolean }): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: toggle_im_channel')
+}
+
+/** Plan 3.5.s.c Wave A stub. */
+export async function deleteImChannel(_args: { id: string }): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: delete_im_channel')
+}
+
+/** Plan 3.5.s.c Wave A stub. */
+export async function createImChannel(_args: { input: ImChannelInput }): Promise<ImChannelRow> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: create_im_channel')
+}
+
+/** Plan 3.5.s.c Wave A stub. */
+export async function updateImChannel(_args: { id: string; input: ImChannelInput }): Promise<ImChannelRow> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: update_im_channel')
+}
+
+/** Plan 3.5.s.c Wave A stub. (listSpaces already exported above in Plan 3.5-slim section.) */
+// NOTE: listSpaces is already defined in the Plan 3.5-slim section above; no duplicate added here.
+
+/** Plan 3.5.s.c Wave A stub. */
+export async function saveWechatIlinkToken(
+  _args: { instanceId: string; botToken: string; accountId: string },
+): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: save_wechat_ilink_token')
+}
+
+/** Plan 3.5.s.c Wave A stub. */
+export async function disconnectWechatIlink(_args: { instanceId: string }): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: disconnect_wechat_ilink')
+}
+
+// ─── Wave A — BrowserRuntime IPC stubs ────────────────────────────────────────
+// BrowserRuntimeSettings + sub-components call ~9 wrappers. The exact `args`/return
+// shapes must match uclaw `ui/src/lib/tauri-bridge.ts` lines 185–356 verbatim.
+// Re-export the type aliases below for downstream consumers.
+
+import type {
+  BrowserRuntimeControlCenterReport,
+  BrowserRuntimeProviderId,
+  BrowserRuntimeProviderProbeSummary,
+  StartupRuntimePackStatusReport,
+} from './startup-doctor'
+
+// Re-export so consumers can import them from this same module like uclaw does.
+export type { BrowserRuntimeControlCenterReport, BrowserRuntimeProviderId } from './startup-doctor'
+
+// These types live in uclaw `tauri-bridge.ts` next to the wrapper signatures.
+// Port verbatim by reading uclaw `tauri-bridge.ts:215–360`. Schema below captures
+// the named exports we depend on (the implementer copies the exact interface bodies).
+
+export type PlaywrightSetupAction =
+  | 'auto_setup'
+  | 'install_node_with_homebrew'
+  | 'refresh_skills'
+  | 'probe_mcp'
+
+export interface PlaywrightSetupStepExecutionReport {
+  stepId: string
+  command: string
+  args: string[]
+  status: 'succeeded' | 'failed' | 'timed_out' | 'spawn_failed'
+  exitCode?: number | null
+  stdout: string
+  stderr: string
+  error?: string | null
+}
+
+export interface PlaywrightSetupExecutionReport {
+  action: PlaywrightSetupAction
+  status: 'succeeded' | 'failed' | 'blocked'
+  blockedReason?: string | null
+  stepReports: PlaywrightSetupStepExecutionReport[]
+}
+
+// BrowserIdentity* — verbatim from uclaw `tauri-bridge.ts:253–340`.
+export type BrowserIdentityKind = 'real_browser_profile' | 'storage_state' | 'cookie_jar' | 'bearer_token'
+export type BrowserIdentityProvider = 'system_chrome' | 'playwright' | 'browser_use' | 'manual_import'
+export type BrowserIdentityScope = 'workspace' | 'session' | 'global'
+export type BrowserIdentityStatus = 'live' | 'stale' | 'unknown' | 'revoked'
+
+export interface BrowserIdentityProfileSummary {
+  id: string
+  label: string
+  originPattern: string
+  kind: BrowserIdentityKind
+  provider: BrowserIdentityProvider
+  scope: BrowserIdentityScope
+  createdAtMs: number
+  lastUsedAtMs: number | null
+  lastVerifiedAtMs: number | null
+  expiresAtMs: number | null
+  revokedAtMs: number | null
+  status: BrowserIdentityStatus
+  revoked: boolean
+}
+
+export interface BrowserIdentityActiveTaskSummary {
+  profileId: string
+  runId: string
+  sessionId: string
+  task: string
+  status:
+    | 'running'
+    | 'completed'
+    | 'failed'
+    | 'stopped'
+    | 'needs_user_intervention'
+    | 'paused_waiting_for_browser_runtime'
+    | 'paused_checkpointed'
+  startedAtMs: number
+  updatedAtMs: number
+  drainDeadlineMs: number | null
+}
+
+export interface BrowserIdentityStatusReport {
+  profiles: BrowserIdentityProfileSummary[]
+  authorizedCount: number
+  revokedCount: number
+  activeTaskCount: number
+  activeTasks: BrowserIdentityActiveTaskSummary[]
+}
+
+export interface BrowserIdentityRevocationReport {
+  profile: BrowserIdentityProfileSummary | null
+  revoked: boolean
+  activeTaskCount: number
+  activeTasks: BrowserIdentityActiveTaskSummary[]
+  drainDeadlineMs: number | null
+}
+
+/** Plan 3.5.s.c Wave A stub. Signature: `() => Promise<BrowserRuntimeControlCenterReport>` (uclaw tauri-bridge.ts:188). */
+export async function getBrowserRuntimeControlCenter(): Promise<BrowserRuntimeControlCenterReport> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: get_browser_runtime_control_center')
+}
+
+/** Plan 3.5.s.c Wave A stub. Signature: `() => Promise<StartupRuntimePackStatusReport>` (uclaw tauri-bridge.ts:185). */
+export async function getBrowserRuntimeStatus(): Promise<StartupRuntimePackStatusReport> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: get_browser_runtime_status')
+}
+
+/** Plan 3.5.s.c Wave A stub. Signature: `() => Promise<BrowserIdentityStatusReport>` (uclaw tauri-bridge.ts:343). */
+export async function listBrowserIdentities(): Promise<BrowserIdentityStatusReport> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: list_browser_identities')
+}
+
+/** Plan 3.5.s.c Wave A stub. Signature: `(profileId: string) => Promise<BrowserIdentityRevocationReport>` (uclaw tauri-bridge.ts:356). */
+export async function revokeBrowserIdentity(_profileId: string): Promise<BrowserIdentityRevocationReport> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: revoke_browser_identity')
+}
+
+/** Plan 3.5.s.c Wave A stub. Signature: `(providerId: BrowserRuntimeProviderId) => Promise<BrowserRuntimeProviderProbeSummary>` (uclaw tauri-bridge.ts:207). */
+export async function runBrowserRuntimeProviderProbe(
+  _providerId: BrowserRuntimeProviderId,
+): Promise<BrowserRuntimeProviderProbeSummary> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: run_browser_runtime_provider_probe')
+}
+
+/** Plan 3.5.s.c Wave A stub. Signature: `(action: PlaywrightSetupAction) => Promise<PlaywrightSetupExecutionReport>` (uclaw tauri-bridge.ts:236). */
+export async function runPlaywrightSetup(_action: PlaywrightSetupAction): Promise<PlaywrightSetupExecutionReport> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: run_playwright_setup')
+}
+
+/** Plan 3.5.s.c Wave A stub. Signature: `(exposed: boolean) => Promise<BrowserRuntimeControlCenterReport>` (uclaw tauri-bridge.ts:202). */
+export async function setBrowserRuntimeMcpRawToolsExposed(_exposed: boolean): Promise<BrowserRuntimeControlCenterReport> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: set_browser_runtime_mcp_raw_tools_exposed')
+}
+
+/** Plan 3.5.s.c Wave A stub. Signature: `(providerId, enabled) => Promise<BrowserRuntimeControlCenterReport>` (uclaw tauri-bridge.ts:191). */
+export async function setBrowserRuntimeProviderEnabled(
+  _providerId: BrowserRuntimeProviderId,
+  _enabled: boolean,
+): Promise<BrowserRuntimeControlCenterReport> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: set_browser_runtime_provider_enabled')
+}
+
+/** Plan 3.5.s.c Wave A stub. Signature: `(providerIds: BrowserRuntimeProviderId[]) => Promise<BrowserRuntimeControlCenterReport>` (uclaw tauri-bridge.ts:197). */
+export async function setBrowserRuntimeProviderPriority(
+  _providerIds: BrowserRuntimeProviderId[],
+): Promise<BrowserRuntimeControlCenterReport> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: set_browser_runtime_provider_priority')
+}

@@ -15,12 +15,6 @@ function makeStubTab(symbol: string, plan: string) {
   }
 }
 
-// Plan 3.5.s.c — provider integrations + STT settings + pet + browser runtime
-export const SttSettings = makeStubTab('SttSettings', '3.5.s.c')
-export const ImChannelsSettings = makeStubTab('ImChannelsSettings', '3.5.s.c')
-export const PetSettings = makeStubTab('PetSettings', '3.5.s.c')
-export const BrowserRuntimeSettings = makeStubTab('BrowserRuntimeSettings', '3.5.s.c')
-
 // Plan 3.5.s.d — advanced + system
 export const ProxySetting = makeStubTab('ProxySetting', '3.5.s.d')
 export const SystemTab = makeStubTab('SystemTab', '3.5.s.d')
