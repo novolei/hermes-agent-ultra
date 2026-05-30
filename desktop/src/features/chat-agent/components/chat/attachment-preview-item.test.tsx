@@ -32,7 +32,8 @@ describe('AttachmentPreviewItem', () => {
       </Provider>,
     )
     expect(container.firstChild).toBeTruthy()
-    const span = container.querySelector('span')
+    // Use .truncate selector to target the filename span (not the FileTypeIcon wrapper span)
+    const span = container.querySelector('span.truncate')
     expect(span?.textContent).toContain('test-document.pdf')
   })
 
