@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Second PR of the **ChatView sub-stack** (chat.a ✅ #27 → chat.b → chat.c). Port the 5 core message-rendering files from the uclaw `chat/` cluster verbatim: `InlineEditForm`, `ChatMessageItem`, `ParallelChatMessages`, `ChatMessages`, `ChatInput`. Plus 2 small prereq components (`WelcomeEmptyState`, `SkillSuggestionBar`) and 3 IPC stubs. After this PR, `ChatMessages` + `ChatInput` exist as the message pipeline that chat.c's `ChatView` root composes.
+**Goal:** Second PR of the **ChatView sub-stack** (chat.a ✅ #27 → chat.b → chat.c). Port the 5 core message-rendering files from the uclaw `chat/` cluster verbatim: `InlineEditForm`, `ChatMessageItem`, `ParallelChatMessages`, `ChatMessages`, `ChatInput`. Plus 1 small prereq component (`SkillSuggestionBar`) and 3 IPC stubs (`WelcomeEmptyState` is already ported). After this PR, `ChatMessages` + `ChatInput` exist as the message pipeline that chat.c's `ChatView` root composes.
 
 **Architecture:** Verbatim port discipline (PRs #18–#27). Byte-for-byte from `/Users/ryanliu/Documents/uclaw/ui/src/components/chat/` with standardized retargets. The layer is ~99% unblocked — chat.a + earlier ports landed every leaf component, ai-element, atom, and hook these 5 files consume. Linear DAG (no circular deps): InlineEditForm → ChatMessageItem → ParallelChatMessages/ChatMessages; ChatInput independent.
 
@@ -95,7 +95,7 @@ function renderWithProviders(ui: React.ReactElement, opts?: { store?: ReturnType
 
 ---
 
-## Wave A — Foundation: 3 IPC stubs + 2 prereq components
+## Wave A — Foundation: 3 IPC stubs + SkillSuggestionBar
 
 ### Task A1: Add `readAttachment` + `listSkills` + `listLearnedSkills` IPC stubs
 
