@@ -1,0 +1,244 @@
+/**
+ * TabBar — 顶部标签栏
+ *
+ * 显示所有打开的标签页，支持：
+ * - 点击切换标签
+ * - 中键关闭标签
+ * - 拖拽重排序
+ * - Chrome 风格等分宽度（不滚动）
+ *
+ * Ported verbatim from uclaw ui/src/components/tabs/TabBar.tsx (Plan FB.c Wave C3)
+ */
+
+import * as React from 'react'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import {
+  visibleTabsAtom,
+  activeTabIdAtom,
+  tabIndicatorMapAtom,
+} from '@/features/chat-agent/atoms/tab-atoms'
+import type { TabItem } from '@/features/chat-agent/atoms/tab-atoms'
+import type { SessionIndicatorStatus } from '@/features/chat-agent/atoms/agent-atoms'
+import { currentConversationIdAtom } from '@/features/chat-agent/atoms/chat-atoms'
+import {
+  agentSessionsAtom,
+  currentAgentSessionIdAtom,
+  currentAgentWorkspaceIdAtom,
+  unviewedCompletedSessionIdsAtom,
+} from '@/features/chat-agent/atoms/agent-atoms'
+import { activeWorkspaceIdAtom, workspaceSwitchDirectionAtom } from '@/features/chat-agent/atoms/workspace'
+import { motion, AnimatePresence, type Variants } from 'motion/react'
+import { appModeAtom } from '@/features/chat-agent/atoms/app-mode'
+import { TabBarItem } from './tab-bar-item'
+import { TabBarWorkspaceChip } from './tab-bar-workspace-chip'
+import { TabCloseConfirmDialog } from './tab-close-confirm-dialog'
+import { useCloseTab } from '@/features/chat-agent/hooks/use-close-tab'
+
+const tabStripSlideVariants: Variants = {
+  enter: (dir: 'forward' | 'backward') => ({
+    opacity: 0,
+    x: dir === 'forward' ? 32 : -32,
+  }),
+  center: { opacity: 1, x: 0 },
+  exit: (dir: 'forward' | 'backward') => ({
+    opacity: 0,
+    x: dir === 'forward' ? -32 : 32,
+  }),
+}
+
+export function TabBar(): React.ReactElement {
+  const tabs = useAtomValue(visibleTabsAtom)
+  const [activeTabId, setActiveTabId] = useAtom(activeTabIdAtom)
+  const indicatorMap = useAtomValue(tabIndicatorMapAtom)
+  // Used as the React `key` on TabBarInner so workspace switches retrigger
+  // the inner content's animate-in. Direction comes from selectWorkspaceAtom
+  // so forward / backward switches slide from opposite sides — matches
+  // LeftSidebar's ARC-style transition.
+  const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom)
+  const switchDirection = useAtomValue(workspaceSwitchDirectionAtom)
+
+  // Tab 切换时同步 sidebar 状态
+  const setAppMode = useSetAtom(appModeAtom)
+  const setCurrentConversationId = useSetAtom(currentConversationIdAtom)
+  const setCurrentAgentSessionId = useSetAtom(currentAgentSessionIdAtom)
+  const agentSessions = useAtomValue(agentSessionsAtom)
+  const setCurrentAgentWorkspaceId = useSetAtom(currentAgentWorkspaceIdAtom)
+  const setUnviewedCompleted = useSetAtom(unviewedCompletedSessionIdsAtom)
+
+  // 统一关闭逻辑：含 Agent 子进程 stop + 流式中的确认对话框
+  // 详见 useCloseTab，修复 Issue #357 的 UI→IPC 断链
+  const { requestClose } = useCloseTab()
+
+  const handleActivate = React.useCallback((tabId: string) => {
+    setActiveTabId(tabId)
+
+    const tab = tabs.find((t) => t.id === tabId)
+    if (!tab) return
+
+    if (tab.type === 'chat') {
+      setAppMode('chat')
+      setCurrentConversationId(tab.sessionId)
+    } else if (tab.type === 'agent') {
+      setAppMode('agent')
+      setCurrentAgentSessionId(tab.sessionId)
+
+      // 清除该会话的"已完成未查看"标记
+      setUnviewedCompleted((prev) => {
+        if (!prev.has(tab.sessionId)) return prev
+        const next = new Set(prev)
+        next.delete(tab.sessionId)
+        return next
+      })
+
+      const session = agentSessions.find((s) => s.id === tab.sessionId)
+      if (session?.workspaceId) {
+        setCurrentAgentWorkspaceId(session.workspaceId)
+      }
+    } else if (tab.type === 'browser') {
+      // Browser tabs don't change app mode, just set active tab
+    }
+  }, [setActiveTabId, tabs, agentSessions, setAppMode, setCurrentConversationId, setCurrentAgentSessionId, setCurrentAgentWorkspaceId, setUnviewedCompleted])
+
+  if (tabs.length === 0) return <div data-tauri-drag-region className="h-[34px] titlebar-drag-region" />
+
+  return (
+    <>
+      <TabBarInner
+        tabs={tabs}
+        activeTabId={activeTabId}
+        streamingMap={indicatorMap}
+        onActivate={handleActivate}
+        onClose={requestClose}
+        workspaceKey={activeWorkspaceId ?? 'no-workspace'}
+        switchDirection={switchDirection}
+      />
+      <TabCloseConfirmDialog />
+    </>
+  )
+}
+
+/** 内部组件：管理全局 hover 状态，确保同一时刻只有一个预览面板 */
+function TabBarInner({
+  tabs,
+  activeTabId,
+  streamingMap,
+  onActivate,
+  onClose,
+  workspaceKey,
+  switchDirection,
+}: {
+  tabs: TabItem[]
+  activeTabId: string | null
+  streamingMap: Map<string, SessionIndicatorStatus>
+  onActivate: (tabId: string) => void
+  onClose: (tabId: string) => void
+  /** Workspace id used as React key on the content wrapper — retriggers
+   *  animate-in on workspace switch so the tab strip slides in. */
+  workspaceKey: string
+  /** Direction of the most-recent workspace switch (forward → slide in
+   *  from right; backward → slide in from left). Matches LeftSidebar. */
+  switchDirection: 'forward' | 'backward'
+}): React.ReactElement {
+  // Read agent sessions here (not via prop drilling) so per-tab IM-origin
+  // lookup stays colocated with the render that uses it.
+  const agentSessions = useAtomValue(agentSessionsAtom)
+  const [hoveredTabId, setHoveredTabId] = React.useState<string | null>(null)
+  const [isLeaving, setIsLeaving] = React.useState(false)
+  const enterTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined)
+  const leaveTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined)
+  const fadeTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  React.useEffect(() => {
+    return () => {
+      if (enterTimerRef.current) clearTimeout(enterTimerRef.current)
+      if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current)
+      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current)
+    }
+  }, [])
+
+  const handleTabHoverEnter = React.useCallback((tabId: string) => {
+    if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current)
+    if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current)
+    if (enterTimerRef.current) clearTimeout(enterTimerRef.current)
+    setIsLeaving(false)
+
+    // 如果已经有面板打开（从一个 Tab 滑到另一个），立即切换
+    if (hoveredTabId) {
+      setHoveredTabId(tabId)
+    } else {
+      // 首次 hover，延迟 300ms
+      enterTimerRef.current = setTimeout(() => setHoveredTabId(tabId), 300)
+    }
+  }, [hoveredTabId])
+
+  const handleTabHoverLeave = React.useCallback(() => {
+    if (enterTimerRef.current) clearTimeout(enterTimerRef.current)
+    leaveTimerRef.current = setTimeout(() => {
+      setIsLeaving(true)
+      fadeTimerRef.current = setTimeout(() => {
+        setHoveredTabId(null)
+        setIsLeaving(false)
+      }, 80)
+    }, 200)
+  }, [])
+
+  // 面板的 hover 进入（阻止关闭）
+  const handlePanelHoverEnter = React.useCallback(() => {
+    if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current)
+    if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current)
+    setIsLeaving(false)
+  }, [])
+
+  return (
+    // The TabBar row IS the OS title-bar drag region. The animated strip
+    // inside it also carries the drag region because it visually covers the
+    // parent row; individual tab buttons opt out with titlebar-no-drag.
+    <div data-tauri-drag-region className="flex items-end h-[34px] tabbar-bg relative titlebar-drag-region">
+      <AnimatePresence mode="wait" custom={switchDirection} initial={false}>
+        <motion.div
+          data-tauri-drag-region
+          key={workspaceKey}
+          custom={switchDirection}
+          variants={tabStripSlideVariants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{ duration: 0.26, ease: [0.32, 0.72, 0, 1] }}
+          className="relative flex items-end flex-1 min-w-0 overflow-x-clip titlebar-drag-region"
+        >
+        <div data-tauri-drag-region className="flex items-center px-1 py-1 shrink-0 self-stretch titlebar-drag-region">
+          <TabBarWorkspaceChip />
+        </div>
+        {tabs.map((tab) => {
+          // Look up IM origin from agentSessions so the tab can show a
+          // channel-source badge. Only relevant for 'agent' tabs — chat/
+          // browser/symphony don't bind to im_sessions.
+          const session = tab.type === 'agent'
+            ? agentSessions.find((s) => s.id === tab.sessionId)
+            : undefined
+          return (
+            <TabBarItem
+              key={tab.id}
+              id={tab.id}
+              type={tab.type}
+              title={tab.title}
+              isActive={tab.id === activeTabId}
+              isStreaming={streamingMap.get(tab.id) ?? 'idle'}
+              isHovered={hoveredTabId === tab.id}
+              isLeaving={hoveredTabId === tab.id && isLeaving}
+              imChannelType={session?.imChannelType}
+              onActivate={() => onActivate(tab.id)}
+              onClose={() => onClose(tab.id)}
+              onMiddleClick={() => onClose(tab.id)}
+              onHoverEnter={() => handleTabHoverEnter(tab.id)}
+              onHoverLeave={handleTabHoverLeave}
+              onPanelHoverEnter={handlePanelHoverEnter}
+              onPanelHoverLeave={handleTabHoverLeave}
+            />
+          )
+        })}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  )
+}
