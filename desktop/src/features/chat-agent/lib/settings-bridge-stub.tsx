@@ -1,5 +1,7 @@
 import * as React from 'react'
 
+// All deferred-tab stubs have been replaced by real ports as of Plan 3.5.s.d.
+// The factory is retained for reference / any future deferral.
 function makeStubTab(symbol: string, plan: string) {
   return function StubSettingsTab(): React.ReactElement {
     return (
@@ -14,8 +16,3 @@ function makeStubTab(symbol: string, plan: string) {
     )
   }
 }
-
-// Plan 3.5.s.d — advanced + system
-export const ProxySetting = makeStubTab('ProxySetting', '3.5.s.d')
-export const SystemTab = makeStubTab('SystemTab', '3.5.s.d')
-export const AboutSettings = makeStubTab('AboutSettings', '3.5.s.d')
