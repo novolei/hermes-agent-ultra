@@ -10,6 +10,12 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SystemTab } from './system-tab'
 
+// vi.hoisted ensures mockInvoke is available when vi.mock factory runs (vitest hoist order).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockInvoke = vi.hoisted(() => vi.fn() as any)
+
+vi.mock('@tauri-apps/api/core', () => ({ invoke: mockInvoke }))
+
 // Inline shim (Wave B/D pattern) — no MotionConfig / TooltipProvider needed.
 function renderWithProviders(
   ui: React.ReactElement,
@@ -21,15 +27,9 @@ function renderWithProviders(
   return { store, user }
 }
 
-const mockInvoke = vi.fn(async (cmd: string, _args?: unknown) => {
-  throw new Error(`mockInvoke: command ${cmd} not stubbed for this test`)
-})
-
 function resetTauriMocks(): void {
   mockInvoke.mockClear()
 }
-
-vi.mock('@tauri-apps/api/core', () => ({ invoke: mockInvoke }))
 
 const diagnostics = {
   app_version: '0.1.0',
