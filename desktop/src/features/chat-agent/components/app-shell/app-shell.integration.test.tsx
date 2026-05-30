@@ -169,6 +169,15 @@ vi.mock('@/features/chat-agent/lib/tauri-bridge-stub', () => ({
   // signature is `Promise<ModelRoleConfig[]>` (see tauri-bridge-stub.ts:1073).
   getRoleModels: vi.fn().mockResolvedValue([]),
   setRoleModel: vi.fn().mockResolvedValue(undefined),
+  getVersion: vi.fn().mockResolvedValue({ appVersion: '0.14.2', tauriVersion: '2.0.0', rustVersion: '1.80.0' }),
+  getPlatform: vi.fn().mockResolvedValue({ os: 'macos', arch: 'aarch64', version: '15.0' }),
+  // Plan 3.5.s.d Wave E — Q4 renders the tools tab which mounts PermissionsSettings
+  listPermissionRules: vi.fn().mockResolvedValue([]),
+  listPermissionAudit: vi.fn().mockResolvedValue([]),
+  createPermissionRule: vi.fn().mockResolvedValue({ id: 'mock-id', toolName: '', mode: 'ask', scope: 'session', pattern: null, createdAt: 0 }),
+  deletePermissionRule: vi.fn().mockResolvedValue(true),
+  removeAutoApprovedTool: vi.fn().mockResolvedValue({ globalMode: 'ask', toolOverrides: {} }),
+  unblockTool: vi.fn().mockResolvedValue({ globalMode: 'ask', toolOverrides: {} }),
   // Plan 3.5.s.b Wave F — intelligence-tab + children IPC
   proactiveStatus: vi.fn().mockResolvedValue({ status: { status: 'Stopped' } }),
   proactiveStart: vi.fn().mockResolvedValue(undefined),
@@ -704,12 +713,12 @@ describe('AppShell + SettingsDialog (Plan 3.5.s.a)', () => {
     expect(document.body.querySelector('[data-settings-section]')).not.toBeNull()
   })
 
-  it('N3: deferred tabs (e.g., proxy) show data-deferred-to placeholders', () => {
+  it('N3: previously-deferred tabs (e.g., proxy) are now real ports (no stub marker)', () => {
     const store = createStore()
     store.set(settingsOpenAtom, true)
     store.set(settingsTabAtom, 'proxy')
     render(<Provider store={store}><AppShell /></Provider>)
-    expect(document.body.querySelector('[data-deferred-to="3.5.s.d"]')).not.toBeNull()
+    expect(document.body.querySelector('[data-deferred-to]')).toBeNull()
   })
 
   it('N4: closed-state DOM has zero [data-stub] elements (no regression from prior K/L assertions)', () => {
@@ -767,12 +776,12 @@ describe('AppShell + SettingsDialog 3.5.s.b tabs (real ports)', () => {
     expect(document.body.querySelector('[data-deferred-to="3.5.s.b"]')).toBeNull()
   })
 
-  it('O5: 3.5.s.d stubs still render for their respective tabs', () => {
+  it('O5: proxy tab is now a real port (3.5.s.d shipped)', () => {
     const store = createStore()
     store.set(settingsOpenAtom, true)
     store.set(settingsTabAtom, 'proxy')
     render(<Provider store={store}><AppShell /></Provider>)
-    expect(document.body.querySelector('[data-deferred-to="3.5.s.d"]')).not.toBeNull()
+    expect(document.body.querySelector('[data-deferred-to]')).toBeNull()
   })
 })
 
@@ -816,11 +825,60 @@ describe('AppShell + SettingsDialog 3.5.s.c tabs (real ports)', () => {
     expect(document.body.querySelector('[data-deferred-to="3.5.s.c"]')).toBeNull()
   })
 
-  it('P5: 3.5.s.d stubs still render for their respective tabs (regression guard)', () => {
+  it('P5: system tab is now a real port (3.5.s.d shipped)', () => {
     const store = createStore()
     store.set(settingsOpenAtom, true)
     store.set(settingsTabAtom, 'system')
     render(<Provider store={store}><AppShell /></Provider>)
-    expect(document.body.querySelector('[data-deferred-to="3.5.s.d"]')).not.toBeNull()
+    expect(document.body.querySelector('[data-deferred-to]')).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Q. AppShell + SettingsDialog 3.5.s.d real ports — final 3 tabs + completeness
+// ---------------------------------------------------------------------------
+
+describe('AppShell + SettingsDialog 3.5.s.d tabs (real ports — sub-stack complete)', () => {
+  beforeEach(() => localStorage.clear())
+  afterEach(() => cleanup())
+
+  it('Q1: proxy tab is real (no stub marker)', () => {
+    const store = createStore()
+    store.set(settingsOpenAtom, true)
+    store.set(settingsTabAtom, 'proxy')
+    render(<Provider store={store}><AppShell /></Provider>)
+    expect(document.body.querySelector('[data-deferred-to="3.5.s.d"]')).toBeNull()
+  })
+
+  it('Q2: system tab is real (no stub marker)', () => {
+    const store = createStore()
+    store.set(settingsOpenAtom, true)
+    store.set(settingsTabAtom, 'system')
+    render(<Provider store={store}><AppShell /></Provider>)
+    expect(document.body.querySelector('[data-deferred-to="3.5.s.d"]')).toBeNull()
+  })
+
+  it('Q3: about tab is real (no stub marker)', () => {
+    const store = createStore()
+    store.set(settingsOpenAtom, true)
+    store.set(settingsTabAtom, 'about')
+    render(<Provider store={store}><AppShell /></Provider>)
+    expect(document.body.querySelector('[data-deferred-to="3.5.s.d"]')).toBeNull()
+  })
+
+  it('Q4: NO settings tab renders any deferred-to stub marker (sub-stack fully ported)', () => {
+    const tabs = [
+      'connectivity', 'intelligence', 'tools', 'memoryRecall', 'learnedProfile',
+      'imChannels', 'general', 'stt', 'shortcuts', 'pet', 'proxy',
+      'browserRuntime', 'system', 'about',
+    ] as const
+    for (const tab of tabs) {
+      const store = createStore()
+      store.set(settingsOpenAtom, true)
+      store.set(settingsTabAtom, tab)
+      const { unmount } = render(<Provider store={store}><AppShell /></Provider>)
+      expect(document.body.querySelector('[data-deferred-to]')).toBeNull()
+      unmount()
+    }
   })
 })
