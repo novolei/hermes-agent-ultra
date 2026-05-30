@@ -1752,3 +1752,14 @@ export async function detachSessionDirectory(_sessionId: string, _dirPath: strin
 export async function copyFileIntoWorkspace(_workspaceId: string, _sourcePath: string): Promise<string> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_FB_BACKEND: copy_file_into_workspace')
 }
+
+// === Plan FB.c additions ===
+// ─── workspace activation IPC stubs ───────────────────────────────────────────
+// Consumed transitively by workspace atoms (the tabs tests mock these). Signatures
+// from uclaw lib/tauri-bridge.ts:484-487.
+export async function getActiveWorkspaceId(): Promise<string | null> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_FB_BACKEND: get_active_workspace_id')
+}
+export async function setActiveWorkspaceId(_id: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_FB_BACKEND: set_active_workspace_id')
+}
