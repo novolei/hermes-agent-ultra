@@ -1429,30 +1429,17 @@ export async function sttDownloadModel(_args: { targetDir?: string | null }): Pr
 // event is consumed via Tauri `listen()` — no stub needed; the listen call gracefully
 // no-ops in test/non-Tauri envs.
 
-export interface ImChannelRow {
-  id: string
-  name: string
-  channelType: string
-  enabled: boolean
-  spaceId: string | null
-  config: Record<string, unknown>
-}
-
-export interface ImChannelInput {
-  name: string
-  channelType: string
-  enabled: boolean
-  spaceId: string | null
-  config: Record<string, unknown>
-}
-
-export interface ImChannelStatus {
-  instanceId: string
-  state: string
-  message?: string
-  qrUrl?: string
-  expiresAt?: number
-}
+// Re-export canonical types from im-channel-atoms (avoids duplicate declarations
+// with divergent shapes — the atoms file is the source of truth, ported verbatim
+// from uclaw atoms/im-channel-atoms.ts).
+import type {
+  ImChannelRow as ImChannelRowAtom,
+  ImChannelInput as ImChannelInputAtom,
+  ImChannelStatus as ImChannelStatusAtom,
+} from '../atoms/im-channel-atoms'
+export type ImChannelRow = ImChannelRowAtom
+export type ImChannelInput = ImChannelInputAtom
+export type ImChannelStatus = ImChannelStatusAtom
 
 /** Plan 3.5.s.c Wave A stub. */
 export async function listImChannels(): Promise<ImChannelRow[]> {
@@ -1488,7 +1475,9 @@ export async function updateImChannel(_args: { id: string; input: ImChannelInput
 // NOTE: listSpaces is already defined in the Plan 3.5-slim section above; no duplicate added here.
 
 /** Plan 3.5.s.c Wave A stub. */
-export async function saveWechatIlinkToken(_args: { instanceId: string; token: string }): Promise<void> {
+export async function saveWechatIlinkToken(
+  _args: { instanceId: string; botToken: string; accountId: string },
+): Promise<void> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: save_wechat_ilink_token')
 }
 
@@ -1499,8 +1488,8 @@ export async function disconnectWechatIlink(_args: { instanceId: string }): Prom
 
 // ─── Wave A — BrowserRuntime IPC stubs ────────────────────────────────────────
 // BrowserRuntimeSettings + sub-components call ~9 wrappers. The exact `args`/return
-// shapes must match uclaw `/Users/ryanliu/Documents/uclaw/ui/src/lib/tauri-bridge.ts`
-// lines 185–356 verbatim. Re-export the type aliases below for downstream consumers.
+// shapes must match uclaw `ui/src/lib/tauri-bridge.ts` lines 185–356 verbatim.
+// Re-export the type aliases below for downstream consumers.
 
 import type {
   BrowserRuntimeControlCenterReport,
