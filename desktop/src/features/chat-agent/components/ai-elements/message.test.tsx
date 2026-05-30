@@ -2,12 +2,24 @@
 // Retargets:
 //   - renderWithProviders → render (desktop has no Jotai providers needed;
 //     preview-chip stubs are Jotai-free)
-//   - @tauri-apps/api/event + core mocks removed (stubs don't call Tauri IPC)
+//   - @tauri-apps/api/event + core mocks RESTORED (PV.c swapped the Jotai-free/
+//     IPC-free stubs for the real chips, which call Tauri IPC on mount).
 // Any remaining differences are noted inline.
 
 import { render } from '@testing-library/react'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { MessageResponse } from './message'
+
+// useChipCacheInvalidator calls listen() from @tauri-apps/api/event (absent in
+// jsdom); useFileChipResolver calls invoke() from @tauri-apps/api/core. Restored
+// these mocks now that PV.c swapped the Jotai-free/IPC-free stubs for real chips.
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn(async () => () => {}),
+  emit: vi.fn(async () => {}),
+}))
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn(async () => []),
+}))
 
 describe('MessageResponse — headings', () => {
   it('renders h2 with accent bar wrapper', () => {
