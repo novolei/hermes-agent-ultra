@@ -1638,7 +1638,7 @@ export async function setBrowserRuntimeProviderPriority(
 }
 
 // === Plan 3.5.s.d additions ===
-// ─── Wave A — AboutSettings IPC stubs ───
+// ─── Wave A — AboutSettings IPC stubs ──────────────────────────────────────────
 // AboutSettings calls getVersion + getPlatform (named wrappers, like model-settings
 // imports getRoleModels). All throw NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND until the
 // Rust backend ships. Source: uclaw `@/lib/tauri-bridge` lines 361–365, types from
