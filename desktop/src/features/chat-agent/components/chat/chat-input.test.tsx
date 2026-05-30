@@ -67,8 +67,8 @@ describe('ChatInput smoke', () => {
         onStop={vi.fn()}
       />
     )
-    // The attachment paperclip button should be present
-    const allButtons = document.querySelectorAll('button[type="button"]')
-    expect(allButtons.length).toBeGreaterThan(0)
+    // The attachment paperclip button renders its lucide Paperclip icon —
+    // distinguishing it from "any button rendered" (non-tautological).
+    expect(document.querySelector('svg.lucide-paperclip')).toBeTruthy()
   })
 })
