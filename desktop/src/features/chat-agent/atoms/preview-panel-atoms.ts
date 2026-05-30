@@ -232,7 +232,7 @@ export const openPreviewAction = atom(
  * reads it.
  */
 export const previewPanelWidthAtom = atomWithStorage<number>(
-  'uclaw-preview-panel-width',
+  'hermes-preview-panel-width', // key rebranded uclaw-* → hermes-* per Plan 2b.2.c.2 precedent
   540,
 )
 
@@ -244,7 +244,7 @@ export const previewPanelWidthAtom = atomWithStorage<number>(
  * Default 0.55 — chat slightly wider than preview, mirroring Proma's default.
  */
 export const previewPanelSplitRatioAtom = atomWithStorage<number>(
-  'uclaw-preview-panel-split-ratio',
+  'hermes-preview-panel-split-ratio', // key rebranded uclaw-* → hermes-* per Plan 2b.2.c.2 precedent
   0.55,
 )
 
@@ -255,7 +255,7 @@ export const previewPanelSplitRatioAtom = atomWithStorage<number>(
  * key but scoped to Agent mode only (Chat mode has no tool calls).
  */
 export const autoPreviewEnabledAtom = atomWithStorage<boolean>(
-  'uclaw-auto-preview-enabled',
+  'hermes-auto-preview-enabled', // key rebranded uclaw-* → hermes-* per Plan 2b.2.c.2 precedent
   true,
 )
 

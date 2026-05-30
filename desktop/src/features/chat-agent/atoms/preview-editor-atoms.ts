@@ -55,14 +55,14 @@ export const isDirtyAtomFamily = atomFamily((filePath: string) =>
  * 'rich' = TipTap WYSIWYG; 'raw' = CodeMirror source.
  */
 export const markdownEditorModeAtom = atomWithStorage<'rich' | 'raw'>(
-  'uclaw-md-editor-mode',
+  'hermes-md-editor-mode', // key rebranded uclaw-* → hermes-* per Plan 2b.2.c.2 precedent
   'rich',
 )
 
 /** One-time toast shown when the user first edits a markdown file in
  *  rich mode this session. Suppressible. */
 export const tipTapFidelityToastShownAtom = atomWithStorage<boolean>(
-  'uclaw-tiptap-fidelity-warning-shown',
+  'hermes-tiptap-fidelity-warning-shown', // key rebranded uclaw-* → hermes-* per Plan 2b.2.c.2 precedent
   false,
 )
 
