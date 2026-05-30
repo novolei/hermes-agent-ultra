@@ -1,0 +1,18 @@
+/**
+ * MemoryRecallTab — 记忆召回设置页
+ *
+ * 组合 MemoryRecallSettings 表单和说明文字。
+ */
+// verbatim from uclaw ui/src/components/settings/MemoryRecallTab.tsx
+import * as React from 'react'
+import { MemoryRecallSettings } from './memory-recall-settings'
+
+export function MemoryRecallTab(): React.ReactElement {
+  return (
+    <div className="space-y-8">
+      <section data-settings-section="记忆召回配置">
+        <MemoryRecallSettings />
+      </section>
+    </div>
+  )
+}

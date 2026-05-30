@@ -149,6 +149,34 @@ vi.mock('@/features/chat-agent/lib/tauri-bridge-stub', () => ({
   listProviders: vi.fn().mockResolvedValue([]),
   listConfiguredProviders: vi.fn().mockResolvedValue([]),
   getAllConfiguredModels: vi.fn().mockResolvedValue([]),
+  // ModelSettings calls `roles.find(...)` on the resolved value — actual IPC
+  // signature is `Promise<ModelRoleConfig[]>` (see tauri-bridge-stub.ts:1073).
+  getRoleModels: vi.fn().mockResolvedValue([]),
+  setRoleModel: vi.fn().mockResolvedValue(undefined),
+  // Plan 3.5.s.b Wave F — intelligence-tab + children IPC
+  proactiveStatus: vi.fn().mockResolvedValue({ status: { status: 'Stopped' } }),
+  proactiveStart: vi.fn().mockResolvedValue(undefined),
+  proactiveStop: vi.fn().mockResolvedValue(undefined),
+  getPersonaConfig: vi.fn().mockResolvedValue({ preset: 'default', voiceProfile: { presetId: 'default', warmth: 0.5, directness: 0.5, challenge: 0.5, playfulness: 0.5, detail: 0.5, initiative: 0.5, neutralMode: false }, enabledFeatures: [], bondProfile: null }),
+  updatePersonaVoiceProfile: vi.fn().mockResolvedValue(undefined),
+  getPersonaRelationshipTimeline: vi.fn().mockResolvedValue({ journalEntries: [], badges: [], keepsakes: [], settings: { anniversaryEnabled: false, milestonesEnabled: false } }),
+  createPersonaJournalEntry: vi.fn().mockResolvedValue(undefined),
+  deletePersonaJournalEntry: vi.fn().mockResolvedValue(undefined),
+  promotePersonaJournalEntry: vi.fn().mockResolvedValue(undefined),
+  updatePersonaBadgeVisibility: vi.fn().mockResolvedValue(undefined),
+  updatePersonaKeepsakeStatus: vi.fn().mockResolvedValue(undefined),
+  updatePersonaRelationshipSettings: vi.fn().mockResolvedValue(undefined),
+  readWorkspaceUclawMd: vi.fn().mockResolvedValue(''),
+  writeWorkspaceUclawMd: vi.fn().mockResolvedValue(undefined),
+  readDefaultPrompts: vi.fn().mockResolvedValue({ prompts: [], defaultPromptId: null }),
+  openWorkspaceUclawMdExternally: vi.fn().mockResolvedValue(undefined),
+  getMemoryRecallConfig: vi.fn().mockResolvedValue({ bootLimit: 8, triggerLimit: 6, seedLimit: 8, expansionLimit: 6, enabled: true }),
+  patchMemoryRecallConfig: vi.fn().mockResolvedValue(undefined),
+  memoryLearningListFacets: vi.fn().mockResolvedValue([]),
+  memoryLearningDismissFacet: vi.fn().mockResolvedValue(undefined),
+  memoryLearningRebuildNow: vi.fn().mockResolvedValue(undefined),
+  memoryLearningPromoteFacet: vi.fn().mockResolvedValue(undefined),
+  memoryLearningDemoteFacet: vi.fn().mockResolvedValue(undefined),
   getDailyCosts: vi.fn().mockResolvedValue([]),
   getModelCosts: vi.fn().mockResolvedValue([]),
   getSessionCosts: vi.fn().mockResolvedValue([]),
@@ -635,12 +663,12 @@ describe('AppShell + SettingsDialog (Plan 3.5.s.a)', () => {
     expect(document.body.querySelector('[data-settings-section]')).not.toBeNull()
   })
 
-  it('N3: deferred tabs (e.g., intelligence) show data-deferred-to placeholders', () => {
+  it('N3: deferred tabs (e.g., stt) show data-deferred-to placeholders', () => {
     const store = createStore()
     store.set(settingsOpenAtom, true)
-    store.set(settingsTabAtom, 'intelligence')
+    store.set(settingsTabAtom, 'stt')
     render(<Provider store={store}><AppShell /></Provider>)
-    expect(document.body.querySelector('[data-deferred-to="3.5.s.b"]')).not.toBeNull()
+    expect(document.body.querySelector('[data-deferred-to="3.5.s.c"]')).not.toBeNull()
   })
 
   it('N4: closed-state DOM has zero [data-stub] elements (no regression from prior K/L assertions)', () => {
@@ -649,5 +677,60 @@ describe('AppShell + SettingsDialog (Plan 3.5.s.a)', () => {
     const { container } = render(<Provider store={store}><AppShell /></Provider>)
     expect(container.querySelectorAll('[data-stub]').length).toBe(0)
     expect(document.body.querySelectorAll('[data-stub]').length).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// O. AppShell + SettingsDialog 3.5.s.b real ports — 5 cases
+// ---------------------------------------------------------------------------
+
+describe('AppShell + SettingsDialog 3.5.s.b tabs (real ports)', () => {
+  beforeEach(() => localStorage.clear())
+  afterEach(() => cleanup())
+
+  it('O1: intelligence tab opens with real ModelSettings content', () => {
+    const store = createStore()
+    store.set(settingsOpenAtom, true)
+    store.set(settingsTabAtom, 'intelligence')
+    render(<Provider store={store}><AppShell /></Provider>)
+    // Real IntelligenceTab renders sub-component sections (data-settings-section)
+    expect(document.body.querySelector('[data-settings-section]')).not.toBeNull()
+    expect(document.body.querySelector('[data-deferred-to="3.5.s.b"]')).toBeNull()
+  })
+
+  it('O2: memoryRecall tab is real (no stub marker)', () => {
+    const store = createStore()
+    store.set(settingsOpenAtom, true)
+    store.set(settingsTabAtom, 'memoryRecall')
+    render(<Provider store={store}><AppShell /></Provider>)
+    // Positive: MemoryRecallTab wraps content in a section with this attr.
+    expect(document.body.querySelector('[data-settings-section="记忆召回配置"]')).not.toBeNull()
+    expect(document.body.querySelector('[data-deferred-to="3.5.s.b"]')).toBeNull()
+  })
+
+  it('O3: learnedProfile tab is real', () => {
+    const store = createStore()
+    store.set(settingsOpenAtom, true)
+    store.set(settingsTabAtom, 'learnedProfile')
+    render(<Provider store={store}><AppShell /></Provider>)
+    // Positive: LearnedProfileTab wraps content in a section with this attr.
+    expect(document.body.querySelector('[data-settings-section="学到的偏好"]')).not.toBeNull()
+    expect(document.body.querySelector('[data-deferred-to="3.5.s.b"]')).toBeNull()
+  })
+
+  it('O4: shortcuts tab is real', () => {
+    const store = createStore()
+    store.set(settingsOpenAtom, true)
+    store.set(settingsTabAtom, 'shortcuts')
+    render(<Provider store={store}><AppShell /></Provider>)
+    expect(document.body.querySelector('[data-deferred-to="3.5.s.b"]')).toBeNull()
+  })
+
+  it('O5: 3.5.s.c stubs still render for their respective tabs', () => {
+    const store = createStore()
+    store.set(settingsOpenAtom, true)
+    store.set(settingsTabAtom, 'stt')
+    render(<Provider store={store}><AppShell /></Provider>)
+    expect(document.body.querySelector('[data-deferred-to="3.5.s.c"]')).not.toBeNull()
   })
 })

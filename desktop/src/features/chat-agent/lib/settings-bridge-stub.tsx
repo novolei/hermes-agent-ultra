@@ -15,12 +15,6 @@ function makeStubTab(symbol: string, plan: string) {
   }
 }
 
-// Plan 3.5.s.b — intelligence + memory + shortcuts
-export const IntelligenceTab = makeStubTab('IntelligenceTab', '3.5.s.b')
-export const MemoryRecallTab = makeStubTab('MemoryRecallTab', '3.5.s.b')
-export const LearnedProfileTab = makeStubTab('LearnedProfileTab', '3.5.s.b')
-export const ShortcutSettings = makeStubTab('ShortcutSettings', '3.5.s.b')
-
 // Plan 3.5.s.c — provider integrations + STT settings + pet + browser runtime
 export const SttSettings = makeStubTab('SttSettings', '3.5.s.c')
 export const ImChannelsSettings = makeStubTab('ImChannelsSettings', '3.5.s.c')

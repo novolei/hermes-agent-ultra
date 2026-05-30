@@ -4,16 +4,12 @@ import * as React from 'react'
 import * as stubs from './settings-bridge-stub'
 
 describe('settings-bridge-stub', () => {
-  it('exports 11 deferred-tab stub components', () => {
+  it('exports 7 deferred-tab stub components', () => {
     const exportedFunctions = Object.values(stubs).filter((v) => typeof v === 'function')
-    expect(exportedFunctions.length).toBe(11)
+    expect(exportedFunctions.length).toBe(7)
   })
 
   it.each([
-    ['IntelligenceTab', '3.5.s.b'],
-    ['MemoryRecallTab', '3.5.s.b'],
-    ['LearnedProfileTab', '3.5.s.b'],
-    ['ShortcutSettings', '3.5.s.b'],
     ['SttSettings', '3.5.s.c'],
     ['ImChannelsSettings', '3.5.s.c'],
     ['PetSettings', '3.5.s.c'],
@@ -31,8 +27,8 @@ describe('settings-bridge-stub', () => {
   })
 
   it('placeholder content includes the symbol name and the plan reference', () => {
-    const { container } = render(<stubs.IntelligenceTab />)
-    expect(container.textContent).toContain('IntelligenceTab')
-    expect(container.textContent).toContain('3.5.s.b')
+    const { container } = render(<stubs.SttSettings />)
+    expect(container.textContent).toContain('SttSettings')
+    expect(container.textContent).toContain('3.5.s.c')
   })
 })

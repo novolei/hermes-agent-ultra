@@ -1052,3 +1052,344 @@ export async function promoteSessionPathToGlobal(
 export async function openFolderDialog(): Promise<{ path: string; name: string } | null> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: openFolderDialog')
 }
+
+// === Plan 3.5.s.b additions ===
+// ─── Wave B — IntelligenceTab cluster stubs ──────────────────────────────────
+// ModelSettings calls getRoleModels + setRoleModel (setRoleModel already stubbed above).
+// IntelligenceTab calls proactiveStatus + proactiveStart + proactiveStop.
+// PromptsSettings calls readWorkspaceUclawMd + writeWorkspaceUclawMd +
+//   readDefaultPrompts + openWorkspaceUclawMdExternally.
+// All throw NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND until Rust backend ships.
+
+/** Config for a single model role assignment. Mirrors uclaw lib/tauri-bridge.ts. */
+export interface ModelRoleConfig {
+  role: string
+  model_ref: string | null
+}
+
+/**
+ * Fetch the per-role model assignments.
+ * Plan 3.5.s.b Wave B stub.
+ */
+export async function getRoleModels(): Promise<ModelRoleConfig[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getRoleModels')
+}
+
+/**
+ * Query the status of the Gene Evolution Protocol service.
+ * Returns a ServiceHealth object with a nested status field.
+ * Plan 3.5.s.b Wave B stub.
+ */
+export async function proactiveStatus(): Promise<unknown> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: proactiveStatus')
+}
+
+/**
+ * Start the Gene Evolution Protocol (proactive) service.
+ * Plan 3.5.s.b Wave B stub.
+ */
+export async function proactiveStart(): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: proactiveStart')
+}
+
+/**
+ * Stop the Gene Evolution Protocol (proactive) service.
+ * Plan 3.5.s.b Wave B stub.
+ */
+export async function proactiveStop(): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: proactiveStop')
+}
+
+/**
+ * Read the workspace-level uclaw.md file.
+ * Returns empty string if the file doesn't exist.
+ * Plan 3.5.s.b Wave B stub.
+ */
+export async function readWorkspaceUclawMd(): Promise<string> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: readWorkspaceUclawMd')
+}
+
+/**
+ * Write content to the workspace-level uclaw.md file.
+ * Plan 3.5.s.b Wave B stub.
+ */
+export async function writeWorkspaceUclawMd(_content: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: writeWorkspaceUclawMd')
+}
+
+/** The default prompts payload from the backend. Mirrors uclaw lib/types.ts DefaultPromptsResponse. */
+export interface DefaultPromptsResponse {
+  baseline: string
+  modeAsk: string
+  modeAcceptEdits: string
+  modePlan: string
+  modeBypass: string
+}
+
+/**
+ * Read the built-in default prompt templates (baseline + per-mode additions).
+ * Plan 3.5.s.b Wave B stub.
+ */
+export async function readDefaultPrompts(): Promise<DefaultPromptsResponse> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: readDefaultPrompts')
+}
+
+/**
+ * Open the workspace uclaw.md file in the system's default external editor.
+ * Plan 3.5.s.b Wave B stub.
+ */
+export async function openWorkspaceUclawMdExternally(): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: openWorkspaceUclawMdExternally')
+}
+
+// ─── Wave B — Persona IPC stubs ───────────────────────────────────────────────
+// PersonaStudio calls getPersonaConfig + updatePersonaVoiceProfile.
+// PersonaBondTimeline calls getPersonaRelationshipTimeline + createPersonaJournalEntry +
+//   deletePersonaJournalEntry + promotePersonaJournalEntry + updatePersonaKeepsakeStatus +
+//   updatePersonaRelationshipSettings + updatePersonaBadgeVisibility.
+// Types are defined in @/features/chat-agent/lib/persona-types.
+// All throw NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND.
+
+import type {
+  PersonaConfig,
+  PersonaRelationshipTimeline,
+  VoiceProfile,
+  CreatePersonaJournalEntryInput,
+  PromotePersonaJournalEntryInput,
+  UpdatePersonaKeepsakeStatusInput,
+  UpdatePersonaRelationshipSettingsInput,
+  UpdatePersonaBadgeVisibilityInput,
+} from './persona-types'
+
+export type {
+  PersonaConfig,
+  PersonaRelationshipTimeline,
+  VoiceProfile,
+  CreatePersonaJournalEntryInput,
+  PromotePersonaJournalEntryInput,
+  UpdatePersonaKeepsakeStatusInput,
+  UpdatePersonaRelationshipSettingsInput,
+  UpdatePersonaBadgeVisibilityInput,
+}
+
+/**
+ * Fetch the Persona configuration (presets + current voice profile + rendered prompt).
+ * Plan 3.5.s.b Wave B stub.
+ */
+export async function getPersonaConfig(): Promise<PersonaConfig> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getPersonaConfig')
+}
+
+/**
+ * Update the Persona voice profile sliders. Returns updated PersonaConfig.
+ * Plan 3.5.s.b Wave B stub.
+ */
+export async function updatePersonaVoiceProfile(_input: VoiceProfile): Promise<PersonaConfig> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: updatePersonaVoiceProfile')
+}
+
+/**
+ * Fetch the full persona relationship timeline (affinity, bond, keepsakes, badges, journals).
+ * Plan 3.5.s.b Wave B stub.
+ */
+export async function getPersonaRelationshipTimeline(): Promise<PersonaRelationshipTimeline> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getPersonaRelationshipTimeline')
+}
+
+/**
+ * Update the status of a persona keepsake (accept / hide / discard).
+ * Plan 3.5.s.b Wave B stub.
+ */
+export async function updatePersonaKeepsakeStatus(
+  _input: UpdatePersonaKeepsakeStatusInput,
+): Promise<PersonaRelationshipTimeline> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: updatePersonaKeepsakeStatus')
+}
+
+/**
+ * Create a new persona journal entry.
+ * Plan 3.5.s.b Wave B stub.
+ */
+export async function createPersonaJournalEntry(
+  _input: CreatePersonaJournalEntryInput,
+): Promise<PersonaRelationshipTimeline> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: createPersonaJournalEntry')
+}
+
+/**
+ * Delete a persona journal entry by id.
+ * Plan 3.5.s.b Wave B stub.
+ */
+export async function deletePersonaJournalEntry(
+  _id: string,
+): Promise<PersonaRelationshipTimeline> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: deletePersonaJournalEntry')
+}
+
+/**
+ * Promote a journal entry to a bond profile field.
+ * Plan 3.5.s.b Wave B stub.
+ */
+export async function promotePersonaJournalEntry(
+  _input: PromotePersonaJournalEntryInput,
+): Promise<PersonaRelationshipTimeline> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: promotePersonaJournalEntry')
+}
+
+/**
+ * Update persona relationship settings (e.g. gamificationEnabled).
+ * Plan 3.5.s.b Wave B stub.
+ */
+export async function updatePersonaRelationshipSettings(
+  _input: UpdatePersonaRelationshipSettingsInput,
+): Promise<PersonaRelationshipTimeline> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: updatePersonaRelationshipSettings')
+}
+
+/**
+ * Update the visibility of a persona badge (hide/show).
+ * Plan 3.5.s.b Wave B stub.
+ */
+export async function updatePersonaBadgeVisibility(
+  _input: UpdatePersonaBadgeVisibilityInput,
+): Promise<PersonaRelationshipTimeline> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: updatePersonaBadgeVisibility')
+}
+
+// ─── Wave C — MemoryRecallSettings IPC stubs ──────────────────────────────────
+// MemoryRecallSettings calls getMemoryRecallConfig + patchMemoryRecallConfig.
+// All throw NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND until the Rust backend ships.
+// Source: uclaw `@/lib/tauri-bridge` lines 374-397.
+
+/** The memory recall config DTO. Mirrors uclaw lib/tauri-bridge.ts MemoryRecallConfigDto. */
+export interface MemoryRecallConfigDto {
+  bootLimit?: number
+  triggerLimit?: number
+  seedLimit?: number
+  expansionLimit?: number
+  recentLimit?: number
+  fusionStrategy?: 'rrf' | 'weighted'
+  rrfK?: number
+  ftsWeight?: number
+  vectorWeight?: number
+  bootLearnedSkillsLimit?: number
+  tokenBudget?: number
+  layerExpandedSeedTake?: number
+  layerExpandedMaxDepth?: number
+  timeDecayHalfLifeDays?: number
+  ftsFallbackLimitMultiplier?: number
+  bootUserProfileLimit?: number
+}
+
+/**
+ * Fetch the current memory recall config from the backend.
+ * Plan 3.5.s.b Wave C stub.
+ */
+export async function getMemoryRecallConfig(): Promise<MemoryRecallConfigDto> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: getMemoryRecallConfig')
+}
+
+/**
+ * Patch (update) the memory recall config. Returns the persisted config.
+ * Plan 3.5.s.b Wave C stub.
+ */
+export async function patchMemoryRecallConfig(
+  _input: MemoryRecallConfigDto,
+): Promise<MemoryRecallConfigDto> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: patchMemoryRecallConfig')
+}
+
+// ─── Wave D — LearnedProfileTab IPC stubs ─────────────────────────────────────
+// LearnedProfileTab calls memoryLearningListFacets + memoryLearningDismissFacet +
+//   memoryLearningRebuildNow + memoryLearningPromoteFacet + memoryLearningDemoteFacet.
+// All throw NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND until the Rust backend ships.
+// Source: uclaw `@/lib/tauri-bridge` lines 1081–1110.
+
+import type {
+  LearningListFacetsInput,
+  LearningRebuildNowInput,
+  LearningDismissFacetInput,
+  LearningDismissOutcome,
+  LearningPromoteFacetInput,
+  LearningDemoteFacetInput,
+  LearningSetStateOutcome,
+  FacetDto,
+} from './learned-profile-types'
+
+export type {
+  LearningListFacetsInput,
+  LearningRebuildNowInput,
+  LearningDismissFacetInput,
+  LearningDismissOutcome,
+  LearningPromoteFacetInput,
+  LearningDemoteFacetInput,
+  LearningSetStateOutcome,
+  FacetDto,
+}
+
+/**
+ * List facets from the learning pipeline. Both class and state filters are optional.
+ * Plan 3.5.s.b Wave D stub.
+ */
+export async function memoryLearningListFacets(
+  _input: LearningListFacetsInput,
+): Promise<FacetDto[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: memoryLearningListFacets')
+}
+
+/**
+ * Dismiss a facet (flip state to "forgotten"). Does not delete.
+ * Plan 3.5.s.b Wave D stub.
+ */
+export async function memoryLearningDismissFacet(
+  _input: LearningDismissFacetInput,
+): Promise<LearningDismissOutcome> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: memoryLearningDismissFacet')
+}
+
+/**
+ * Manually trigger a stability rebuild of the facet cache.
+ * Plan 3.5.s.b Wave D stub.
+ */
+export async function memoryLearningRebuildNow(
+  _input: LearningRebuildNowInput,
+): Promise<Record<string, unknown>> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: memoryLearningRebuildNow')
+}
+
+/**
+ * Promote a facet to "active" state (soft override).
+ * Plan 3.5.s.b Wave D stub.
+ */
+export async function memoryLearningPromoteFacet(
+  _input: LearningPromoteFacetInput,
+): Promise<LearningSetStateOutcome> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: memoryLearningPromoteFacet')
+}
+
+/**
+ * Demote a facet from "active" to "provisional" state.
+ * Plan 3.5.s.b Wave D stub.
+ */
+export async function memoryLearningDemoteFacet(
+  _input: LearningDemoteFacetInput,
+): Promise<LearningSetStateOutcome> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: memoryLearningDemoteFacet')
+}
+
+// ─── Wave E — ShortcutSettings IPC stub ──────────────────────────────────────
+// ShortcutSettings calls updateGlobalShortcut to sync global OS-registered
+// shortcuts to the backend whenever the user overrides a binding that appears
+// in GLOBAL_SHORTCUT_IDS. Throws NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND until
+// the Rust global-shortcut registration backend ships.
+// Source: uclaw `@/lib/tauri-bridge` lines 2535–2537.
+
+/**
+ * Notify the backend of a new key combo for a globally-registered shortcut.
+ * Called when the user overrides (or resets) a shortcut in GLOBAL_SHORTCUT_IDS.
+ * Pass an empty string to unregister the shortcut.
+ * Plan 3.5.s.b Wave E stub.
+ */
+export async function updateGlobalShortcut(_shortcutId: string, _newCombo: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: updateGlobalShortcut')
+}
