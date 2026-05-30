@@ -1636,3 +1636,34 @@ export async function setBrowserRuntimeProviderPriority(
 ): Promise<BrowserRuntimeControlCenterReport> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: set_browser_runtime_provider_priority')
 }
+
+// === Plan 3.5.s.d additions ===
+// ─── Wave A — AboutSettings IPC stubs ──────────────────────────────────────────
+// AboutSettings calls getVersion + getPlatform (named wrappers, like model-settings
+// imports getRoleModels). All throw NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND until the
+// Rust backend ships. Source: uclaw `@/lib/tauri-bridge` lines 361–365, types from
+// uclaw `@/lib/types` lines 1–11.
+
+/** Mirrors uclaw lib/types.ts PlatformInfo. */
+export interface PlatformInfo {
+  os: string
+  arch: string
+  version: string
+}
+
+/** Mirrors uclaw lib/types.ts VersionInfo. */
+export interface VersionInfo {
+  appVersion: string
+  tauriVersion: string
+  rustVersion: string
+}
+
+/** Plan 3.5.s.d Wave A stub — replaced by Rust `get_platform` command. */
+export async function getPlatform(): Promise<PlatformInfo> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: get_platform')
+}
+
+/** Plan 3.5.s.d Wave A stub — replaced by Rust `get_version` command. */
+export async function getVersion(): Promise<VersionInfo> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: get_version')
+}

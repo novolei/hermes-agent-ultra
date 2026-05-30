@@ -1,0 +1,161 @@
+// Ported verbatim from uclaw ui/src/components/settings/SystemTab.test.tsx (Plan 3.5.s.d Wave D5)
+// Retargets:
+//   ./SystemTab                          → ./system-tab
+//   @/test-utils/render (screen, waitFor, renderWithProviders) → @testing-library/react + inline shim
+//   @/test-utils/mock-tauri (mockInvoke, resetTauriMocks)      → inline vi.fn() implementations
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import * as React from 'react'
+import { createStore, Provider } from 'jotai'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { SystemTab } from './system-tab'
+
+// vi.hoisted ensures mockInvoke is available when vi.mock factory runs (vitest hoist order).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockInvoke = vi.hoisted(() => vi.fn() as any)
+
+vi.mock('@tauri-apps/api/core', () => ({ invoke: mockInvoke }))
+
+// Inline shim (Wave B/D pattern) — no MotionConfig / TooltipProvider needed.
+function renderWithProviders(
+  ui: React.ReactElement,
+  opts?: { store?: ReturnType<typeof createStore> },
+) {
+  const store = opts?.store ?? createStore()
+  const user = userEvent.setup()
+  render(<Provider store={store}>{ui}</Provider>)
+  return { store, user }
+}
+
+function resetTauriMocks(): void {
+  mockInvoke.mockClear()
+}
+
+const diagnostics = {
+  app_version: '0.1.0',
+  platform: 'macos',
+  arch: 'aarch64',
+  memory_used_mb: 512,
+  memory_total_mb: 1024,
+  uptime_secs: 60,
+  consecutive_failures: 0,
+  recovery_attempts: 0,
+  active_processes: 1,
+  orphan_processes: 0,
+  services: [],
+  memu: {
+    running: true,
+    pid: 123,
+    reason: null,
+    python_path: '/python',
+    script_path: '/memu_bridge.py',
+    db_path: '/memu.db',
+  },
+  gbrain: {
+    connected: true,
+    tool_count: 6,
+    pgdata_ready: true,
+    error: null,
+    status: 'connected',
+    error_kind: null,
+    suggested_action: null,
+    home_path: '/gbrain',
+    launcher_path: '/bun',
+    pgdata_path: '/pgdata',
+    config_command: '/bun',
+    config_entry_path: '/cli.ts',
+    config_command_exists: true,
+    config_entry_exists: true,
+    config_gbrain_home: '/gbrain',
+    path_stale: false,
+  },
+  gbrain_init: { status: 'skipped_already_initialized', at_ms: 1 },
+}
+
+const suite = {
+  passed: true,
+  averageScore: 1,
+  runIds: ['run-1'],
+  scorecards: [
+    {
+      caseId: 'agent_loop.tool_result_pairing',
+      title: 'Tool calls are paired with tool results',
+      passed: true,
+      score: 1,
+      checks: [{ id: 'tool_results_paired', passed: true, score: 1, message: 'ok' }],
+    },
+  ],
+}
+
+const selfGateReports = [
+  {
+    candidateId: 'candidate.memory.safe_profile_fact',
+    verdict: 'promote',
+    score: 1,
+    checks: [{ id: 'rollback_ref', passed: true, message: 'ok' }],
+  },
+  {
+    candidateId: 'candidate.skill.unsafe_shell',
+    verdict: 'reject',
+    score: 0.42,
+    checks: [{ id: 'no_blockers', passed: false, message: 'permission boundary regression' }],
+  },
+]
+
+describe('SystemTab eval reporting', () => {
+  beforeEach(() => {
+    resetTauriMocks()
+  })
+
+  it('runs the agent control-plane eval and renders the scorecard', async () => {
+    mockInvoke.mockImplementation(async (command: string) => {
+      if (command === 'get_system_diagnostics') return diagnostics
+      if (command === 'run_agent_control_plane_eval') return suite
+      throw new Error(`unexpected command ${command}`)
+    })
+
+    const { user } = renderWithProviders(<SystemTab />)
+    await user.click(screen.getByRole('button', { name: /运行诊断/ }))
+    await screen.findByText('自治回归套件')
+
+    await user.click(screen.getByRole('button', { name: /Agent/ }))
+
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledWith('run_agent_control_plane_eval')
+    })
+    expect(await screen.findByText('agent control-plane')).toBeInTheDocument()
+    expect(screen.getByText('Tool calls are paired with tool results')).toBeInTheDocument()
+  })
+
+  it('runs all exposed eval suites from the unified controls', async () => {
+    mockInvoke.mockImplementation(async (command: string) => {
+      if (command === 'get_system_diagnostics') return diagnostics
+      if (command === 'run_self_improvement_gate_eval') return selfGateReports
+      if (
+        command === 'run_browser_parity_eval'
+        || command === 'run_memory_gbrain_eval'
+        || command === 'run_agent_control_plane_eval'
+      ) return suite
+      throw new Error(`unexpected command ${command}`)
+    })
+
+    const { user } = renderWithProviders(<SystemTab />)
+    await user.click(screen.getByRole('button', { name: /运行诊断/ }))
+    await screen.findByText('自治回归套件')
+
+    await user.click(screen.getByRole('button', { name: /All/ }))
+
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledWith('run_browser_parity_eval')
+      expect(mockInvoke).toHaveBeenCalledWith('run_memory_gbrain_eval')
+      expect(mockInvoke).toHaveBeenCalledWith('run_agent_control_plane_eval')
+      expect(mockInvoke).toHaveBeenCalledWith('run_self_improvement_gate_eval')
+    })
+    expect(await screen.findByText('browser parity')).toBeInTheDocument()
+    expect(screen.getByText('memory/gbrain')).toBeInTheDocument()
+    expect(screen.getByText('agent control-plane')).toBeInTheDocument()
+    expect(screen.getByText('self-improvement gates')).toBeInTheDocument()
+    expect(screen.getByText('candidate.memory.safe_profile_fact · promote')).toBeInTheDocument()
+    expect(screen.getByText('candidate.skill.unsafe_shell · reject')).toBeInTheDocument()
+  })
+})
