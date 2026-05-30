@@ -1941,3 +1941,26 @@ export const onStreamError = (cb: (event: any) => void): (() => void) =>
 
 export const onStreamToolActivity = (cb: (event: any) => void): (() => void) =>
   makeChatListener('chat:stream-tool-activity', cb)
+
+// ─── Plan PV.a additions: preview file IO ──────────────────────────────────
+// PreviewBytes copied verbatim from uclaw lib/tauri-bridge.ts:2492.
+// The four raw invoke() commands the preview cluster uses later
+// (reveal_path_in_file_manager, preview_write_text, approve_preview_write,
+// preview_resolve_chips) are called directly via @tauri-apps/api/core invoke()
+// — NOT through this bridge — so they need no stub and reject naturally.
+export interface PreviewBytes {
+  resolvedPath: string
+  /** Owned byte buffer for the file content. */
+  bytes: Uint8Array
+  size: number
+  truncated: boolean
+  mtimeMs: number
+}
+
+export async function previewReadBytes(
+  _mountId: string,
+  _relPath: string,
+  _sessionId: string | null = null,
+): Promise<PreviewBytes> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_PV_BACKEND: preview_read_bytes')
+}
