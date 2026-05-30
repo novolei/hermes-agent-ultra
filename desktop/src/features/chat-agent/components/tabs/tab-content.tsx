@@ -11,7 +11,7 @@
 import * as React from 'react'
 import { useAtomValue } from 'jotai'
 import { visibleTabsAtom } from '@/features/chat-agent/atoms/tab-atoms'
-import { ChatView } from '@/features/chat-agent/components/chat/chat-view-stub'
+import { ChatView } from '@/features/chat-agent/components/chat/chat-view'
 import { AgentView } from '@/features/chat-agent/components/agent/agent-view'
 import { BrowserPanel } from '@/features/chat-agent/components/browser/browser-panel-stub'
 import { SymphonyCanvas } from '@/features/chat-agent/lib/symphony-canvas-stub'

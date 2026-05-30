@@ -86,6 +86,12 @@ vi.mock('@/features/chat-agent/lib/tauri-bridge-stub', () => ({
   saveFilesToAgentSession: vi.fn().mockResolvedValue(null),
   getSafetyPolicy: vi.fn().mockResolvedValue({ globalMode: 'ask', toolOverrides: {} }),
   setSafetyMode: vi.fn().mockResolvedValue({ globalMode: 'ask', toolOverrides: {} }),
+  // chat.c Wave C3 — useGlobalChatListeners fires these on AppShell mount
+  onStreamChunk: vi.fn().mockReturnValue(() => {}),
+  onStreamReasoning: vi.fn().mockReturnValue(() => {}),
+  onStreamError: vi.fn().mockReturnValue(() => {}),
+  onStreamToolActivity: vi.fn().mockReturnValue(() => {}),
+  generateTitle: vi.fn().mockResolvedValue(''),
 }))
 
 describe('AppShell', () => {

@@ -407,13 +407,10 @@ export async function estimateSessionContext(_sessionId: string): Promise<{
 /** Type alias for cleanup functions returned by event listeners. */
 type CleanupFn = () => void
 
-/**
- * Subscribe to the chat:stream-complete event (fired when an agent turn finishes).
- * Plan 4.a D3+ stub — returns a no-op cleanup.
- */
-export function onStreamComplete(_cb: (payload: { conversationId: string }) => void): CleanupFn {
-  return () => { /* no-op stub */ }
-}
+// onStreamComplete is a REAL chat:stream-complete listener — see the
+// makeChatListener-based wrappers below (Plan chat.c Wave A2). It serves both
+// agent-view (Plan 4.a consumer) and useGlobalChatListeners (chat consumer),
+// matching uclaw's single onStreamComplete for the shared event.
 
 /**
  * Subscribe to the agent:queued-consumed event (backend confirmed a queued message
@@ -1837,3 +1834,110 @@ export async function listSkills(): Promise<SkillInfo[]> {
 export async function listLearnedSkills(_spaceId: string = 'default'): Promise<LearnedSkill[]> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: list_learned_skills')
 }
+
+// === Plan chat.c additions ===
+// ─── message-lifecycle IPC stubs ──────────────────────────────────────────────
+// ChatView drives the message lifecycle via these. All throw
+// NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND until the Rust commands ship.
+// Signatures from uclaw lib/tauri-bridge.ts — exact shapes + types.
+
+import type { ChatMessage, FileAttachment, AttachmentSaveInput } from './chat-types'
+
+/** Input to send a new message. Mirrors uclaw lib/types.ts SendMessageInput. */
+export interface SendMessageInput {
+  conversationId: string
+  content: string
+  attachments?: string[]
+  safetyMode?: 'ask' | 'supervised' | 'yolo'
+  /** Override the active model for this message. */
+  providerId?: string
+  modelId?: string
+  /** Enable extended thinking/reasoning for this message. */
+  thinkingEnabled?: boolean
+}
+
+/** Response from send_message. Mirrors uclaw lib/types.ts SendMessageResponse. */
+export interface SendMessageResponse {
+  messageId: string
+  conversationId: string
+  response: string
+}
+
+export async function sendMessage(_input: SendMessageInput): Promise<SendMessageResponse> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: send_message')
+}
+export async function getRecentMessages(_conversationId: string, _limit: number): Promise<{ messages: ChatMessage[]; hasMore: boolean }> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: get_recent_messages')
+}
+export async function getConversationMessages(_conversationId: string): Promise<ChatMessage[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: get_conversation_messages')
+}
+export async function deleteMessage(_conversationId: string, _messageId: string): Promise<ChatMessage[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: delete_message')
+}
+export async function truncateMessagesFrom(_conversationId: string, _messageId: string, _preserveFirstMessageAttachments?: boolean): Promise<ChatMessage[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: truncate_messages_from')
+}
+export async function stopGeneration(_conversationId: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: stop_generation')
+}
+export async function updateContextDividers(_conversationId: string, _dividers: string[]): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: update_context_dividers')
+}
+export async function saveAttachment(_input: AttachmentSaveInput): Promise<{ attachment: FileAttachment }> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: save_attachment')
+}
+export async function deleteAttachment(_localPath: string): Promise<void> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: delete_attachment')
+}
+
+// ─── generateTitle IPC stub ────────────────────────────────────────────────────
+// useGlobalChatListeners calls generateTitle after first message to auto-title
+// the conversation. Throws until the Rust command ships.
+
+/** Input for the generate_title command. */
+export interface GenerateTitleInput {
+  userMessage: string
+  channelId: string
+  modelId: string
+}
+
+export async function generateTitle(_input: GenerateTitleInput): Promise<string> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: generate_title')
+}
+
+// ─── onStream* real listen-wrappers ────────────────────────────────────────────
+// useGlobalChatListeners subscribes to these. They wrap Tauri listen() so they
+// gracefully no-op in jsdom (listen() rejects → catch returns a no-op cleanup).
+// Pattern: makeListener from uclaw lib/tauri-bridge.ts:1833-1847.
+
+function makeChatListener(event: string, cb: (payload: any) => void): () => void {
+  let cancelled = false
+  let unlisten: (() => void) | null = null
+  listen(event, (e) => cb(e.payload)).then((fn) => {
+    if (cancelled) {
+      fn()
+    } else {
+      unlisten = fn
+    }
+  }).catch(() => { /* no-op in test/non-Tauri envs */ })
+  return () => {
+    cancelled = true
+    unlisten?.()
+  }
+}
+
+export const onStreamComplete = (cb: (event: any) => void): (() => void) =>
+  makeChatListener('chat:stream-complete', cb)
+
+export const onStreamChunk = (cb: (event: any) => void): (() => void) =>
+  makeChatListener('chat:stream-chunk', cb)
+
+export const onStreamReasoning = (cb: (event: any) => void): (() => void) =>
+  makeChatListener('chat:stream-reasoning', cb)
+
+export const onStreamError = (cb: (event: any) => void): (() => void) =>
+  makeChatListener('chat:stream-error', cb)
+
+export const onStreamToolActivity = (cb: (event: any) => void): (() => void) =>
+  makeChatListener('chat:stream-tool-activity', cb)
