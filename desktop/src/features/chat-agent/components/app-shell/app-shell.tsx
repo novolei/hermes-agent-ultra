@@ -30,6 +30,7 @@ import { currentConversationIdAtom } from '@/features/chat-agent/atoms/chat-atom
 import { settingsOpenAtom, settingsTabAtom } from '@/features/chat-agent/atoms/settings-tab'
 import { searchPaletteOpenAtom } from '@/features/chat-agent/atoms/search-atoms'
 import { useShortcut } from '@/features/chat-agent/hooks/use-shortcut'
+import { useGlobalChatListeners } from '@/features/chat-agent/hooks/use-global-chat-listeners'
 import type { SearchPaletteProps } from '@/features/chat-agent/components/search/search-palette'
 
 export function AppShell(): React.ReactElement {
@@ -64,6 +65,10 @@ export function AppShell(): React.ReactElement {
     id: 'global-search',
     handler: () => setSearchPaletteOpen(true),
   })
+
+  // chat.c Wave C3 — register global chat stream listeners for the app lifetime.
+  // In tests, the listeners gracefully no-op (onStreamChunk/etc. return sync cleanup).
+  useGlobalChatListeners()
 
   React.useEffect(() => {
     void refreshWorkspaces()
