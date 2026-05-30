@@ -317,6 +317,42 @@ export interface SystemPromptVersion {
 /** 内置默认提示词 ID */
 export const BUILTIN_DEFAULT_ID = 'builtin-default'
 
+// ─────────────────────────────────────────────────────────
+// Context Stats Types (chat.a)
+// ─────────────────────────────────────────────────────────
+
+/** 上下文统计分类条目 */
+export interface ContextStatsCategory {
+  label: string
+  tokens: number
+  color: string
+}
+
+/** 上下文 token 使用统计 */
+export interface ContextStats {
+  totalTokens: number
+  maxTokens: number
+  usagePercent: number
+  categories?: ContextStatsCategory[]
+  /** Session this event belongs to. Required for multi-session routing. */
+  conversationId?: string
+  /** Detailed breakdown fields (optional, from agent:context_stats event) */
+  modelContextLength?: number
+  systemPromptTokens?: number
+  mcpPromptsTokens?: number
+  skillsTokens?: number
+  messagesTokens?: number
+  toolUseTokens?: number
+  compactBufferTokens?: number
+  freeTokens?: number
+  /** Cumulative API token usage across all iterations */
+  cumulativeInputTokens?: number
+  cumulativeOutputTokens?: number
+}
+
+/** 安全模式类型（chat.a）— 与 uclaw lib/types.ts SafetyMode 对齐 */
+export type SafetyMode = 'ask' | 'supervised' | 'yolo'
+
 /** 内置默认提示词 */
 export const BUILTIN_DEFAULT_PROMPT: SystemPrompt = {
   id: BUILTIN_DEFAULT_ID,
