@@ -12,10 +12,13 @@ vi.mock('@/features/chat-agent/lib/tauri-bridge-stub', async (importOriginal) =>
 })
 
 describe('AboutSettings', () => {
-  it('renders without throwing and shows section content', async () => {
-    const { container } = render(<AboutSettings />)
+  it('renders the section header without throwing', async () => {
+    render(<AboutSettings />)
+    // The '关于 uClaw' <h2> heading renders unconditionally (verbatim source line 19).
+    // Asserting the exact heading text is non-tautological — it fails if the component
+    // crashes before painting its title or the heading is removed.
     await waitFor(() => {
-      expect(container.querySelector('[data-settings-section], h2, h3')).not.toBeNull()
+      expect(screen.getByText('关于 uClaw')).toBeTruthy()
     })
   })
 
