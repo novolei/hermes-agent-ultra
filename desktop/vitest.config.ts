@@ -12,6 +12,7 @@ export default defineConfig({
       // unless we provide a fallback alias here.
       "@tauri-apps/plugin-updater": path.resolve(import.meta.dirname, "./src/__mocks__/tauri-plugin-updater.ts"),
       "@tauri-apps/plugin-process": path.resolve(import.meta.dirname, "./src/__mocks__/tauri-plugin-process.ts"),
+      "@tauri-apps/plugin-dialog": path.resolve(import.meta.dirname, "./src/__mocks__/tauri-plugin-dialog.ts"),
     },
   },
   test: {
