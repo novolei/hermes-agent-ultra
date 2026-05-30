@@ -68,10 +68,12 @@
     "react-markdown": "10.1.0",
     "recharts": "^3.8.1",
     "remark-gfm": "4.0.0",
+    "remark-parse": "11.0.0",
     "shiki": "3.22.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
-    "unified": "^11.0.5"
+    "unified": "^11.0.5",
+    "unist-util-visit": "5.1.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
