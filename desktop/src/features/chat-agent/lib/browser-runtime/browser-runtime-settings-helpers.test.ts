@@ -150,6 +150,7 @@ describe('browser runtime settings view model', () => {
   it('uses product provider readiness copy instead of raw setup state', () => {
     const model = deriveBrowserRuntimeSettingsViewModel({
       report: runtimeReport({
+        // Partial providerReadiness: only playwrightCli supplied; cast to satisfy stricter hermes type.
         providerReadiness: {
           playwrightCli: {
             providerId: 'browser.playwright_cli',
@@ -161,7 +162,7 @@ describe('browser runtime settings view model', () => {
             remediation: ['Enable and probe the provider before routing.'],
             notes: [],
           },
-        },
+        } as unknown as import('@/features/chat-agent/lib/startup-doctor').BrowserRuntimeProviderReadinessSummary,
       }),
     })
 
