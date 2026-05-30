@@ -1667,3 +1667,23 @@ export async function getPlatform(): Promise<PlatformInfo> {
 export async function getVersion(): Promise<VersionInfo> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_3_5_S_BACKEND: get_version')
 }
+
+// === Plan FB.a additions ===
+// ─── file-browser IPC stub ───────────────────────────────────────────────────
+// FileBrowser calls listDirectoryEntries. Throws NOT_IMPLEMENTED_IN_PLAN_FB_BACKEND
+// until the Rust `list_directory_entries` command ships.
+// Source: uclaw `@/lib/tauri-bridge` lines 612–619.
+
+export interface DirectoryEntry {
+  name: string
+  path: string
+  isDirectory: boolean
+  isFile: boolean
+  size?: number
+  extension?: string
+}
+
+/** Plan FB.a stub — replaced by Rust `list_directory_entries`. */
+export async function listDirectoryEntries(_path: string): Promise<DirectoryEntry[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_FB_BACKEND: list_directory_entries')
+}
