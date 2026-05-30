@@ -33,6 +33,13 @@ export default defineConfig(async () => ({
           "./src/__mocks__/tauri-plugin-process.ts",
         ),
       },
+      {
+        find: "@tauri-apps/plugin-dialog",
+        replacement: path.resolve(
+          import.meta.dirname,
+          "./src/__mocks__/tauri-plugin-dialog.ts",
+        ),
+      },
       { find: /^@\//, replacement: path.resolve(import.meta.dirname, "./src/") + "/" },
     ],
   },

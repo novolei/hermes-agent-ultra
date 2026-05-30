@@ -21,7 +21,10 @@
     "noFallthroughCasesInSwitch": true,
 
     /* Path aliases */
-    "paths": { "@/*": ["./src/*"] },
+    "paths": {
+      "@/*": ["./src/*"],
+      "@tauri-apps/plugin-dialog": ["./src/__mocks__/tauri-plugin-dialog.ts"]
+    },
 
     /* Types */
     "types": ["vitest/globals", "@testing-library/jest-dom"]
