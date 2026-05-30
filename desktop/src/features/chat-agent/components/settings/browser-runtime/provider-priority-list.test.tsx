@@ -1,11 +1,11 @@
 // Wave E4 minimal smoke test for ProviderPriorityList
 import { describe, it, expect, vi } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { ProviderPriorityList } from './provider-priority-list'
 
 describe('ProviderPriorityList', () => {
-  it('renders without throwing when priority list is empty', () => {
-    const { container } = render(
+  it('renders the section title and the empty-state hint when rows is empty', () => {
+    render(
       <ProviderPriorityList
         rows={[]}
         priority={[]}
@@ -17,8 +17,11 @@ describe('ProviderPriorityList', () => {
         onRunProbe={vi.fn()}
         onRunSetup={vi.fn()}
         onConfigureMcp={vi.fn()}
-      />
+      />,
     )
-    expect(container).toBeTruthy()
+    // SettingsSection title surfaces as visible text.
+    expect(screen.getByText('Provider Priority')).toBeTruthy()
+    // Empty-state hint (verbatim from uclaw: '等待 Rust Browser Automation 报告。').
+    expect(screen.getByText(/等待 Rust Browser Automation/)).toBeTruthy()
   })
 })
