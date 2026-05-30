@@ -204,7 +204,19 @@ vi.mock('@/features/chat-agent/lib/tauri-bridge-stub', () => ({
   listImChannels: vi.fn().mockResolvedValue([]),
   getImChannelStatuses: vi.fn().mockResolvedValue([]),
   getBrowserRuntimeControlCenter: vi.fn().mockResolvedValue(null),
-  getBrowserRuntimeStatus: vi.fn().mockResolvedValue(null),
+  // Minimal valid StartupRuntimePackStatusReport shape — the component reads
+  // report.controlCenter after this resolves, so returning null would throw
+  // (currently silently caught by browser-runtime-settings.tsx:102 catch{}).
+  getBrowserRuntimeStatus: vi.fn().mockResolvedValue({
+    manifestPackVersion: '0.0.0-test',
+    doctor: { state: 'unknown' },
+    primaryAction: 'auto_setup',
+    operationPlan: { steps: [], blockers: [] },
+    ready: false,
+    canRunBrowserTasks: false,
+    eventNames: [],
+    controlCenter: undefined,
+  }),
   listBrowserIdentities: vi.fn().mockResolvedValue({
     profiles: [],
     authorizedCount: 0,
