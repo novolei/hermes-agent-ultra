@@ -1792,3 +1792,48 @@ export async function updateChatToolState(_toolId: string, _patch: unknown): Pro
 export async function updateAppendSetting(_enabled: boolean): Promise<void> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: update_append_setting')
 }
+
+// === Plan chat.b additions ===
+// ─── message-attachment + skill IPC stubs ─────────────────────────────────────
+// InlineEditForm/ChatInput call readAttachment; SkillSuggestionBar calls listSkills/
+// listLearnedSkills. All throw NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND until the Rust
+// commands ship. Signatures from uclaw lib/tauri-bridge.ts.
+
+/** SkillInfo shape from uclaw lib/types.ts. */
+export interface SkillInfo {
+  name: string
+  version: string
+  description: string
+  author: string
+  enabled: boolean
+  category: string
+  provenance?: 'bundled' | 'user' | 'project' | 'marketplace'
+}
+
+/** LearnedSkill shape from uclaw lib/types.ts. */
+export interface LearnedSkill {
+  id: string
+  name: string
+  context: string
+  principles: string
+  steps: string
+  pitfalls: string
+  enabled: boolean
+  usageCount: number
+  citedCount?: number
+  lifecycle?: 'draft' | 'promoted' | 'deprecated'
+  category?: string
+  tags?: string[]
+  validationHint?: string
+  createdAt: string
+}
+
+export async function readAttachment(_localPath: string): Promise<string> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: read_attachment')
+}
+export async function listSkills(): Promise<SkillInfo[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: list_skills')
+}
+export async function listLearnedSkills(_spaceId: string = 'default'): Promise<LearnedSkill[]> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_CHAT_BACKEND: list_learned_skills')
+}
