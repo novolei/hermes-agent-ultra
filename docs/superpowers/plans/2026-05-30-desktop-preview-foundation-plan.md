@@ -45,7 +45,7 @@
 | `preview/office-parsers/xlsx.ts` | `jszip`; `./xml-utils` (relative) |
 | `preview/office-parsers/pptx.ts` | `jszip`; `./xml-utils` (relative) |
 | `preview/office-parsers/xml-utils.ts` | `@xmldom/xmldom`; `jszip` (type only) |
-| `preview/office-parsers/docx.ts` | `./xml-utils` (relative) |
+| `preview/office-parsers/docx.ts` | dynamic `import('mammoth')` (NOT `./xml-utils`) — requires `mammoth` dep |
 | `preview/editors/codemirror-theme.ts` | `@codemirror/view`; `@codemirror/language`; `@lezer/highlight` |
 | `preview/editors/codemirror-langs.ts` | `@codemirror/language`; dynamic `import('@codemirror/lang-*')` for 8 packs |
 
@@ -78,8 +78,11 @@ pnpm add \
   @codemirror/lang-markdown@^6.5.0 \
   @lezer/highlight \
   jszip@^3.10.1 \
-  @xmldom/xmldom@^0.8.13
+  @xmldom/xmldom@^0.8.13 \
+  mammoth@^1.12.0
 ```
+
+> `mammoth` is dynamically imported by `office-parsers/docx.ts` (Wave C2) for DOCX→HTML conversion.
 
 > `@lezer/highlight` has no version pin in uclaw's package.json (it resolves transitively via `@codemirror/language`), but `codemirror-theme.ts` imports it directly, so under pnpm's strict `node_modules` it must be a declared dependency. Let pnpm pick the compatible 1.x.
 > `pdfjs-dist` (PdfRenderer, PV.b) and the `@tiptap/extension-*` packages (MarkdownRichEditor, PV.c) are intentionally **deferred** to the PRs that consume them.
