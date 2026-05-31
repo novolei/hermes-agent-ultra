@@ -1985,3 +1985,13 @@ export interface TurnRecord {
 export const getSessionTrajectory = (_sessionId: string): Promise<TurnRecord[]> => {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_RSP_BACKEND: get_session_trajectory')
 }
+
+// ─── Plan RSP.b additions: team channel message ────────────────────────────
+// TeamChannelMessage copied verbatim from uclaw lib/tauri-bridge.ts:1872.
+export interface TeamChannelMessage {
+  id: string
+  fromRole: string
+  toRole: string | null
+  message: string
+  createdAt: number
+}
