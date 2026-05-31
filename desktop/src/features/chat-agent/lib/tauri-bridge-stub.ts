@@ -1964,3 +1964,24 @@ export async function previewReadBytes(
 ): Promise<PreviewBytes> {
   throw new Error('NOT_IMPLEMENTED_IN_PLAN_PV_BACKEND: preview_read_bytes')
 }
+
+// ─── Plan RSP.a additions: session trajectory ──────────────────────────────
+// TurnRecord copied verbatim from uclaw lib/tauri-bridge.ts:437.
+export interface TurnRecord {
+  id: string
+  sessionId: string
+  turnIndex: number
+  role: string
+  content?: string
+  toolName?: string
+  toolArgs?: string
+  toolResult?: string
+  reasoning?: string
+  isError: boolean
+  durationMs: number
+  createdAt: number
+}
+
+export const getSessionTrajectory = (_sessionId: string): Promise<TurnRecord[]> => {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_RSP_BACKEND: get_session_trajectory')
+}
