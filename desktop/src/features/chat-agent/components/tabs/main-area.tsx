@@ -10,7 +10,7 @@
 
 import * as React from 'react'
 import { Panel } from '@/features/chat-agent/components/app-shell/panel-stub'
-import { WorkspaceShell } from '@/features/chat-agent/components/workspace/workspace-shell-stub'
+import { WorkspaceShell } from '@/features/chat-agent/components/workspace/workspace-shell'
 
 export function MainArea(): React.ReactElement {
   return (
