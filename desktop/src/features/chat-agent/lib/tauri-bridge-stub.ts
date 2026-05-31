@@ -1995,3 +1995,37 @@ export interface TeamChannelMessage {
   message: string
   createdAt: number
 }
+
+// ─── Plan GW.a additions: git workbench IPC ────────────────────────────────
+// CommitOutcome + CreatePrResponse copied verbatim from uclaw modules/git/api.ts.
+export interface CommitOutcome {
+  status: 'created' | 'skipped'
+  message: string
+}
+export interface CreatePrResponse {
+  url: string
+  wasExisting: boolean
+  base: string
+}
+
+export async function gitDiff(_cwd: string, _opts?: { full?: boolean }): Promise<string | null> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_GW_BACKEND: git_diff')
+}
+export async function gitDefaultBranch(_cwd: string): Promise<string> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_GW_BACKEND: git_default_branch')
+}
+export async function gitCommit(_cwd: string, _message: string): Promise<CommitOutcome> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_GW_BACKEND: git_commit')
+}
+export async function gitCommitPushPr(_args: { cwd: string; title: string; body: string; branchHint?: string }): Promise<string> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_GW_BACKEND: git_commit_push_pr')
+}
+export async function ghAvailable(): Promise<boolean> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_GW_BACKEND: gh_available')
+}
+export async function ghCreatePr(_args: { cwd: string; title: string; body: string; base?: string }): Promise<CreatePrResponse> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_GW_BACKEND: gh_create_pr')
+}
+export async function ghCreateIssue(_args: { cwd: string; title: string; body: string }): Promise<string> {
+  throw new Error('NOT_IMPLEMENTED_IN_PLAN_GW_BACKEND: gh_create_issue')
+}
