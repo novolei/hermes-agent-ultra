@@ -22,7 +22,7 @@ import {
 } from '@/features/chat-agent/atoms/preview-panel-atoms'
 import { currentAgentWorkspaceIdAtom } from '@/features/chat-agent/atoms/agent-atoms'
 import { PreviewPanel } from '@/features/chat-agent/components/preview/preview-panel'
-import WelcomeView from './welcome-view-stub'
+import WelcomeView from './welcome-view'
 import { TabBar } from '@/features/chat-agent/components/tabs/tab-bar'
 import { TabContent } from '@/features/chat-agent/components/tabs/tab-content'
 import { homeOfficePanelOpenAtom } from '@/features/chat-agent/atoms/home-office-atoms'
