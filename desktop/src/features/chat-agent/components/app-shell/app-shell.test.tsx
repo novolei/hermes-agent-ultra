@@ -3,6 +3,21 @@ import { render } from '@testing-library/react'
 import { Provider, createStore } from 'jotai'
 import { AppShell } from './app-shell'
 import { bottomDockEnabledAtom } from '@/features/chat-agent/atoms/dock-atoms'
+import { activeWorkspaceIdAtom } from '@/features/chat-agent/atoms/workspace'
+import { currentAgentSessionIdAtom } from '@/features/chat-agent/atoms/agent-atoms'
+import { tabsAtom, activeTabIdAtom, openTab } from '@/features/chat-agent/atoms/tab-atoms'
+
+// AgentView renders THROUGH the tab shell now (MainArea → WorkspaceShell →
+// TabContent), not as a direct AppShell child. seedAgentTab installs one active
+// agent tab so AgentView mounts. Order matters: activeWorkspaceIdAtom first
+// (visibleTabsAtom filters by it; activeTabIdAtom's writer no-ops without it).
+function seedAgentTab(store: ReturnType<typeof createStore>, sessionId = 'default', wsId = 'default') {
+  store.set(activeWorkspaceIdAtom, wsId)
+  const { tabs, activeTabId } = openTab([], { type: 'agent', sessionId, title: '', workspaceId: wsId })
+  store.set(tabsAtom, tabs)
+  store.set(activeTabIdAtom, activeTabId)
+  store.set(currentAgentSessionIdAtom, sessionId)
+}
 
 // ResizeObserver stub — jsdom doesn't implement it; LeftSidebar's
 // WorkspaceSwitcherBar uses it to measure container width.
@@ -129,8 +144,11 @@ describe('AppShell', () => {
     expect(main?.className).toMatch(/flex-1/)
   })
 
-  it('main pane mounts AgentView (Plan 2b.2.c.4.a)', () => {
-    const { container } = render(<Provider><AppShell /></Provider>)
+  it('main pane mounts AgentView via the active agent tab (Plan 2b.2.c.4.a)', () => {
+    // AgentView now renders through the tab shell, so seed an active agent tab.
+    const store = createStore()
+    seedAgentTab(store)
+    const { container } = render(<Provider store={store}><AppShell /></Provider>)
     expect(container.querySelector('[data-testid="agent-view"]')).not.toBeNull()
   })
 })

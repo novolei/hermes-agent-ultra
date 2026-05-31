@@ -1,21 +1,33 @@
 /**
- * AppShell — Hermes slim navigation spine.
+ * AppShell — Hermes navigation spine.
+ *
+ * Adopts uclaw's top-level surface-switch (workspace ↔ kaleidoscope) and the
+ * workspace-surface composition. AgentView is no longer mounted directly here;
+ * it renders THROUGH the tab system: MainArea → WorkspaceShell → TabContent
+ * routes the active `agent`-type tab to <AgentView sessionId={tab.sessionId}/>.
  *
  * Composes the ported navigation surface:
  *   - <LeftSidebar />        workspace rail + session list + git actions (Plan 3.3 E1)
- *   - <AgentView />          main pane (Plan 2b.2.c.4.a)
+ *   - <ModeBanner /> + <MainArea />  main pane: tab shell → WorkspaceShell → TabBar
+ *                            + TabContent (AgentView/ChatView) + PreviewPanel
+ *   - <RightSidePanel />     content-stub — real Agent files panel cluster deferred
+ *   - <KaleidoscopeShell />  content-stub — config-flow surface deferred
  *   - <BottomDockHoverRegion /> dock pin row + connection indicator (Plan 3.3 B7)
  *   - <SearchPalette />      global ⌘K palette (Plan 3.5 C1)
+ *   - <SettingsDialog />     settings (Plan 3.5.s.a–d)
  *
- * Deferred from uclaw's 441-LOC AppShell — out of scope for Plan 3.3:
- *   - RightSidePanel, MainArea tabs       → Plan 2b.2.c.4
- *   - EscalationModal, KaleidoscopeShell  → Plan 4
- *   - FocusModeOverlay, MemoryVoiceCapture, QuickCaptureDialog → backlog
+ * Deferred from uclaw's 441-LOC AppShell — stubbed/out of scope here:
+ *   - RightSidePanel cluster (~932 LOC), KaleidoscopeShell, WelcomeView,
+ *     HomeOfficeView, FocusModeOverlay   → future ports (content-stubs for now)
+ *   - EscalationModal, MemoryVoiceCapture, QuickCaptureDialog → backlog
  */
 import * as React from 'react'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { LeftSidebar } from './left-sidebar'
-import { AgentView } from '@/features/chat-agent/components/agent/agent-view'
+import { RightSidePanel } from './right-side-panel-stub'
+import { KaleidoscopeShell } from './kaleidoscope-shell-stub'
+import { MainArea } from '@/features/chat-agent/components/tabs/main-area'
+import { ModeBanner } from '@/features/chat-agent/components/agent/mode-banner'
 import { BottomDockHoverRegion } from '@/features/chat-agent/components/dock/bottom-dock-hover-region'
 import { SearchPalette } from '@/features/chat-agent/components/search/search-palette'
 import { SettingsDialog } from '@/features/chat-agent/components/settings/settings-dialog'
@@ -23,26 +35,33 @@ import { TooltipProvider } from '@/shared/ui/tooltip'
 import { cn } from '@/shared/lib/cn'
 import { bottomDockEnabledAtom } from '@/features/chat-agent/atoms/dock-atoms'
 import { refreshWorkspacesAtom, activeWorkspaceIdAtom, selectWorkspaceAtom } from '@/features/chat-agent/atoms/workspace'
-import { currentAgentSessionIdAtom, agentSessionsAtom, currentAgentWorkspaceIdAtom } from '@/features/chat-agent/atoms/agent-atoms'
+import { currentAgentSessionIdAtom, agentSessionsAtom, currentAgentWorkspaceIdAtom, currentSessionSidePanelOpenAtom } from '@/features/chat-agent/atoms/agent-atoms'
 import { tabsAtom, activeTabIdAtom, openTab } from '@/features/chat-agent/atoms/tab-atoms'
 import { appModeAtom } from '@/features/chat-agent/atoms/app-mode'
+import { topLevelViewAtom } from '@/features/chat-agent/atoms/top-level-view'
+import { focusModeAtom } from '@/features/chat-agent/atoms/focus-mode-atoms'
 import { currentConversationIdAtom } from '@/features/chat-agent/atoms/chat-atoms'
 import { settingsOpenAtom, settingsTabAtom } from '@/features/chat-agent/atoms/settings-tab'
 import { searchPaletteOpenAtom } from '@/features/chat-agent/atoms/search-atoms'
 import { useShortcut } from '@/features/chat-agent/hooks/use-shortcut'
 import { useGlobalChatListeners } from '@/features/chat-agent/hooks/use-global-chat-listeners'
+import { useWorkspaceArrowSwitch } from '@/features/chat-agent/hooks/use-workspace-swipe'
 import type { SearchPaletteProps } from '@/features/chat-agent/components/search/search-palette'
 
 export function AppShell(): React.ReactElement {
   const bottomDockEnabled = useAtomValue(bottomDockEnabledAtom)
   const refreshWorkspaces = useSetAtom(refreshWorkspacesAtom)
 
-  // Closes Plan 3.3 carry-forward #4: derive sessionId from the active
-  // workspace's currentAgentSessionIdAtom rather than the hardcoded
-  // 'default' placeholder. Falls back to 'default' when no session is
-  // active (first launch / pre-onboarding state).
+  // Surface-switch + workspace-surface derivations (adopted from uclaw AppShell).
+  // AgentView's session now comes from `tab.sessionId` (via TabContent), so the
+  // shell no longer derives a `?? 'default'` sessionId. currentSessionId is kept
+  // because showRightPanel gates the right panel on an active agent session.
+  const topLevelView = useAtomValue(topLevelViewAtom)
+  const appMode = useAtomValue(appModeAtom)
+  const focusMode = useAtomValue(focusModeAtom)
+  const isPanelOpen = useAtomValue(currentSessionSidePanelOpenAtom)
   const currentSessionId = useAtomValue(currentAgentSessionIdAtom)
-  const sessionId = currentSessionId ?? 'default'
+  const showRightPanel = appMode === 'agent' && !!currentSessionId
 
   // Plan 3.5 C1 — atoms consumed by handleSearchResultSelect
   const [tabs, setTabs] = useAtom(tabsAtom)
@@ -69,6 +88,9 @@ export function AppShell(): React.ReactElement {
   // chat.c Wave C3 — register global chat stream listeners for the app lifetime.
   // In tests, the listeners gracefully no-op (onStreamChunk/etc. return sync cleanup).
   useGlobalChatListeners()
+
+  // Adopt uclaw's keyboard workspace switching (Cmd/Ctrl+Alt+ArrowLeft/Right).
+  useWorkspaceArrowSwitch()
 
   React.useEffect(() => {
     void refreshWorkspaces()
@@ -151,15 +173,37 @@ export function AppShell(): React.ReactElement {
         data-testid="app-shell"
         className={cn('flex h-screen w-screen overflow-hidden bg-background text-foreground')}
       >
-        <LeftSidebar />
-        <main data-testid="app-shell-main" className="flex flex-1 flex-col overflow-hidden">
-          {/*
-            NOTE: AgentView internally mounts its own AgentSessionProvider with
-            the sessionId prop. AppShell threads sessionId in as a prop only —
-            no need for an outer Provider here. (Plan 2b.2.c.4.a code review.)
-          */}
-          <AgentView sessionId={sessionId} />
-        </main>
+        {/* Top-level surface switch (adopted from uclaw AppShell):
+            kaleidoscope takes over the whole window (no left/right sidebars);
+            workspace restores the standard layout. Always-mounted globals
+            (SearchPalette, SettingsDialog, dock) stay outside the switch so they
+            work under either surface. */}
+        {topLevelView === 'kaleidoscope' ? (
+          <div className="relative z-[60] flex flex-1 min-w-0 min-h-0">
+            <KaleidoscopeShell />
+          </div>
+        ) : (
+          <>
+            {/* Left sidebar — hidden in focus mode (FocusModeOverlay takes over). */}
+            {!focusMode && <LeftSidebar />}
+            {/* Main panel: ModeBanner + MainArea (tab shell → WorkspaceShell →
+                TabBar + TabContent → AgentView/ChatView + PreviewPanel).
+                Keeps data-testid="app-shell-main" + flex-1 (tests assert both). */}
+            <main data-testid="app-shell-main" className="flex flex-1 flex-col overflow-hidden min-w-0">
+              <ModeBanner />
+              <MainArea />
+            </main>
+            {/* Right sidebar (Agent files panel) — content-stub for now; gated on
+                an active agent session, hidden in focus mode. The wrapper mirrors
+                uclaw's padding-transition (driven by isPanelOpen) so the real
+                RightSidePanel port slots in without a layout change. */}
+            {!focusMode && showRightPanel ? (
+              <div className={cn('relative z-[60] transition-[padding] duration-300 ease-in-out', isPanelOpen ? 'p-2 pl-0' : 'p-0')}>
+                <RightSidePanel />
+              </div>
+            ) : null}
+          </>
+        )}
         {bottomDockEnabled ? (
           // BottomDockHoverRegion has an empty props interface (forwardRef with no
           // data-* spread), so the testid wrapper lives on this div instead.

@@ -18,6 +18,7 @@ import { bottomDockEnabledAtom } from '@/features/chat-agent/atoms/dock-atoms'
 import { themeModeAtom } from '@/features/chat-agent/atoms/theme'
 import { activeWorkspaceIdAtom } from '@/features/chat-agent/atoms/workspace'
 import { currentAgentSessionIdAtom } from '@/features/chat-agent/atoms/agent-atoms'
+import { tabsAtom, activeTabIdAtom, openTab } from '@/features/chat-agent/atoms/tab-atoms'
 
 // ---------------------------------------------------------------------------
 // Environment stubs — jsdom doesn't implement ResizeObserver or scrollTo
@@ -244,7 +245,22 @@ vi.mock('@/features/chat-agent/lib/tauri-bridge-stub', () => ({
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-function mountAppShell(store?: ReturnType<typeof createStore>) {
+// AgentView no longer mounts directly under AppShell — it renders THROUGH the
+// tab shell (MainArea → WorkspaceShell → TabContent routes an active `agent`
+// tab to <AgentView sessionId={tab.sessionId}/>). seedAgentTab installs one
+// active agent tab so AgentView renders. Order matters: activeWorkspaceIdAtom
+// must be set BEFORE tabsAtom/activeTabIdAtom — visibleTabsAtom filters by the
+// active workspace and activeTabIdAtom's writer no-ops when no workspace is set.
+function seedAgentTab(store: ReturnType<typeof createStore>, sessionId = 'default', wsId = 'default') {
+  store.set(activeWorkspaceIdAtom, wsId)
+  const { tabs, activeTabId } = openTab([], { type: 'agent', sessionId, title: '', workspaceId: wsId })
+  store.set(tabsAtom, tabs)
+  store.set(activeTabIdAtom, activeTabId)
+  store.set(currentAgentSessionIdAtom, sessionId)
+}
+
+function mountAppShell(store: ReturnType<typeof createStore> = createStore()) {
+  seedAgentTab(store)
   return render(
     <Provider store={store}>
       <AppShell />
@@ -417,24 +433,27 @@ describe('AppShell integration — F. End-to-end smoke', () => {
 })
 
 // ---------------------------------------------------------------------------
-// G. Session ID threading — 2 cases (Task E2: Plan 3.3 carry-forward #4)
+// G. AgentView via the tab shell — 2 cases
+// (Reframed from the old session-prop-threading tests: AgentView no longer
+//  takes its sessionId from an AppShell prop — it renders through the active
+//  agent tab, sessionId sourced from tab.sessionId.)
 // ---------------------------------------------------------------------------
-describe('AppShell integration — G. Session ID threading', () => {
+describe('AppShell integration — G. AgentView via the tab shell', () => {
   beforeEach(() => localStorage.clear())
   afterEach(() => cleanup())
 
-  it('G1: AppShell threads currentAgentSessionId through to AgentSessionProvider and AgentView', () => {
+  it('G1: AgentView renders via the active agent tab (sessionId from tab.sessionId)', () => {
     const store = createStore()
-    store.set(currentAgentSessionIdAtom, 'session-foo')
-    const { container } = mountAppShell(store)
-    // AgentView mounts and receives the threaded sessionId via context
+    seedAgentTab(store, 'session-foo')
+    const { container } = render(<Provider store={store}><AppShell /></Provider>)
+    // The seeded agent tab routes MainArea → WorkspaceShell → TabContent → AgentView
     expect(container.querySelector('[data-testid="agent-view"]')).not.toBeNull()
   })
 
-  it('G2: AppShell falls back to "default" when currentAgentSessionIdAtom is null', () => {
+  it('G2: AgentView renders for an agent tab whose sessionId is "default"', () => {
     const store = createStore()
-    store.set(currentAgentSessionIdAtom, null)
-    const { container } = mountAppShell(store)
+    seedAgentTab(store, 'default')
+    const { container } = render(<Provider store={store}><AppShell /></Provider>)
     expect(container.querySelector('[data-testid="agent-view"]')).not.toBeNull()
   })
 })
