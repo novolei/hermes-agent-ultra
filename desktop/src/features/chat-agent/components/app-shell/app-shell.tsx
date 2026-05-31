@@ -16,9 +16,10 @@
  *   - <BottomDockHoverRegion /> dock pin row + connection indicator (Plan 3.3 B7)
  *   - <SearchPalette />      global ⌘K palette (Plan 3.5 C1)
  *   - <SettingsDialog />     settings (Plan 3.5.s.a–d)
+ *   - <FocusModeOverlay />   focus-mode glow + floating islands (Plan AS.a)
  *
  * Deferred from uclaw's 441-LOC AppShell — stubbed/out of scope here:
- *   - KaleidoscopeShell, WelcomeView, HomeOfficeView, FocusModeOverlay
+ *   - KaleidoscopeShell, WelcomeView, HomeOfficeView
  *     → future ports (content-stubs for now); RightSidePanel's browser tab
  *     still renders the browser-viewer stub (BrowserPanel cluster deferred)
  *   - EscalationModal, MemoryVoiceCapture, QuickCaptureDialog → backlog
@@ -33,6 +34,7 @@ import { ModeBanner } from '@/features/chat-agent/components/agent/mode-banner'
 import { BottomDockHoverRegion } from '@/features/chat-agent/components/dock/bottom-dock-hover-region'
 import { SearchPalette } from '@/features/chat-agent/components/search/search-palette'
 import { SettingsDialog } from '@/features/chat-agent/components/settings/settings-dialog'
+import { FocusModeOverlay } from '@/features/chat-agent/components/focus-mode/focus-mode-overlay'
 import { TooltipProvider } from '@/shared/ui/tooltip'
 import { cn } from '@/shared/lib/cn'
 import { bottomDockEnabledAtom } from '@/features/chat-agent/atoms/dock-atoms'
@@ -217,6 +219,9 @@ export function AppShell(): React.ReactElement {
         <SearchPalette onSelect={handleSearchResultSelect} />
         {/* Plan 3.5.s.a — always-mounted; visibility gated by settingsOpenAtom */}
         <SettingsDialog />
+        {/* Plan AS.a — always-mounted; mounts the focus-mode hotzone/auto-exit
+            hooks and renders null until focusModeAtom (default false) flips on. */}
+        <FocusModeOverlay />
       </div>
     </TooltipProvider>
   )

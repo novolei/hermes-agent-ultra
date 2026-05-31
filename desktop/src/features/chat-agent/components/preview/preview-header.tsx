@@ -21,7 +21,7 @@ import {
   type PreviewFileTarget,
 } from '@/features/chat-agent/atoms/preview-panel-atoms'
 import { FileTypeIcon } from '@/features/chat-agent/components/file-browser/file-type-icon'
-import { FocusModeButton } from '@/features/chat-agent/components/focus-mode/focus-mode-button-stub'
+import { FocusModeButton } from '@/features/chat-agent/components/focus-mode/focus-mode-button'
 
 interface PreviewHeaderProps {
   target: PreviewFileTarget | null
