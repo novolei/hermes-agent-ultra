@@ -195,10 +195,10 @@ export function AppShell(): React.ReactElement {
               <ModeBanner />
               <MainArea />
             </main>
-            {/* Right sidebar (Agent files panel) — content-stub for now; gated on
-                an active agent session, hidden in focus mode. The wrapper mirrors
-                uclaw's padding-transition (driven by isPanelOpen) so the real
-                RightSidePanel port slots in without a layout change. */}
+            {/* Right sidebar (Agent files/teams/plan/trajectory panel) — real
+                RightSidePanel as of Plan RSP.c (browser tab still stubbed). Gated
+                on an active agent session, hidden in focus mode. The wrapper mirrors
+                uclaw's padding-transition (driven by isPanelOpen). */}
             {!focusMode && showRightPanel ? (
               <div className={cn('relative z-[60] transition-[padding] duration-300 ease-in-out', isPanelOpen ? 'p-2 pl-0' : 'p-0')}>
                 <RightSidePanel />
