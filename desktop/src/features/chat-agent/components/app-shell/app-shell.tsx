@@ -10,21 +10,23 @@
  *   - <LeftSidebar />        workspace rail + session list + git actions (Plan 3.3 E1)
  *   - <ModeBanner /> + <MainArea />  main pane: tab shell → WorkspaceShell → TabBar
  *                            + TabContent (AgentView/ChatView) + PreviewPanel
- *   - <RightSidePanel />     content-stub — real Agent files panel cluster deferred
+ *   - <RightSidePanel />     real Agent right column — files/teams/plan/trajectory tabs
+ *                            live (RSP.a/b/c); browser tab still uses browser-viewer stub
  *   - <KaleidoscopeShell />  content-stub — config-flow surface deferred
  *   - <BottomDockHoverRegion /> dock pin row + connection indicator (Plan 3.3 B7)
  *   - <SearchPalette />      global ⌘K palette (Plan 3.5 C1)
  *   - <SettingsDialog />     settings (Plan 3.5.s.a–d)
  *
  * Deferred from uclaw's 441-LOC AppShell — stubbed/out of scope here:
- *   - RightSidePanel cluster (~932 LOC), KaleidoscopeShell, WelcomeView,
- *     HomeOfficeView, FocusModeOverlay   → future ports (content-stubs for now)
+ *   - KaleidoscopeShell, WelcomeView, HomeOfficeView, FocusModeOverlay
+ *     → future ports (content-stubs for now); RightSidePanel's browser tab
+ *     still renders the browser-viewer stub (BrowserPanel cluster deferred)
  *   - EscalationModal, MemoryVoiceCapture, QuickCaptureDialog → backlog
  */
 import * as React from 'react'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { LeftSidebar } from './left-sidebar'
-import { RightSidePanel } from './right-side-panel-stub'
+import { RightSidePanel } from './right-side-panel'
 import { KaleidoscopeShell } from './kaleidoscope-shell-stub'
 import { MainArea } from '@/features/chat-agent/components/tabs/main-area'
 import { ModeBanner } from '@/features/chat-agent/components/agent/mode-banner'
@@ -193,10 +195,10 @@ export function AppShell(): React.ReactElement {
               <ModeBanner />
               <MainArea />
             </main>
-            {/* Right sidebar (Agent files panel) — content-stub for now; gated on
-                an active agent session, hidden in focus mode. The wrapper mirrors
-                uclaw's padding-transition (driven by isPanelOpen) so the real
-                RightSidePanel port slots in without a layout change. */}
+            {/* Right sidebar (Agent files/teams/plan/trajectory panel) — real
+                RightSidePanel as of Plan RSP.c (browser tab still stubbed). Gated
+                on an active agent session, hidden in focus mode. The wrapper mirrors
+                uclaw's padding-transition (driven by isPanelOpen). */}
             {!focusMode && showRightPanel ? (
               <div className={cn('relative z-[60] transition-[padding] duration-300 ease-in-out', isPanelOpen ? 'p-2 pl-0' : 'p-0')}>
                 <RightSidePanel />

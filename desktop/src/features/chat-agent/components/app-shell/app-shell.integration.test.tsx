@@ -240,6 +240,12 @@ vi.mock('@/features/chat-agent/lib/tauri-bridge-stub', () => ({
   onStreamError: vi.fn().mockReturnValue(() => {}),
   onStreamToolActivity: vi.fn().mockReturnValue(() => {}),
   generateTitle: vi.fn().mockResolvedValue(''),
+  // RSP.c Wave C1 — RightSidePanel (real) defaults to the files tab → mounts
+  // FilesRail, which calls filesRailListMounts/WatchStart on mount. Mirrors
+  // files-rail/index.test.tsx so the now-mounted rail does not throw.
+  filesRailListMounts: vi.fn().mockResolvedValue([]),
+  filesRailWatchStart: vi.fn().mockResolvedValue(undefined),
+  filesRailWatchStop: vi.fn().mockResolvedValue(undefined),
 }))
 
 // ---------------------------------------------------------------------------
