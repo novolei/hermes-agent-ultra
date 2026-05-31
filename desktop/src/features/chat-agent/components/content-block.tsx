@@ -11,7 +11,9 @@ import * as React from 'react'
 import type { ComponentProps } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { markdownFileChipPlugin, FilePathChip, useFileChipResolver } from '@/features/chat-agent/lib/preview-chip-stubs'
+import { markdownFileChipPlugin } from '@/features/chat-agent/components/preview/chips/markdown-file-chip-plugin'
+import { FilePathChip } from '@/features/chat-agent/components/preview/chips/file-path-chip'
+import { useFileChipResolver } from '@/features/chat-agent/components/preview/chips/use-file-chip-resolver'
 import {
   ChevronRight,
   XCircle,

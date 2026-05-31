@@ -4,11 +4,9 @@ import Markdown, { defaultUrlTransform } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { cn } from '@/shared/lib/cn'
 import { MarkdownCodeBlock } from '@/shared/components/code-block'
-// Chip imports are stubbed until Plan 3.5 (App Shell + file preview).
-// @/components/preview/chips/* → @/features/chat-agent/lib/preview-chip-stubs
-import { markdownFileChipPlugin } from '@/features/chat-agent/lib/preview-chip-stubs'
-import { FilePathChip } from '@/features/chat-agent/lib/preview-chip-stubs'
-import { useFileChipResolver, useChipCacheInvalidator } from '@/features/chat-agent/lib/preview-chip-stubs'
+import { markdownFileChipPlugin } from '@/features/chat-agent/components/preview/chips/markdown-file-chip-plugin'
+import { FilePathChip } from '@/features/chat-agent/components/preview/chips/file-path-chip'
+import { useFileChipResolver, useChipCacheInvalidator } from '@/features/chat-agent/components/preview/chips/use-file-chip-resolver'
 // MessageAction was extracted from uclaw's message.tsx into its own file
 // to allow CopyButton and other siblings to import it without circular deps.
 // Plan 2c+ may upstream this split back to uclaw.

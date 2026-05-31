@@ -13,6 +13,17 @@ import { TooltipProvider } from '@/shared/ui/tooltip'
 import { AgentMessages } from './agent-messages'
 import type { AgentMessagesProps } from './agent-messages'
 
+// useChipCacheInvalidator calls listen() from @tauri-apps/api/event (absent in
+// jsdom); useFileChipResolver calls invoke() from @tauri-apps/api/core. Restored
+// these mocks now that PV.c swapped the Jotai-free/IPC-free stubs for real chips.
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn(async () => () => {}),
+  emit: vi.fn(async () => {}),
+}))
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn(async () => []),
+}))
+
 // ResizeObserver stub — ScrollMinimap uses it
 beforeAll(() => {
   ;(globalThis as { ResizeObserver?: unknown }).ResizeObserver = class {
