@@ -5,7 +5,8 @@
  * AppShell.tsx。MainArea 只负责 workspace surface 自己的内容。
  *
  * Ported verbatim from uclaw ui/src/components/tabs/MainArea.tsx (Plan FB.c Wave D3)
- * Panel and WorkspaceShell are layout/content stubs (not yet ported clusters).
+ * Panel is still a layout stub (panel-stub); WorkspaceShell is the real module
+ * as of Plan PV.d.
  */
 
 import * as React from 'react'
