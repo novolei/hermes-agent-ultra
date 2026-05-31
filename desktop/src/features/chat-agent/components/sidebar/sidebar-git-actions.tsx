@@ -19,8 +19,8 @@ import * as React from 'react'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { activeWorkspaceCwdAtom, branchSyncTickAtom } from '@/features/chat-agent/atoms/workspace'
 import { gitIsRepo, gitCurrentBranch } from '@/features/chat-agent/lib/tauri-bridge-stub'
-import { GitActionsPicker } from '@/features/chat-agent/lib/git-actions-picker-stub'
-import { GitWorkbenchDialog } from '@/features/chat-agent/lib/git-workbench-dialog-stub'
+import { GitActionsPicker } from '@/features/chat-agent/components/chat/git/git-actions-picker'
+import { GitWorkbenchDialog } from '@/features/chat-agent/components/chat/git/git-workbench-dialog'
 
 export function SidebarGitActions(): React.ReactElement | null {
   const cwd = useAtomValue(activeWorkspaceCwdAtom)
